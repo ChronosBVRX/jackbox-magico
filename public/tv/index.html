@@ -25,31 +25,35 @@
         <div class="room-code" id="codigo-sala">HGW4</div>
         <img id="qr-code" src="" alt="Escanea para unirte">
         <h3>Esperando a los magos...</h3>
-        </div>
+    </div>
 
     <script>
         document.getElementById('btn-crear').addEventListener('click', async () => {
             try {
                 const res = await fetch('/api/host/create_room', { method: 'POST' });
+                
+                if (!res.ok) {
+                    const err = await res.text();
+                    alert("Error del servidor: " + res.status + " - " + err);
+                    return;
+                }
+
                 const data = await res.json();
                 
-                if (res.ok) {
-                    // Ocultar inicio, mostrar lobby
-                    document.getElementById('pantalla-inicio').style.display = 'none';
-                    document.getElementById('lobby').style.display = 'block';
-                    
-                    // Mostrar código de sala
-                    const roomCode = data.room_code;
-                    document.getElementById('codigo-sala').innerText = roomCode;
-                    
-                    // ⚠️ REEMPLAZA ESTO CON TU ENLACE REAL DE VERCEL ⚠️
-                    const tuEnlaceVercel = "https://jackbox-magico.vercel.app"; 
-                    
-                    // Generar QR dinámico
-                    const urlUnirse = `${tuEnlaceVercel}/mobile/index.html?room=${roomCode}`;
-                    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
-                    document.getElementById('qr-code').src = qrApiUrl;
-                }
+                // Ocultar inicio, mostrar lobby
+                document.getElementById('pantalla-inicio').style.display = 'none';
+                document.getElementById('lobby').style.display = 'block';
+                
+                // Mostrar código de sala
+                const roomCode = data.room_code;
+                document.getElementById('codigo-sala').innerText = roomCode;
+                
+                // Generar QR dinámico (detecta la URL automáticamente)
+                const baseUrl = window.location.origin; 
+                const urlUnirse = `${baseUrl}/mobile/index.html?room=${roomCode}`;
+                const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
+                document.getElementById('qr-code').src = qrApiUrl;
+                
             } catch (error) {
                 alert("Error de red: " + error);
             }
