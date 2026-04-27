@@ -83,3 +83,24 @@ async def join_room(info: PlayerJoinInfo):
     except Exception as e:
         # Esto atrapa el error si alguien intenta usar el mismo nombre en la misma sala
         raise HTTPException(status_code=400, detail="Ese nombre ya está en uso en esta sala.")
+    @app.get("/api/room/{room_code}/status")
+async def get_room_status(room_code: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales de Supabase")
+        
+    # 1. Buscar la sala
+    room_res = supabase.table("rooms").select("id, status, game_state").eq("room_code", room_code.upper()).execute()
+    
+    if not room_res.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+        
+    room = room_res.data[0]
+    
+    # 2. Buscar a todos los jugadores que tengan el ID de esa sala
+    players_res = supabase.table("players").select("name, house, score").eq("room_id", room['id']).execute()
+    
+    return {
+        "status": room['status'],
+        "game_state": room['game_state'],
+        "players": players_res.data
+    }
