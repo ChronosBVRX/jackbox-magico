@@ -5,54 +5,64 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Control Mágico</title>
     <style>
-        body { background-color: #2c3e50; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
+        body { background-color: #2c3e50; color: white; font-family: sans-serif; text-align: center; padding: 20px; margin: 0; }
+        .screen { display: none; }
         input, select, button { width: 100%; padding: 15px; margin: 15px 0; font-size: 1.2rem; border-radius: 8px; border: none; box-sizing: border-box; }
-        button { background-color: #27ae60; color: white; font-weight: bold; cursor: pointer; }
-        button:disabled { background-color: #7f8c8d; cursor: not-allowed; }
-        #pantalla-espera { display: none; margin-top: 50px; }
-        .spinner { font-size: 3rem; animation: spin 2s linear infinite; display: inline-block; }
+        .btn-join { background-color: #27ae60; color: white; font-weight: bold; cursor: pointer; }
+        .btn-join:disabled { background-color: #7f8c8d; cursor: not-allowed; }
+        .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
+        .btn-opt { background: #f39c12; color: #1a1a2e; height: 120px; font-size: 1.5rem; font-weight: bold; cursor: pointer; }
+        .btn-opt:active { background: #d35400; }
+        .spinner { font-size: 3rem; animation: spin 2s linear infinite; display: inline-block; margin-top: 20px;}
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    
-    <div id="pantalla-registro">
+
+    <div id="view-login" class="screen" style="display: block;">
         <h2>¡Prepara tu varita!</h2>
-        <input type="text" id="room" placeholder="Código de la Sala (ej. HGW4)" style="text-transform: uppercase;">
-        <input type="text" id="name" placeholder="Tu Nombre o Apodo" maxlength="15">
+        <input type="text" id="m-room" placeholder="Código de la Sala (ej. HGW4)" style="text-transform: uppercase;">
+        <input type="text" id="m-name" placeholder="Tu Nombre o Apodo" maxlength="15">
         
-        <select id="house">
+        <select id="m-house">
             <option value="Gryffindor">🦁 Leones (Gryffindor)</option>
             <option value="Slytherin">🐍 Serpientes (Slytherin)</option>
             <option value="Ravenclaw">🦅 Águilas (Ravenclaw)</option>
             <option value="Hufflepuff">🦡 Tejones (Hufflepuff)</option>
         </select>
         
-        <button id="btn-unirse">Entrar a la Sala</button>
+        <button class="btn-join" id="btn-unirse">Entrar a la Sala</button>
     </div>
 
-    <div id="pantalla-espera">
-        <h2>¡Estás dentro!</h2>
+    <div id="view-wait" class="screen">
+        <h2 id="wait-msg">¡Estás dentro!</h2>
         <p>Mira la pantalla principal.</p>
         <div class="spinner">⏳</div>
     </div>
 
+    <div id="view-game" class="screen">
+        <h3 id="m-pregunta-aviso">¡Responde rápido!</h3>
+        <div class="grid-buttons" id="m-botones"></div>
+    </div>
+
     <script>
-        // Si escaneó el QR, leemos el código de la URL
+        let myRoom = "";
+        let myName = "";
+
         const urlParams = new URLSearchParams(window.location.search);
         if(urlParams.has('room')) {
-            document.getElementById('room').value = urlParams.get('room').toUpperCase();
-            document.getElementById('room').disabled = true; 
+            document.getElementById('m-room').value = urlParams.get('room').toUpperCase();
+            document.getElementById('m-room').disabled = true; 
         }
 
         document.getElementById('btn-unirse').addEventListener('click', async () => {
             const btn = document.getElementById('btn-unirse');
-            const room = document.getElementById('room').value;
-            const name = document.getElementById('name').value;
-            const house = document.getElementById('house').value;
+            myRoom = document.getElementById('m-room').value.toUpperCase();
+            myName = document.getElementById('m-name').value;
+            const house = document.getElementById('m-house').value;
 
-            if(!room || !name) {
-                alert("Llena todos los campos mágicos.");
+            if(!myRoom || !myName) {
+                alert("No seas muggle, llena todos los campos.");
                 return;
             }
 
@@ -63,14 +73,15 @@
                 const res = await fetch('/api/player/join', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ room_code: room, player_name: name, house: house })
+                    body: JSON.stringify({ room_code: myRoom, player_name: myName, house: house })
                 });
                 
                 const data = await res.json();
                 
                 if(res.ok) {
-                    document.getElementById('pantalla-registro').style.display = 'none';
-                    document.getElementById('pantalla-espera').style.display = 'block';
+                    document.getElementById('view-login').style.display = 'none';
+                    document.getElementById('view-wait').style.display = 'block';
+                    iniciarRadarMovil();
                 } else {
                     alert("Error: " + data.detail);
                     btn.innerText = "Entrar a la Sala";
@@ -82,6 +93,54 @@
                 btn.disabled = false;
             }
         });
+
+        function iniciarRadarMovil() {
+            setInterval(async () => {
+                try {
+                    const res = await fetch(`/api/room/${myRoom}/status`);
+                    if(!res.ok) return;
+                    const data = await res.json();
+
+                    if(data.status === 'playing' && data.game_state.phase === 'trivia') {
+                        document.getElementById('view-wait').style.display = 'none';
+                        document.getElementById('view-game').style.display = 'block';
+                        
+                        const btnContainer = document.getElementById('m-botones');
+                        if(btnContainer.innerHTML === "") { 
+                            data.game_state.options.forEach(opt => {
+                                btnContainer.innerHTML += `<button class="btn-opt" onclick="enviarRespuesta('${opt}')">${opt}</button>`;
+                            });
+                        }
+                    }
+
+                    if(data.status === 'lobby' || (data.status === 'playing' && data.game_state.phase === 'results')) {
+                        document.getElementById('view-game').style.display = 'none';
+                        document.getElementById('view-wait').style.display = 'block';
+                        document.getElementById('m-botones').innerHTML = ""; 
+                        
+                        if (data.status === 'lobby') {
+                            document.getElementById('wait-msg').innerText = "¡Estás dentro!";
+                        } else {
+                            document.getElementById('wait-msg').innerText = "¡Mira la TV para ver los puntajes!";
+                        }
+                    }
+                } catch (e) {
+                    console.error("Buscando conexión...");
+                }
+            }, 2000);
+        }
+
+        async function enviarRespuesta(opt) {
+            document.getElementById('view-game').style.display = 'none';
+            document.getElementById('view-wait').style.display = 'block';
+            document.getElementById('wait-msg').innerText = "¡Respuesta enviada!";
+            
+            await fetch('/api/player/submit_answer', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ room_code: myRoom, player_name: myName, answer: opt })
+            });
+        }
     </script>
 </body>
 </html>

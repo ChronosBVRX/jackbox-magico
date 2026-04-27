@@ -5,96 +5,140 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Jackbox Mágico - TV</title>
     <style>
-        body { background-color: #1a1a2e; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        h1 { color: #f39c12; font-size: 3rem; margin-bottom: 10px; }
-        #lobby { display: none; text-align: center; width: 80%; }
-        .room-code { font-size: 5rem; color: #e74c3c; font-weight: bold; letter-spacing: 5px; margin: 10px 0; }
-        #qr-code { border: 10px solid white; border-radius: 10px; margin: 10px 0; max-width: 200px;}
-        button { padding: 15px 30px; font-size: 1.5rem; cursor: pointer; background-color: #f39c12; color: #1a1a2e; border: none; border-radius: 10px; font-weight: bold; }
+        body { background-color: #1a1a2e; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; overflow: hidden; }
+        .screen { display: none; height: 100vh; flex-direction: column; align-items: center; justify-content: center; }
+        h1 { color: #f39c12; font-size: 4rem; margin-bottom: 10px; }
+        .room-code { font-size: 6rem; color: #e74c3c; font-weight: bold; letter-spacing: 5px; margin: 10px 0; }
+        #tv-qr { border: 10px solid white; border-radius: 15px; width: 250px; margin: 20px 0; }
+        .btn-start { padding: 20px 40px; font-size: 2rem; background: #27ae60; color: white; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; margin-top: 20px; }
+        .btn-reveal { background: #8e44ad; }
         
-        /* Estilos para los jugadores que van entrando */
+        #trivia-screen h2 { font-size: 3.5rem; padding: 0 50px; }
+        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 80%; margin-top: 30px; }
+        .option-box { background: #34495e; padding: 30px; font-size: 2rem; border-radius: 15px; border: 4px solid #f39c12; }
+        
         #lista-jugadores { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 30px; }
-        .jugador-card { background-color: #2c3e50; padding: 15px 25px; border-radius: 10px; font-size: 1.5rem; font-weight: bold; animation: popIn 0.5s ease-out; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
+        .player-tag { background-color: #2c3e50; padding: 15px 25px; border-radius: 10px; font-size: 1.5rem; font-weight: bold; animation: popIn 0.5s ease-out; box-shadow: 0 4px 6px rgba(0,0,0,0.3); }
         @keyframes popIn { 0% { transform: scale(0); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
+        
+        .house-score { background: #2c3e50; padding: 20px; border-radius: 15px; font-size: 2rem; width: 200px; border: 3px solid white;}
     </style>
 </head>
 <body>
-    
-    <div id="pantalla-inicio">
+
+    <div id="view-inicio" class="screen" style="display: flex;">
         <h1>Torneo de las Casas</h1>
-        <button id="btn-crear">Iniciar Nueva Partida</button>
+        <button class="btn-start" onclick="crearSala()">Iniciar Nueva Partida</button>
     </div>
 
-    <div id="lobby">
+    <div id="view-lobby" class="screen">
         <h2>¡ÚNETE DESDE TU CELULAR!</h2>
-        <div class="room-code" id="codigo-sala">HGW4</div>
-        <img id="qr-code" src="" alt="Escanea para unirte">
-        <h3>Magos listos para el torneo:</h3>
-        
+        <div class="room-code" id="tv-code">----</div>
+        <img id="tv-qr" src="" alt="QR">
         <div id="lista-jugadores"></div>
+        <button class="btn-start" id="btn-comenzar" style="display:none;" onclick="empezarJuego()">¡COMENZAR TORNEO!</button>
+    </div>
+
+    <div id="view-trivia" class="screen">
+        <h2 id="tv-pregunta">Cargando pregunta...</h2>
+        <div class="options-grid" id="tv-opciones"></div>
+        <button class="btn-start btn-reveal" onclick="revelarResultados()">Revelar Respuesta</button>
+    </div>
+
+    <div id="view-results" class="screen">
+        <h2>La respuesta correcta era:</h2>
+        <h1 id="tv-correcta" style="color: #2ecc71; font-size: 5rem; margin: 10px 0;"></h1>
+        <div id="tv-marcadores" style="display: flex; gap: 20px; margin-top: 30px; flex-wrap: wrap; justify-content: center;"></div>
+        <button class="btn-start" onclick="empezarJuego()">Siguiente Pregunta</button>
     </div>
 
     <script>
-        let intervaloRadar;
+        let currentRoom = "";
 
-        // Función que revisa la base de datos cada 2 segundos
-        function encenderRadar(roomCode) {
-            intervaloRadar = setInterval(async () => {
+        async function crearSala() {
+            try {
+                const res = await fetch('/api/host/create_room', { method: 'POST' });
+                
+                if (!res.ok) {
+                    const err = await res.text();
+                    alert("Error del servidor: " + res.status + " - " + err);
+                    return;
+                }
+
+                const data = await res.json();
+                currentRoom = data.room_code;
+                
+                document.getElementById('view-inicio').style.display = 'none';
+                document.getElementById('view-lobby').style.display = 'flex';
+                document.getElementById('tv-code').innerText = currentRoom;
+                
+                const baseUrl = window.location.origin; 
+                const urlUnirse = `${baseUrl}/mobile/index.html?room=${currentRoom}`;
+                document.getElementById('tv-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
+                
+                iniciarRadar();
+            } catch (error) {
+                alert("Error de red: " + error);
+            }
+        }
+
+        function iniciarRadar() {
+            setInterval(async () => {
                 try {
-                    const res = await fetch(`/api/room/${roomCode}/status`);
-                    if (res.ok) {
-                        const data = await res.json();
-                        actualizarPantalla(data.players);
+                    const res = await fetch(`/api/room/${currentRoom}/status`);
+                    if(!res.ok) return;
+                    
+                    const data = await res.json();
+                    
+                    if(data.status === 'lobby') {
+                        const lista = document.getElementById('lista-jugadores');
+                        lista.innerHTML = "";
+                        data.players.forEach(p => { 
+                            let icono = '🦁';
+                            if(p.house === 'Slytherin') icono = '🐍';
+                            if(p.house === 'Ravenclaw') icono = '🦅';
+                            if(p.house === 'Hufflepuff') icono = '🦡';
+                            lista.innerHTML += `<div class="player-tag">${icono} ${p.name}</div>`; 
+                        });
+                        if(data.players.length > 0) document.getElementById('btn-comenzar').style.display = 'block';
+                    }
+
+                    if(data.status === 'playing' && data.game_state.phase === 'trivia') {
+                        ocultarPantallas();
+                        document.getElementById('view-trivia').style.display = 'flex';
+                        document.getElementById('tv-pregunta').innerText = data.game_state.question;
+                        const grid = document.getElementById('tv-opciones');
+                        grid.innerHTML = "";
+                        data.game_state.options.forEach(opt => { grid.innerHTML += `<div class="option-box">${opt}</div>`; });
+                    }
+
+                    if(data.status === 'playing' && data.game_state.phase === 'results') {
+                        ocultarPantallas();
+                        document.getElementById('view-results').style.display = 'flex';
+                        document.getElementById('tv-correcta').innerText = data.game_state.correct;
+                        
+                        let puntosPorCasa = { "Gryffindor": 0, "Slytherin": 0, "Ravenclaw": 0, "Hufflepuff": 0 };
+                        data.players.forEach(p => { puntosPorCasa[p.house] += p.score; });
+                        
+                        document.getElementById('tv-marcadores').innerHTML = `
+                            <div class="house-score" style="border-color: #c0392b;">🦁 ${puntosPorCasa['Gryffindor']} pts</div>
+                            <div class="house-score" style="border-color: #27ae60;">🐍 ${puntosPorCasa['Slytherin']} pts</div>
+                            <div class="house-score" style="border-color: #2980b9;">🦅 ${puntosPorCasa['Ravenclaw']} pts</div>
+                            <div class="house-score" style="border-color: #f1c40f;">🦡 ${puntosPorCasa['Hufflepuff']} pts</div>
+                        `;
                     }
                 } catch (error) {
-                    console.error("Fallo de conexión en el radar...");
+                    console.error("Radar desconectado temporalmente...");
                 }
             }, 2000);
         }
 
-        // Función que dibuja a los jugadores en pantalla
-        function actualizarPantalla(players) {
-            const contenedor = document.getElementById('lista-jugadores');
-            contenedor.innerHTML = ''; // Limpiamos la lista para redibujarla
-            
-            players.forEach(p => {
-                const card = document.createElement('div');
-                card.className = 'jugador-card';
-                
-                // Le ponemos el emoji según su casa
-                let icono = '🦁';
-                if(p.house === 'Slytherin') icono = '🐍';
-                if(p.house === 'Ravenclaw') icono = '🦅';
-                if(p.house === 'Hufflepuff') icono = '🦡';
-                
-                card.innerText = `${icono} ${p.name}`;
-                contenedor.appendChild(card);
-            });
+        function ocultarPantallas() {
+            document.querySelectorAll('.screen').forEach(s => s.style.display = 'none');
         }
 
-        document.getElementById('btn-crear').addEventListener('click', async () => {
-            try {
-                const res = await fetch('/api/host/create_room', { method: 'POST' });
-                if (!res.ok) return alert("Error al crear la sala.");
-
-                const data = await res.json();
-                const roomCode = data.room_code;
-                
-                document.getElementById('pantalla-inicio').style.display = 'none';
-                document.getElementById('lobby').style.display = 'block';
-                document.getElementById('codigo-sala').innerText = roomCode;
-                
-                const baseUrl = window.location.origin; 
-                const urlUnirse = `${baseUrl}/mobile/index.html?room=${roomCode}`;
-                document.getElementById('qr-code').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
-                
-                // ¡Magia! Encendemos el radar para que la TV empiece a escuchar
-                encenderRadar(roomCode);
-                
-            } catch (error) {
-                alert("Error de red: " + error);
-            }
-        });
+        async function empezarJuego() { await fetch(`/api/host/${currentRoom}/next_question`, { method: 'POST' }); }
+        async function revelarResultados() { await fetch(`/api/host/${currentRoom}/reveal`, { method: 'POST' }); }
     </script>
 </body>
 </html>
