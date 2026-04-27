@@ -61,6 +61,7 @@
             myName = document.getElementById('m-name').value;
             const house = document.getElementById('m-house').value;
 
+            // TU PROTECCIÓN ORIGINAL
             if(!myRoom || !myName) {
                 alert("No seas muggle, llena todos los campos.");
                 return;
@@ -69,6 +70,7 @@
             btn.innerText = "Conectando...";
             btn.disabled = true;
 
+            // TU TRY/CATCH ORIGINAL
             try {
                 const res = await fetch('/api/player/join', {
                     method: 'POST',
@@ -101,9 +103,17 @@
                     if(!res.ok) return;
                     const data = await res.json();
 
-                    if(data.status === 'playing' && data.game_state.phase === 'trivia') {
+                    // Lógica para mostrar la pantalla de juego (Trivia, Duelo o Sombrero)
+                    if(data.status === 'playing' && ['trivia', 'duelo', 'sombrero'].includes(data.game_state.phase)) {
                         document.getElementById('view-wait').style.display = 'none';
                         document.getElementById('view-game').style.display = 'block';
+                        
+                        // Cambiamos el aviso según el minijuego
+                        if(data.game_state.phase === 'sombrero') {
+                            document.getElementById('m-pregunta-aviso').innerText = "¡Vota por un jugador!";
+                        } else {
+                            document.getElementById('m-pregunta-aviso').innerText = "¡Juega rápido!";
+                        }
                         
                         const btnContainer = document.getElementById('m-botones');
                         if(btnContainer.innerHTML === "") { 
@@ -113,7 +123,8 @@
                         }
                     }
 
-                    if(data.status === 'lobby' || (data.status === 'playing' && data.game_state.phase === 'results')) {
+                    // Lógica para regresar a la pantalla de espera
+                    if(data.status === 'lobby' || (data.status === 'playing' && data.game_state.phase.includes('results'))) {
                         document.getElementById('view-game').style.display = 'none';
                         document.getElementById('view-wait').style.display = 'block';
                         document.getElementById('m-botones').innerHTML = ""; 
@@ -121,7 +132,7 @@
                         if (data.status === 'lobby') {
                             document.getElementById('wait-msg').innerText = "¡Estás dentro!";
                         } else {
-                            document.getElementById('wait-msg').innerText = "¡Mira la TV para ver los puntajes!";
+                            document.getElementById('wait-msg').innerText = "¡Mira la TV para ver los resultados!";
                         }
                     }
                 } catch (e) {
