@@ -1,17 +1,12 @@
-import os
 import random
 import string
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel
-from supabase import create_client, Client
 
-SUPABASE_URL = os.environ.get("SUPABASE_URL")
-SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_ROLE_KEY")
-
-supabase: Client = None
-if SUPABASE_URL and SUPABASE_KEY:
-    supabase = create_client(SUPABASE_URL, SUPABASE_KEY)
+# Importamos la base de datos y los módulos de minijuegos
+from api.database import supabase, PlayerJoinInfo, AnswerInfo
+from api import trivia
+from api import duelo
 
 app = FastAPI(title="Hogwarts Snacks API")
 
@@ -23,113 +18,72 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Base de datos de preguntas
-TRIVIA_POOL = [
-    {"q": "¿Qué hechizo usarías para no pagar la cuenta?", "o": ["Obliviate", "Lumos", "Expelliarmus", "Alohomora"], "c": "Obliviate"},
-    {"q": "¿Qué criatura te robaría el aguinaldo?", "o": ["Dementor", "Escarbato", "Boggart", "Thestral"], "c": "Escarbato"},
-    {"q": "¿Qué casa sobreviviría mejor a una peda mágica?", "o": ["Gryffindor", "Slytherin", "Ravenclaw", "Hufflepuff"], "c": "Hufflepuff"},
-    {"q": "Si tu suegra fuera un Boggart, ¿qué hechizo usarías?", "o": ["Riddikulus", "Avada Kedavra", "Protego", "Desmaio"], "c": "Riddikulus"}
-]
+# Conectamos los módulos (Minijuegos) al cerebro principal
+app.include_router(trivia.router)
+app.include_router(duelo.router)
 
-class PlayerJoinInfo(BaseModel):
-    room_code: str
-    player_name: str
-    house: str
-
-class AnswerInfo(BaseModel):
-    room_code: str
-    player_name: str
-    answer: str
-
-# --- FUNCIONES QUE HABÍAMOS CREADO Y CONSERVAMOS ---
 def generate_room_code():
     return ''.join(random.choices(string.ascii_uppercase, k=4))
 
 @app.get("/api/health")
 async def health_check():
-    return {"status": "ok", "message": "El servidor mágico está funcionando"}
+    return {"status": "ok", "message": "Cerebro principal funcionando perfectamente."}
 
-# --- RUTAS PRINCIPALES ---
+# --- RUTAS DE LOBBY Y JUGADORES ---
+
 @app.post("/api/host/create_room")
 async def create_room():
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales de Supabase")
-        
+    if not supabase: raise HTTPException(status_code=500, detail="Faltan credenciales")
     code = generate_room_code()
-    initial_state = {"phase": "lobby", "question": "", "options": [], "correct": ""}
-    
-    supabase.table("rooms").insert({
-        "room_code": code, 
-        "status": "lobby", 
-        "game_state": initial_state
-    }).execute()
-    
+    initial_state = {"phase": "lobby"}
+    supabase.table("rooms").insert({"room_code": code, "status": "lobby", "game_state": initial_state}).execute()
     return {"message": "Sala creada", "room_code": code}
 
 @app.post("/api/player/join")
 async def join_room(info: PlayerJoinInfo):
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales de Supabase")
-        
+    if not supabase: raise HTTPException(status_code=500, detail="Faltan credenciales")
     room = supabase.table("rooms").select("id, status").eq("room_code", info.room_code.upper()).execute()
-    
-    if not room.data: 
-        raise HTTPException(status_code=404, detail="Sala no encontrada. ¿Poción confundus?")
-    if room.data[0]['status'] != 'lobby':
-        raise HTTPException(status_code=403, detail="La partida ya comenzó. ¡Llegaste tarde!")
-    
+    if not room.data: raise HTTPException(status_code=404, detail="Sala no encontrada")
+    if room.data[0]['status'] != 'lobby': raise HTTPException(status_code=403, detail="Partida ya en curso")
     try:
-        supabase.table("players").insert({
-            "room_id": room.data[0]['id'], 
-            "name": info.player_name, 
-            "house": info.house
-        }).execute()
-        return {"message": "¡Bienvenido a Hogwarts!"}
-    except Exception as e:
-        raise HTTPException(status_code=400, detail="Ese nombre ya está en uso en esta sala.")
+        supabase.table("players").insert({"room_id": room.data[0]['id'], "name": info.player_name, "house": info.house}).execute()
+        return {"message": "¡Bienvenido!"}
+    except Exception:
+        raise HTTPException(status_code=400, detail="Nombre en uso.")
 
 @app.get("/api/room/{room_code}/status")
 async def get_room_status(room_code: str):
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales de Supabase")
-    
+    if not supabase: raise HTTPException(status_code=500, detail="Faltan credenciales")
     room = supabase.table("rooms").select("id, status, game_state").eq("room_code", room_code.upper()).execute()
-    if not room.data:
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
-        
+    if not room.data: raise HTTPException(status_code=404, detail="Sala no encontrada")
     players = supabase.table("players").select("name, house, score").eq("room_id", room.data[0]['id']).execute()
-    
-    return {
-        "status": room.data[0]['status'],
-        "game_state": room.data[0]['game_state'],
-        "players": players.data
-    }
+    return {"status": room.data[0]['status'], "game_state": room.data[0]['game_state'], "players": players.data}
 
-# --- NUEVAS RUTAS DE LA TRIVIA ---
-@app.post("/api/host/{room_code}/next_question")
-async def next_question(room_code: str):
-    pregunta = random.choice(TRIVIA_POOL)
-    new_state = {
-        "phase": "trivia", 
-        "question": pregunta['q'], 
-        "options": pregunta['o'], 
-        "correct": pregunta['c']
-    }
-    supabase.table("rooms").update({
-        "status": "playing", 
-        "game_state": new_state
-    }).eq("room_code", room_code.upper()).execute()
-    
-    return {"message": "Pregunta lanzada"}
+# --- EL ÁRBITRO DE PUNTOS ---
 
 @app.post("/api/player/submit_answer")
 async def submit_answer(info: AnswerInfo):
     room = supabase.table("rooms").select("id, game_state").eq("room_code", info.room_code.upper()).execute()
-    if not room.data: return {"message": "Error de sala"}
+    if not room.data: return {"message": "Error"}
     
-    correct_answer = room.data[0]['game_state'].get('correct', '')
+    state = room.data[0]['game_state']
+    player_won = False
     
-    if info.answer == correct_answer:
+    # El Árbitro califica la Trivia
+    if state.get('phase') == 'trivia':
+        if info.answer == state.get('correct'):
+            player_won = True
+            
+    # El Árbitro califica el Duelo
+    elif state.get('phase') == 'duelo':
+        enemy = state.get('enemy_move')
+        p_move = info.answer
+        if p_move == "Protección" and enemy == "Contraataque": player_won = True
+        elif p_move == "Contraataque" and enemy == "Esquivar": player_won = True
+        elif p_move == "Esquivar" and enemy == "Protección": player_won = True
+    
+    # Si ganó, sumamos 100 puntos
+    if player_won:
         player = supabase.table("players").select("id, score").eq("room_id", room.data[0]['id']).eq("name", info.player_name).execute()
         if player.data:
             new_score = player.data[0]['score'] + 100
@@ -141,6 +95,9 @@ async def submit_answer(info: AnswerInfo):
 async def reveal_results(room_code: str):
     room = supabase.table("rooms").select("game_state").eq("room_code", room_code.upper()).execute()
     state = room.data[0]['game_state']
-    state['phase'] = 'results'
+    
+    if state.get('phase') == 'trivia': state['phase'] = 'results_trivia'
+    elif state.get('phase') == 'duelo': state['phase'] = 'results_duelo'
+        
     supabase.table("rooms").update({"game_state": state}).eq("room_code", room_code.upper()).execute()
-    return {"message": "Resultados mostrados"}
+    return {"message": "Resultados revelados"}
