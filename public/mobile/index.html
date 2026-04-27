@@ -6,20 +6,83 @@
     <title>Control Mágico</title>
     <style>
         body { background-color: #2c3e50; color: white; font-family: sans-serif; padding: 20px; text-align: center; }
-        input, select, button { width: 100%; padding: 15px; margin: 10px 0; font-size: 18px; border-radius: 8px; border: none; box-sizing: border-box; }
-        button { background-color: #27ae60; color: white; font-weight: bold; }
+        input, select, button { width: 100%; padding: 15px; margin: 15px 0; font-size: 1.2rem; border-radius: 8px; border: none; box-sizing: border-box; }
+        button { background-color: #27ae60; color: white; font-weight: bold; cursor: pointer; }
+        #pantalla-espera { display: none; margin-top: 50px; }
+        .spinner { font-size: 3rem; animation: spin 2s linear infinite; display: inline-block; }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <h2>¡Únete a la partida!</h2>
-    <input type="text" id="room" placeholder="Código de la Sala (ej. HGW4)">
-    <input type="text" id="name" placeholder="Tu Nombre">
-    <select id="house">
-        <option value="Gryffindor">Leones (Rojo)</option>
-        <option value="Slytherin">Serpientes (Verde)</option>
-        <option value="Ravenclaw">Águilas (Azul)</option>
-        <option value="Hufflepuff">Tejones (Amarillo)</option>
-    </select>
-    <button id="btn-unirse">Entrar</button>
+    
+    <div id="pantalla-registro">
+        <h2>¡Prepara tu varita!</h2>
+        <input type="text" id="room" placeholder="Código de la Sala (ej. HGW4)" style="text-transform: uppercase;">
+        <input type="text" id="name" placeholder="Tu Nombre o Apodo" maxlength="15">
+        
+        <select id="house">
+            <option value="Gryffindor">🦁 Leones (Gryffindor)</option>
+            <option value="Slytherin">🐍 Serpientes (Slytherin)</option>
+            <option value="Ravenclaw">🦅 Águilas (Ravenclaw)</option>
+            <option value="Hufflepuff">🦡 Tejones (Hufflepuff)</option>
+        </select>
+        
+        <button id="btn-unirse">Entrar a la Sala</button>
+    </div>
+
+    <div id="pantalla-espera">
+        <h2>¡Estás dentro!</h2>
+        <p>Mira la pantalla principal.</p>
+        <div class="spinner">⏳</div>
+    </div>
+
+    <script>
+        // Si escaneó el QR, el enlace tendrá ?room=CODE. Lo leemos y lo ponemos en el input.
+        const urlParams = new URLSearchParams(window.location.search);
+        if(urlParams.has('room')) {
+            document.getElementById('room').value = urlParams.get('room').toUpperCase();
+            // Bloqueamos el input para que no se equivoquen
+            document.getElementById('room').disabled = true; 
+        }
+
+        document.getElementById('btn-unirse').addEventListener('click', async () => {
+            const btn = document.getElementById('btn-unirse');
+            const room = document.getElementById('room').value;
+            const name = document.getElementById('name').value;
+            const house = document.getElementById('house').value;
+
+            if(!room || !name) {
+                alert("No seas muggle, llena todos los campos.");
+                return;
+            }
+
+            btn.innerText = "Conectando...";
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/player/join', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ room_code: room, player_name: name, house: house })
+                });
+                
+                const data = await res.json();
+                
+                if(res.ok) {
+                    // Ocultamos el registro y mostramos la espera
+                    document.getElementById('pantalla-registro').style.display = 'none';
+                    document.getElementById('pantalla-espera').style.display = 'block';
+                } else {
+                    alert("Error: " + data.detail);
+                    btn.innerText = "Entrar a la Sala";
+                    btn.disabled = false;
+                }
+            } catch (error) {
+                alert("Error de conexión al castillo.");
+                btn.innerText = "Entrar a la Sala";
+                btn.disabled = false;
+            }
+        });
+    </script>
 </body>
 </html>

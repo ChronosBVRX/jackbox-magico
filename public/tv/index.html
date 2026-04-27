@@ -6,19 +6,53 @@
     <title>Jackbox Mágico - TV</title>
     <style>
         body { background-color: #1a1a2e; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
-        h1 { color: #f39c12; }
+        h1 { color: #f39c12; font-size: 3rem; margin-bottom: 10px; }
+        #lobby { display: none; text-align: center; }
+        .room-code { font-size: 5rem; color: #e74c3c; font-weight: bold; letter-spacing: 5px; margin: 10px 0; }
+        #qr-code { border: 10px solid white; border-radius: 10px; margin: 20px 0; }
+        button { padding: 15px 30px; font-size: 1.5rem; cursor: pointer; background-color: #f39c12; color: #1a1a2e; border: none; border-radius: 10px; font-weight: bold; }
     </style>
 </head>
 <body>
-    <h1>Pantalla Principal (TV)</h1>
-    <p>Aquí se verá el código de la sala y las animaciones.</p>
-    <button id="btn-crear">Crear Sala Nueva</button>
+    
+    <div id="pantalla-inicio">
+        <h1>Torneo de las Casas</h1>
+        <button id="btn-crear">Iniciar Nueva Partida</button>
+    </div>
+
+    <div id="lobby">
+        <h2>¡ÚNETE DESDE TU CELULAR!</h2>
+        <div class="room-code" id="codigo-sala">HGW4</div>
+        <img id="qr-code" src="" alt="Escanea para unirte">
+        <h3>Esperando a los magos...</h3>
+        </div>
 
     <script>
         document.getElementById('btn-crear').addEventListener('click', async () => {
-            const res = await fetch('/api/host/create_room', { method: 'POST' });
-            const data = await res.json();
-            alert("Sala creada: " + data.room_code);
+            try {
+                const res = await fetch('/api/host/create_room', { method: 'POST' });
+                const data = await res.json();
+                
+                if (res.ok) {
+                    // Ocultar inicio, mostrar lobby
+                    document.getElementById('pantalla-inicio').style.display = 'none';
+                    document.getElementById('lobby').style.display = 'block';
+                    
+                    // Mostrar código de sala
+                    const roomCode = data.room_code;
+                    document.getElementById('codigo-sala').innerText = roomCode;
+                    
+                    // ⚠️ REEMPLAZA ESTO CON TU ENLACE REAL DE VERCEL ⚠️
+                    const tuEnlaceVercel = "https://jackbox-magico.vercel.app"; 
+                    
+                    // Generar QR dinámico
+                    const urlUnirse = `${tuEnlaceVercel}/mobile/index.html?room=${roomCode}`;
+                    const qrApiUrl = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
+                    document.getElementById('qr-code').src = qrApiUrl;
+                }
+            } catch (error) {
+                alert("Error de red: " + error);
+            }
         });
     </script>
 </body>
