@@ -39,9 +39,8 @@
         <img id="tv-qr" src="" alt="QR">
         <div id="lista-jugadores"></div>
         <div style="margin-top: 30px;" id="controles-host" style="display:none;">
-            <button class="btn-start" onclick="lanzarTrivia()">Lanzar Trivia</button>
-            <button class="btn-start btn-duelo" onclick="lanzarDuelo()">Lanzar Duelo</button>
-            <button class="btn-start btn-sombrero" onclick="lanzarSombrero()">Lanzar Sombrero</button>
+            <select id="game-select" style="padding:15px; border-radius:10px; font-size:1.1rem; min-width:360px;"></select>
+            <button class="btn-start" onclick="lanzarJuegoSeleccionado()">Lanzar Minijuego</button>
         </div>
     </div>
 
@@ -77,6 +76,7 @@
             const urlUnirse = `${window.location.origin}/mobile/index.html?room=${currentRoom}`;
             document.getElementById('tv-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
             
+            await cargarCatalogoJuegos();
             iniciarRadar();
         }
 
@@ -103,7 +103,7 @@
                     if(data.status === 'playing') {
                         const phase = data.game_state.phase;
                         
-                        if(phase === 'trivia' || phase === 'duelo' || phase === 'sombrero') {
+                        if(!phase.includes('results_') && phase !== 'lobby') {
                             ocultarPantallas();
                             document.getElementById('view-game').style.display = 'flex';
                             
@@ -111,7 +111,7 @@
                             if(phase === 'duelo') container.className = "duelo-container";
                             else container.className = "";
 
-                            document.getElementById('tv-pregunta').innerText = phase === 'duelo' ? data.game_state.attack_msg : data.game_state.question;
+                            document.getElementById('tv-pregunta').innerText = data.game_state.question || data.game_state.attack_msg || '¡Responde!';
                             
                             const grid = document.getElementById('tv-opciones');
                             grid.innerHTML = "";
@@ -122,12 +122,12 @@
                             ocultarPantallas();
                             document.getElementById('view-results').style.display = 'flex';
                             
-                            if(phase === 'results_trivia') {
-                                document.getElementById('titulo-resultados').innerText = "La respuesta correcta era:";
-                            } else if(phase === 'results_duelo') {
+                            if(phase === 'results_duelo') {
                                 document.getElementById('titulo-resultados').innerText = "El enemigo usó:";
-                            } else if(phase === 'results_sombrero') {
+                            } else if(phase === 'results_sombrero' || phase === 'results_patronus_personalizado') {
                                 document.getElementById('titulo-resultados').innerText = "¡El más votado es!";
+                            } else {
+                                document.getElementById('titulo-resultados').innerText = "Resultado de la ronda:";
                             }
                             
                             document.getElementById('tv-correcta').innerText = data.game_state.correct || "Nadie votó";
@@ -148,9 +148,21 @@
         }
 
         function ocultarPantallas() { document.querySelectorAll('.screen').forEach(s => s.style.display = 'none'); }
-        async function lanzarTrivia() { await fetch(`/api/host/${currentRoom}/start_trivia`, { method: 'POST' }); }
-        async function lanzarDuelo() { await fetch(`/api/host/${currentRoom}/start_duelo`, { method: 'POST' }); }
-        async function lanzarSombrero() { await fetch(`/api/host/${currentRoom}/start_sombrero`, { method: 'POST' }); }
+        async function cargarCatalogoJuegos() {
+            const res = await fetch('/api/games');
+            const data = await res.json();
+            const sel = document.getElementById('game-select');
+            sel.innerHTML = '';
+            Object.entries(data.games).forEach(([gameId, game]) => {
+                sel.innerHTML += `<option value="${gameId}">${game.name}</option>`;
+            });
+        }
+
+        async function lanzarJuegoSeleccionado() {
+            const gameId = document.getElementById('game-select').value;
+            await fetch(`/api/host/${currentRoom}/start_game/${gameId}`, { method: 'POST' });
+        }
+
         async function revelarResultados() { await fetch(`/api/host/${currentRoom}/reveal`, { method: 'POST' }); }
         
         // LA FUNCIÓN QUE LIMPIA LA BASE DE DATOS Y NOS REGRESA EN PAZ

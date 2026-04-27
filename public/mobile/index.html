@@ -104,12 +104,12 @@
                     const data = await res.json();
 
                     // Lógica para mostrar la pantalla de juego (Trivia, Duelo o Sombrero)
-                    if(data.status === 'playing' && ['trivia', 'duelo', 'sombrero'].includes(data.game_state.phase)) {
+                    if(data.status === 'playing' && !data.game_state.phase.includes('results_')) {
                         document.getElementById('view-wait').style.display = 'none';
                         document.getElementById('view-game').style.display = 'block';
                         
                         // Cambiamos el aviso según el minijuego
-                        if(data.game_state.phase === 'sombrero') {
+                        if(['sombrero','patronus_personalizado'].includes(data.game_state.phase)) {
                             document.getElementById('m-pregunta-aviso').innerText = "¡Vota por un jugador!";
                         } else {
                             document.getElementById('m-pregunta-aviso').innerText = "¡Juega rápido!";
