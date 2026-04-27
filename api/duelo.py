@@ -2,29 +2,36 @@ import random
 from fastapi import APIRouter
 from api.database import supabase
 
-# Creamos un "Mini-Cerebro" (Router) solo para la trivia
 router = APIRouter()
 
-# Base de datos de la Trivia
-TRIVIA_POOL = [
-    {"q": "¿Qué hechizo usarías para no pagar la cuenta?", "o": ["Obliviate", "Lumos", "Expelliarmus", "Alohomora"], "c": "Obliviate"},
-    {"q": "¿Qué criatura te robaría el aguinaldo?", "o": ["Dementor", "Escarbato", "Boggart", "Thestral"], "c": "Escarbato"},
-    {"q": "¿Qué casa sobreviviría mejor a una peda mágica?", "o": ["Gryffindor", "Slytherin", "Ravenclaw", "Hufflepuff"], "c": "Hufflepuff"},
-    {"q": "Si tu suegra fuera un Boggart, ¿qué hechizo usarías?", "o": ["Riddikulus", "Avada Kedavra", "Protego", "Desmaio"], "c": "Riddikulus"}
+DUEL_ATTACKS = [
+    "Un rival lanza un hechizo de ataque. ¿Qué respondes?",
+    "Te intentan desarmar frente al Gran Comedor. ¿Cómo reaccionas?",
+    "Te llega un Bombarda al escritorio. ¿Qué haces?",
+    "Un oponente intenta aturdirte por la espalda. ¿Tu movimiento?",
+    "Te apuntan con un hechizo desconocido en un pasillo oscuro. ¿Respuesta?",
+    "Duelo amistoso en clase: el rival acelera el ritmo. ¿Qué eliges?",
+    "Tu enemigo abre con magia agresiva. ¿Cómo lo contrarrestas?",
+    "Te atacan antes de estar listo. ¿Qué decisión tomas?",
+    "Hay magia en cadena hacia tu posición. ¿Cuál es tu jugada?",
+    "Escuchas un '¡Expulso!' directo a ti. ¿Qué haces?",
 ]
 
-@router.post("/api/host/{room_code}/start_trivia")
-async def start_trivia(room_code: str):
-    pregunta = random.choice(TRIVIA_POOL)
-    new_state = {
-        "phase": "trivia", 
-        "question": pregunta['q'], 
-        "options": pregunta['o'], 
-        "correct": pregunta['c']
+DUEL_OPTIONS = ["Protección", "Contraataque", "Esquivar"]
+
+
+def build_duelo_state():
+    return {
+        "phase": "duelo",
+        "question": random.choice(DUEL_ATTACKS),
+        "attack_msg": random.choice(DUEL_ATTACKS),
+        "options": DUEL_OPTIONS,
+        "enemy_move": random.choice(DUEL_OPTIONS),
     }
-    supabase.table("rooms").update({
-        "status": "playing", 
-        "game_state": new_state
-    }).eq("room_code", room_code.upper()).execute()
-    
-    return {"message": "Trivia iniciada"}
+
+
+@router.post("/api/host/{room_code}/start_duelo")
+async def start_duelo(room_code: str):
+    new_state = build_duelo_state()
+    supabase.table("rooms").update({"status": "playing", "game_state": new_state}).eq("room_code", room_code.upper()).execute()
+    return {"message": "Duelo de Hechizos iniciado"}
