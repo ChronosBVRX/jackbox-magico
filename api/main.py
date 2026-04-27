@@ -110,11 +110,9 @@ async def reveal_results(room_code: str):
         votes = state.get('votes', {})
         
         if votes:
-            # Encontrar al más votado
             winner = max(votes, key=votes.get)
-            state['correct'] = f"{winner} ({votes[winner]} votos)" # Lo mostramos en la TV
+            state['correct'] = f"{winner} ({votes[winner]} votos)"
             
-            # Repartir puntos (+80 al ganador, +10 por voto a los demás)
             players = supabase.table("players").select("id, name, score").eq("room_id", room_id).execute()
             for p in players.data:
                 p_name = p['name']
@@ -125,3 +123,13 @@ async def reveal_results(room_code: str):
                     
     supabase.table("rooms").update({"game_state": state}).eq("room_code", room_code.upper()).execute()
     return {"message": "Resultados revelados"}
+
+# --- NUEVA FUNCIÓN PARA ROMPER EL LOOP ---
+@app.post("/api/host/{room_code}/return_lobby")
+async def return_lobby(room_code: str):
+    new_state = {"phase": "lobby"}
+    supabase.table("rooms").update({
+        "status": "lobby", 
+        "game_state": new_state
+    }).eq("room_code", room_code.upper()).execute()
+    return {"message": "De vuelta al lobby"}

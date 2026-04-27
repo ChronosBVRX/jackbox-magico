@@ -13,6 +13,7 @@
         .btn-reveal { background: #8e44ad; font-size: 2rem; padding: 20px 40px;}
         .btn-duelo { background: #c0392b; }
         .btn-sombrero { background: #2980b9; }
+        .btn-volver { background: #7f8c8d; }
         
         .question-title { font-size: 3.5rem; padding: 0 50px; }
         .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 80%; margin-top: 30px; }
@@ -57,7 +58,7 @@
         <h1 id="tv-correcta" style="color: #2ecc71; font-size: 5rem; margin: 10px 0;"></h1>
         <div id="tv-marcadores" style="display: flex; gap: 20px; margin-top: 30px; flex-wrap: wrap; justify-content: center;"></div>
         <div style="margin-top: 40px;">
-            <button class="btn-start" onclick="document.getElementById('view-results').style.display='none'; document.getElementById('view-lobby').style.display='flex';">Volver al Lobby</button>
+            <button class="btn-start btn-volver" onclick="volverAlLobby()">Volver al Lobby</button>
         </div>
     </div>
 
@@ -87,13 +88,16 @@
                     const data = await res.json();
                     
                     if(data.status === 'lobby') {
+                        ocultarPantallas();
+                        document.getElementById('view-lobby').style.display = 'flex';
+                        
                         const lista = document.getElementById('lista-jugadores');
                         lista.innerHTML = "";
                         data.players.forEach(p => { 
                             let icono = p.house === 'Slytherin' ? '🐍' : p.house === 'Ravenclaw' ? '🦅' : p.house === 'Hufflepuff' ? '🦡' : '🦁';
                             lista.innerHTML += `<div class="player-tag">${icono} ${p.name}</div>`; 
                         });
-                        if(data.players.length >= 2) document.getElementById('controles-host').style.display = 'block';
+                        if(data.players.length >= 1) document.getElementById('controles-host').style.display = 'block';
                     }
 
                     if(data.status === 'playing') {
@@ -148,6 +152,11 @@
         async function lanzarDuelo() { await fetch(`/api/host/${currentRoom}/start_duelo`, { method: 'POST' }); }
         async function lanzarSombrero() { await fetch(`/api/host/${currentRoom}/start_sombrero`, { method: 'POST' }); }
         async function revelarResultados() { await fetch(`/api/host/${currentRoom}/reveal`, { method: 'POST' }); }
+        
+        // LA FUNCIÓN QUE LIMPIA LA BASE DE DATOS Y NOS REGRESA EN PAZ
+        async function volverAlLobby() {
+            await fetch(`/api/host/${currentRoom}/return_lobby`, { method: 'POST' });
+        }
     </script>
 </body>
 </html>
