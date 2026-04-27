@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jackbox Mágico - TV</title>
+    <style>
+        body { background-color: #1a1a2e; color: white; font-family: sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+        h1 { color: #f39c12; }
+    </style>
+</head>
+<body>
+    <h1>Pantalla Principal (TV)</h1>
+    <p>Aquí se verá el código de la sala y las animaciones.</p>
+    <button id="btn-crear">Crear Sala Nueva</button>
+
+    <script>
+        document.getElementById('btn-crear').addEventListener('click', async () => {
+            const res = await fetch('/api/host/create_room', { method: 'POST' });
+            const data = await res.json();
+            alert("Sala creada: " + data.room_code);
+        });
+    </script>
+</body>
+</html>
