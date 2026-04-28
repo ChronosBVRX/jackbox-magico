@@ -7,10 +7,10 @@
   border-radius: 34px;
   color: #fff8dd;
   background:
-    radial-gradient(circle at 50% 10%, rgba(255,216,121,.18), transparent 26%),
-    radial-gradient(circle at 18% 70%, rgba(34,197,94,.18), transparent 34%),
-    radial-gradient(circle at 82% 70%, rgba(59,130,246,.18), transparent 34%),
-    linear-gradient(180deg, rgba(8, 18, 34, .97), rgba(3, 7, 12, .98));
+    radial-gradient(circle at 50% 10%, rgba(255,216,121,.20), transparent 28%),
+    radial-gradient(circle at 18% 72%, rgba(34,197,94,.18), transparent 34%),
+    radial-gradient(circle at 82% 72%, rgba(59,130,246,.18), transparent 34%),
+    linear-gradient(180deg, rgba(8, 18, 34, .98), rgba(3, 7, 12, .98));
   box-shadow:
     0 35px 110px rgba(0,0,0,.58),
     inset 0 0 0 1px rgba(255,255,255,.05);
@@ -24,7 +24,7 @@
     linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px),
     linear-gradient(rgba(255,255,255,.04) 1px, transparent 1px);
   background-size: 70px 70px;
-  mask-image: radial-gradient(circle at center, black 0%, transparent 75%);
+  mask-image: radial-gradient(circle at center, black 0%, transparent 76%);
   pointer-events: none;
 }
 
@@ -67,14 +67,14 @@
 .snitch-subtitle {
   max-width: 880px;
   margin: 0 auto;
-  color: rgba(255,248,221,.72);
+  color: rgba(255,248,221,.76);
   text-align: center;
   font-size: 1.12rem;
 }
 
 .snitch-field {
   position: relative;
-  height: 390px;
+  height: 360px;
   margin-top: 28px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.12);
@@ -108,41 +108,31 @@
   position: absolute;
   left: 0;
   right: 0;
-  top: 72px;
-  height: 38px;
-  opacity: .5;
+  top: 38px;
+  height: 50px;
   background:
-    radial-gradient(circle, rgba(255,255,255,.45) 0 2px, transparent 3px);
-  background-size: 26px 18px;
-  animation: crowdBlink 1.8s ease-in-out infinite alternate;
-}
-
-@keyframes crowdBlink {
-  from { opacity: .28; }
-  to { opacity: .62; }
+    radial-gradient(circle, rgba(255,255,255,.28) 0 2px, transparent 3px);
+  background-size: 18px 18px;
+  opacity: .35;
 }
 
 .snitch-storm {
   position: absolute;
   inset: 0;
   background:
-    linear-gradient(115deg, transparent 0 46%, rgba(255,255,255,.20) 49%, transparent 52%),
-    linear-gradient(65deg, transparent 0 52%, rgba(255,216,121,.14) 54%, transparent 56%);
-  opacity: 0;
-  pointer-events: none;
-  animation: stormFlash 5.6s ease-in-out infinite;
+    linear-gradient(115deg, transparent 0 38%, rgba(255,255,255,.08) 39%, transparent 40% 100%);
+  animation: snitchStorm 3.4s linear infinite;
+  opacity: .75;
 }
 
-@keyframes stormFlash {
-  0%, 72%, 100% { opacity: 0; }
-  74% { opacity: .42; }
-  77% { opacity: .08; }
-  80% { opacity: .32; }
+@keyframes snitchStorm {
+  from { transform: translateX(-60%); }
+  to { transform: translateX(80%); }
 }
 
 .snitch-hoop {
   position: absolute;
-  top: 116px;
+  top: 102px;
   width: 74px;
   height: 120px;
   border: 7px solid rgba(255,216,121,.36);
@@ -155,79 +145,73 @@
 
 .capture-zone {
   position: absolute;
-  top: 86px;
-  bottom: 42px;
+  top: 82px;
+  bottom: 36px;
   left: 50%;
-  width: 122px;
+  width: 130px;
   transform: translateX(-50%);
-  border-left: 3px solid rgba(255,216,121,.76);
-  border-right: 3px solid rgba(255,216,121,.76);
+  border-left: 3px solid rgba(255,216,121,.82);
+  border-right: 3px solid rgba(255,216,121,.82);
   background:
-    linear-gradient(90deg, transparent, rgba(255,216,121,.19), transparent);
+    linear-gradient(90deg, transparent, rgba(255,216,121,.20), transparent);
   box-shadow:
-    0 0 40px rgba(255,216,121,.25),
+    0 0 42px rgba(255,216,121,.28),
     inset 0 0 42px rgba(255,216,121,.18);
   animation: capturePulse 1.1s ease-in-out infinite alternate;
 }
 
-@keyframes capturePulse {
-  from { opacity: .62; }
-  to { opacity: 1; }
+.snitch-spotlight {
+  position: absolute;
+  top: 60px;
+  bottom: 26px;
+  left: 50%;
+  width: 220px;
+  transform: translateX(-50%);
+  background: radial-gradient(ellipse at center, rgba(255,216,121,.19), transparent 68%);
+  filter: blur(6px);
+  pointer-events: none;
 }
 
-.capture-zone::before {
-  content: "ZONA DE CAPTURA";
-  position: absolute;
-  top: -28px;
-  left: 50%;
-  width: 180px;
-  transform: translateX(-50%);
-  color: #ffd879;
-  font-size: .78rem;
-  font-weight: 1000;
-  letter-spacing: .10em;
-  text-align: center;
+@keyframes capturePulse {
+  from { opacity: .68; }
+  to { opacity: 1; }
 }
 
 .snitch-object {
   position: absolute;
-  z-index: 8;
+  top: 175px;
+  left: 0;
+  z-index: 7;
   width: 54px;
   height: 54px;
-  left: 50%;
-  top: 50%;
-  filter: drop-shadow(0 0 18px rgba(255,216,121,.86));
-  will-change: transform, opacity;
-}
-
-.snitch-object.hidden {
-  opacity: 0;
+  will-change: transform;
+  filter: drop-shadow(0 0 18px rgba(255,216,121,.85));
 }
 
 .snitch-core {
   position: absolute;
   left: 15px;
-  top: 16px;
+  top: 15px;
   width: 24px;
   height: 24px;
   border-radius: 50%;
   background:
     radial-gradient(circle at 35% 30%, #fff, #ffd879 38%, #d97706 78%);
   box-shadow:
-    0 0 20px rgba(255,216,121,.95),
-    0 0 55px rgba(255,216,121,.42);
+    0 0 20px rgba(255,216,121,.92),
+    0 0 50px rgba(255,216,121,.36);
 }
 
 .snitch-wing {
   position: absolute;
-  top: 9px;
+  top: 8px;
   width: 38px;
-  height: 19px;
+  height: 20px;
   border-radius: 50%;
   background:
-    radial-gradient(circle at center, rgba(255,255,255,.96), rgba(255,216,121,.25) 64%, transparent 70%);
+    radial-gradient(circle at center, rgba(255,255,255,.96), rgba(255,216,121,.24) 64%, transparent 72%);
   opacity: .92;
-  animation: wingFlap .14s ease-in-out infinite alternate;
+  animation: wingFlap .16s ease-in-out infinite alternate;
 }
 
 .snitch-wing.left {
@@ -241,212 +225,285 @@
 }
 
 @keyframes wingFlap {
-  from { transform: rotate(-22deg) scaleX(.86); }
-  to { transform: rotate(22deg) scaleX(1.16); }
+  from { transform: rotate(-20deg) scaleX(.88); }
+  to { transform: rotate(20deg) scaleX(1.12); }
 }
 
 .snitch-trail {
   position: absolute;
-  z-index: 7;
-  width: 140px;
-  height: 6px;
+  z-index: 6;
+  width: 150px;
+  height: 8px;
   border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255,216,121,.72));
-  filter: blur(3px);
-  opacity: .75;
-  transform-origin: right center;
+  background: linear-gradient(90deg, transparent, rgba(255,216,121,.88));
+  filter: blur(4px);
+  opacity: 0;
+  pointer-events: none;
 }
 
 .false-object {
   position: absolute;
-  z-index: 6;
-  font-size: 3.1rem;
+  z-index: 5;
+  font-size: 3rem;
   opacity: 0;
-  filter: drop-shadow(0 0 18px rgba(255,255,255,.26));
-  transition: opacity .18s ease;
-  pointer-events: none;
+  filter: drop-shadow(0 0 16px rgba(255,255,255,.18));
+  transform: scale(.72);
+  transition: opacity .18s ease, transform .18s ease;
 }
 
 .false-object.visible {
   opacity: .86;
-  animation: falseFloat .5s ease-in-out infinite alternate;
+  transform: scale(1);
 }
 
-.false-object.top { top: 112px; }
-.false-object.middle { top: 190px; }
-.false-object.bottom { top: 278px; }
-
-@keyframes falseFloat {
-  from { transform: translateX(-12px) translateY(-6px) rotate(-8deg) scale(.96); }
-  to { transform: translateX(12px) translateY(7px) rotate(8deg) scale(1.04); }
-}
+.false-object.top { top: 96px; }
+.false-object.middle { top: 174px; }
+.false-object.bottom { bottom: 42px; }
 
 .snitch-narrator {
   position: absolute;
-  left: 22px;
-  right: 22px;
-  bottom: 22px;
-  padding: 14px 18px;
-  border-left: 4px solid #ffd879;
+  left: 50%;
+  bottom: 14px;
+  width: min(820px, 86%);
+  transform: translateX(-50%);
+  padding: 12px 18px;
+  border: 1px solid rgba(255,216,121,.24);
   border-radius: 18px;
   color: rgba(255,248,221,.88);
-  background: rgba(0,0,0,.42);
-  backdrop-filter: blur(10px);
-  font-size: 1.02rem;
-  font-style: italic;
+  text-align: center;
+  background: rgba(3,7,18,.58);
+  backdrop-filter: blur(12px);
 }
 
 .snitch-progress {
-  margin-top: 24px;
+  margin-top: 18px;
 }
 
 .snitch-progress-track {
-  height: 16px;
+  height: 13px;
   overflow: hidden;
   border-radius: 999px;
-  border: 1px solid rgba(255,255,255,.10);
   background: rgba(255,255,255,.10);
 }
 
 .snitch-progress-bar {
-  height: 100%;
   width: 100%;
-  transform-origin: left;
-  background: linear-gradient(90deg, #ffd879, #f59e0b, #facc15);
-  transition: transform .18s linear;
+  height: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #22c55e, #ffd879, #ef4444);
+  transition: transform .12s linear;
 }
 
 .snitch-progress-text {
-  margin-top: 10px;
-  color: rgba(255,248,221,.78);
-  font-weight: 900;
+  margin-top: 8px;
+  color: rgba(255,248,221,.72);
   text-align: center;
+  font-weight: 700;
 }
 
 .snitch-players {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 12px;
-  margin-top: 20px;
+  margin-top: 18px;
 }
 
 .snitch-player {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 54px;
   padding: 12px 14px;
-  border: 1px solid rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.12);
   border-radius: 18px;
-  background: rgba(255,255,255,.07);
-  color: rgba(255,248,221,.82);
-  font-weight: 900;
+  color: rgba(255,248,221,.86);
+  background: rgba(255,255,255,.06);
 }
 
 .snitch-player.ready {
-  color: #111827;
-  border-color: rgba(255,216,121,.70);
-  background: linear-gradient(135deg, #ffd879, #f59e0b);
+  border-color: rgba(255,216,121,.62);
+  color: white;
+  background: rgba(255,216,121,.14);
+  box-shadow: 0 0 28px rgba(255,216,121,.10);
+}
+
+.host-help {
+  margin-top: 16px;
+  color: rgba(255,248,221,.58);
+  text-align: center;
+  font-size: .96rem;
 }
 
 .snitch-result-panel {
-  margin-top: 24px;
-  padding: 24px;
-  border-radius: 28px;
-  border: 1px solid rgba(255,216,121,.28);
+  margin: 18px auto;
+  padding: 22px;
+  border: 1px solid rgba(255,216,121,.26);
+  border-radius: 24px;
   background:
-    radial-gradient(circle at top, rgba(255,216,121,.15), transparent 38%),
-    rgba(255,255,255,.075);
-  text-align: center;
+    radial-gradient(circle at top, rgba(255,216,121,.14), transparent 58%),
+    rgba(255,255,255,.06);
 }
 
 .snitch-result-title {
-  color: white;
-  font-size: clamp(2.4rem, 5vw, 5.3rem);
-  line-height: .92;
-  font-weight: 1000;
-  letter-spacing: -.07em;
+  color: #fff;
+  font-size: clamp(1.5rem, 3vw, 2.5rem);
+  font-weight: 900;
+  text-align: center;
 }
 
 .snitch-result-line {
-  max-width: 850px;
-  margin: 18px auto 0;
-  color: rgba(255,248,221,.82);
-  font-size: 1.18rem;
-  font-style: italic;
+  margin-top: 10px;
+  color: rgba(255,248,221,.78);
+  text-align: center;
+  font-weight: 700;
 }
+
+/* MOBILE */
 
 .snitch-mobile-panel {
   display: none;
-  margin-top: 18px;
+  width: 100%;
+  margin-top: 16px;
 }
 
 .snitch-mobile-panel.visible {
   display: block;
 }
 
-.snitch-catch-btn {
-  min-height: 190px;
-  border-radius: 999px;
-  color: #111827;
-  background:
-    radial-gradient(circle at top, rgba(255,255,255,.60), transparent 38%),
-    linear-gradient(135deg, #ffd879, #f59e0b);
-  font-size: 1.7rem;
-  font-weight: 1000;
+.snitch-mobile-orb {
+  position: relative;
+  width: 86px;
+  height: 86px;
+  margin: 4px auto 16px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #fff, #ffd879 34%, #b45309 72%);
   box-shadow:
-    0 22px 70px rgba(0,0,0,.42),
-    0 0 45px rgba(255,216,121,.22);
+    0 0 26px rgba(255,216,121,.88),
+    0 0 70px rgba(255,216,121,.38);
+  animation: mobileSnitchFloat 1.2s ease-in-out infinite alternate;
+}
+
+.snitch-mobile-orb::before,
+.snitch-mobile-orb::after {
+  content: "";
+  position: absolute;
+  top: 21px;
+  width: 58px;
+  height: 28px;
+  border-radius: 50%;
+  background: radial-gradient(circle at center, rgba(255,255,255,.92), rgba(255,216,121,.18), transparent 72%);
+  animation: wingFlap .16s ease-in-out infinite alternate;
+}
+
+.snitch-mobile-orb::before {
+  right: 64px;
+  transform-origin: right center;
+}
+
+.snitch-mobile-orb::after {
+  left: 64px;
+  transform-origin: left center;
+}
+
+@keyframes mobileSnitchFloat {
+  from { transform: translateY(-4px) rotate(-4deg); }
+  to { transform: translateY(6px) rotate(4deg); }
+}
+
+.snitch-catch-btn {
+  width: 100%;
+  min-height: 88px;
+  border: 0;
+  border-radius: 28px;
+  color: #2b1700;
+  font-size: clamp(1.8rem, 8vw, 2.7rem);
+  font-weight: 1000;
+  letter-spacing: -.04em;
+  background:
+    radial-gradient(circle at 30% 20%, #fff8dd, transparent 30%),
+    linear-gradient(135deg, #fff3b0, #facc15 42%, #d97706);
+  box-shadow:
+    0 18px 40px rgba(217,119,6,.36),
+    inset 0 0 0 2px rgba(255,255,255,.35);
+  animation: snitchButtonPulse .9s ease-in-out infinite alternate;
 }
 
 .snitch-catch-btn:active {
-  transform: scale(.94);
+  transform: scale(.96);
 }
 
-.snitch-catch-btn.cooldown {
-  filter: brightness(.86);
-  transform: scale(.985);
+.snitch-catch-btn.cooldown,
+.snitch-catch-btn:disabled {
+  opacity: .68;
+  filter: grayscale(.2);
+  animation: none;
+}
+
+@keyframes snitchButtonPulse {
+  from {
+    transform: scale(1);
+    box-shadow: 0 18px 40px rgba(217,119,6,.32);
+  }
+  to {
+    transform: scale(1.025);
+    box-shadow: 0 22px 54px rgba(250,204,21,.46);
+  }
 }
 
 .snitch-attempt-box {
   margin-top: 14px;
-  padding: 14px;
-  border: 1px solid rgba(255,216,121,.26);
-  border-radius: 20px;
-  background: rgba(255,255,255,.07);
-  color: rgba(255,248,221,.86);
-  font-weight: 900;
+  padding: 14px 16px;
+  border: 1px solid rgba(255,255,255,.14);
+  border-radius: 18px;
+  color: rgba(255,248,221,.9);
+  text-align: center;
+  background: rgba(255,255,255,.08);
 }
 
 .snitch-feedback-perfect {
-  border-color: rgba(255,216,121,.65);
-  color: #111827;
-  background: linear-gradient(135deg, #ffd879, #f59e0b);
+  border-color: rgba(255,216,121,.7);
+  color: #fff8dd;
+  background: rgba(255,216,121,.18);
 }
 
 .snitch-feedback-close {
-  border-color: rgba(96,165,250,.50);
-  color: white;
-  background: rgba(59,130,246,.18);
+  border-color: rgba(34,197,94,.6);
+  background: rgba(34,197,94,.16);
 }
 
-.snitch-feedback-miss,
-.snitch-feedback-false {
-  border-color: rgba(239,68,68,.50);
-  color: white;
+.snitch-feedback-false,
+.snitch-feedback-miss {
+  border-color: rgba(239,68,68,.62);
   background: rgba(239,68,68,.16);
 }
 
+.snitch-feedback-loading {
+  border-color: rgba(59,130,246,.55);
+  background: rgba(59,130,246,.14);
+}
+
+.snitch-feedback-done {
+  border-color: rgba(255,216,121,.42);
+  background: rgba(255,216,121,.10);
+}
+
+.snitch-mobile-help {
+  margin-top: 10px;
+  color: rgba(255,248,221,.62);
+  text-align: center;
+  font-size: .94rem;
+}
+
 @media (max-width: 760px) {
+  .snitch-players {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .snitch-board {
     padding: 20px;
   }
 
   .snitch-field {
-    height: 300px;
-  }
-
-  .snitch-title {
-    font-size: clamp(2.3rem, 12vw, 4rem);
-  }
-
-  .snitch-catch-btn {
-    min-height: 160px;
+    height: 320px;
   }
 }

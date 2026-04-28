@@ -80,6 +80,93 @@ def apply_point_events(room_id: int, point_events: list):
         )
 
 
+def format_snitch_response(result: dict):
+    return {
+        "message": result.get("message", "Intento registrado."),
+        "accepted": result.get("accepted", False),
+        "points": result.get("points_preview", 0),
+        "grade": result.get("grade"),
+        "label": result.get("label"),
+        "delta_ms": result.get("delta_ms"),
+        "caught": result.get("caught", False),
+        "precision": result.get("precision", 0),
+        "attempts_used": result.get("attempts_used", 0),
+        "attempts_total": result.get("attempts_total", 5),
+    }
+
+
+def get_snitch_attempt_count_from_state(state: dict, player_name: str):
+    attempts_by_player = (state or {}).get("attempts_by_player", {})
+
+    if not isinstance(attempts_by_player, dict):
+        return 0
+
+    attempts = attempts_by_player.get(player_name)
+
+    if isinstance(attempts, list):
+        return len(attempts)
+
+    if isinstance(attempts, int):
+        return attempts
+
+    return 0
+
+
+def record_snitch_catch(room_code: str, player_name: str, client_elapsed_ms=None):
+    room_code = room_code.upper()
+    last_result = None
+
+    for _ in range(3):
+        room = (
+            supabase.table("rooms")
+            .select("id, game_state")
+            .eq("room_code", room_code)
+            .execute()
+        )
+
+        if not room.data:
+            raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+        state = deepcopy(room.data[0].get("game_state") or {})
+
+        result = atrapa_snitch.submit_catch(
+            state=state,
+            player_name=player_name,
+            client_elapsed_ms=client_elapsed_ms,
+        )
+
+        last_result = result
+
+        supabase.table("rooms").update({
+            "game_state": result["state"],
+        }).eq("room_code", room_code).execute()
+
+        verify_room = (
+            supabase.table("rooms")
+            .select("game_state")
+            .eq("room_code", room_code)
+            .execute()
+        )
+
+        if not verify_room.data:
+            return result
+
+        verify_state = verify_room.data[0].get("game_state") or {}
+        expected = int(result.get("attempts_used") or 0)
+        saved = get_snitch_attempt_count_from_state(verify_state, player_name)
+
+        if not result.get("accepted") or saved >= expected:
+            result["state"] = verify_state
+            return result
+
+    return last_result or {
+        "state": {},
+        "accepted": False,
+        "message": "No se pudo registrar el intento.",
+        "points_preview": 0,
+    }
+
+
 def get_room_by_code(room_code: str):
     room = (
         supabase.table("rooms")
@@ -459,40 +546,13 @@ async def snitch_catch(info: SnitchCatchInfo):
     if not supabase:
         raise HTTPException(status_code=500, detail="Faltan credenciales")
 
-    room = (
-        supabase.table("rooms")
-        .select("id, game_state")
-        .eq("room_code", info.room_code.upper())
-        .execute()
-    )
-
-    if not room.data:
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
-
-    state = room.data[0].get("game_state") or {}
-
-    result = atrapa_snitch.submit_catch(
-        state=state,
+    result = record_snitch_catch(
+        room_code=info.room_code,
         player_name=info.player_name,
         client_elapsed_ms=info.client_elapsed_ms,
     )
 
-    supabase.table("rooms").update({
-        "game_state": result["state"],
-    }).eq("room_code", info.room_code.upper()).execute()
-
-    return {
-        "message": result.get("message", "Intento registrado."),
-        "accepted": result.get("accepted", False),
-        "points": result.get("points_preview", 0),
-        "grade": result.get("grade"),
-        "label": result.get("label"),
-        "delta_ms": result.get("delta_ms"),
-        "caught": result.get("caught", False),
-        "precision": result.get("precision", 0),
-        "attempts_used": result.get("attempts_used", 0),
-        "attempts_total": result.get("attempts_total", 5),
-    }
+    return format_snitch_response(result)
 
 
 @app.post("/api/player/submit_answer")
@@ -575,28 +635,13 @@ async def submit_answer(info: AnswerInfo):
         }
 
     elif phase == "atrapa_snitch":
-        result = atrapa_snitch.submit_catch(
-            state=state,
+        result = record_snitch_catch(
+            room_code=info.room_code,
             player_name=info.player_name,
             client_elapsed_ms=info.client_elapsed_ms,
         )
 
-        supabase.table("rooms").update({
-            "game_state": result["state"],
-        }).eq("room_code", info.room_code.upper()).execute()
-
-        return {
-            "message": result.get("message", "Intento registrado."),
-            "accepted": result.get("accepted", False),
-            "points": result.get("points_preview", 0),
-            "grade": result.get("grade"),
-            "label": result.get("label"),
-            "delta_ms": result.get("delta_ms"),
-            "caught": result.get("caught", False),
-            "precision": result.get("precision", 0),
-            "attempts_used": result.get("attempts_used", 0),
-            "attempts_total": result.get("attempts_total", 5),
-        }
+        return format_snitch_response(result)
 
     elif phase in {"patronus_personalizado"}:
         votes = state.get("votes", {})

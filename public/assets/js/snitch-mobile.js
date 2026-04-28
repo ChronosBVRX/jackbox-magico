@@ -1,9 +1,29 @@
 (function () {
+  const VERSION = "snitch-mobile-v4";
+
   let snitchLastKey = "";
   let snitchLastTick = null;
   let snitchCatchCooldown = false;
   let snitchAttemptsUsed = 0;
   let snitchRoundStartedMs = Date.now();
+  let watcherStarted = false;
+  let snitchWasActive = false;
+
+  function playSound(name) {
+    try {
+      if (typeof MagicSound !== "undefined" && MagicSound.play) {
+        MagicSound.play(name);
+      }
+    } catch (error) {}
+  }
+
+  function vibrate(pattern) {
+    try {
+      if (navigator.vibrate) {
+        navigator.vibrate(pattern);
+      }
+    } catch (error) {}
+  }
 
   function readRoom() {
     try {
@@ -67,10 +87,7 @@
     const name = readName();
     const value = attempts[name];
 
-    if (Array.isArray(value)) {
-      return value.length;
-    }
-
+    if (Array.isArray(value)) return value.length;
     return Number(value || 0);
   }
 
@@ -96,11 +113,13 @@
   }
 
   function hideOtherPanels() {
-    const duelPanel = document.getElementById("duel-mobile-panel");
-    const sombreroPanel = document.getElementById("sombrero-mobile-panel");
-    const pocionesPanel = document.getElementById("pociones-mobile-panel");
+    const panels = [
+      document.getElementById("duel-mobile-panel"),
+      document.getElementById("sombrero-mobile-panel"),
+      document.getElementById("pociones-mobile-panel"),
+    ];
 
-    [duelPanel, sombreroPanel, pocionesPanel].forEach((panel) => {
+    panels.forEach((panel) => {
       if (panel) {
         panel.classList.remove("visible");
         panel.innerHTML = "";
@@ -108,9 +127,7 @@
     });
 
     const buttons = document.getElementById("m-botones");
-    if (buttons) {
-      buttons.innerHTML = "";
-    }
+    if (buttons) buttons.innerHTML = "";
   }
 
   function renderCatchButton(panel, state) {
@@ -118,21 +135,29 @@
 
     if (snitchAttemptsUsed >= total) {
       panel.innerHTML = `
-        <div class="snitch-attempt-box">
-          Usaste tus ${total} intentos. Mira la TV para ver quién atrapó oro y quién atrapó vergüenza.
+        <div class="snitch-attempt-box snitch-feedback-done">
+          🏁 Usaste tus ${total} intentos.<br>
+          Mira la TV para ver quién atrapó oro y quién atrapó vergüenza.
         </div>
       `;
-
       return;
     }
 
     panel.innerHTML = `
+      <div class="snitch-mobile-orb">
+        <span></span>
+      </div>
+
       <button id="snitch-catch-button" class="snitch-catch-btn" onclick="sendSnitchCatch()">
         🏆 ¡ATRAPAR!
       </button>
 
       <div class="snitch-attempt-box" id="snitch-attempt-box">
         Intentos usados: ${snitchAttemptsUsed}/${total}
+      </div>
+
+      <div class="snitch-mobile-help">
+        Toca cuando la Snitch cruce la zona dorada de la TV. Cuidado con los señuelos.
       </div>
     `;
   }
@@ -145,9 +170,7 @@
 
     const info = getSnitchTimeInfo(state);
 
-    if (timer) {
-      timer.style.display = "block";
-    }
+    if (timer) timer.style.display = "block";
 
     bar.style.transform = `scaleX(${info.pct})`;
 
@@ -155,10 +178,8 @@
 
     if (rounded <= 3 && rounded > 0 && rounded !== snitchLastTick) {
       snitchLastTick = rounded;
-
-      if (typeof MagicSound !== "undefined") {
-        MagicSound.play("timer-danger");
-      }
+      playSound("timer-danger");
+      vibrate(40);
     }
 
     const status = document.getElementById("mobile-status");
@@ -168,6 +189,8 @@
   };
 
   window.renderSnitchMobile = function renderSnitchMobile(state) {
+    snitchWasActive = true;
+
     if (typeof showScreen === "function") {
       showScreen("view-game");
     }
@@ -194,9 +217,8 @@
         }
       } catch (error) {}
 
-      if (typeof MagicSound !== "undefined") {
-        MagicSound.play("start");
-      }
+      playSound("start");
+      vibrate([40, 50, 40]);
     } else {
       snitchAttemptsUsed = Math.max(snitchAttemptsUsed, stateAttempts);
     }
@@ -216,11 +238,13 @@
 
     const total = Number(state.attempts_total || 5);
     const shouldRerender =
+      panel.dataset.version !== VERSION ||
       panel.dataset.roundKey !== key ||
       panel.dataset.attempts !== String(snitchAttemptsUsed) ||
       !document.getElementById("snitch-catch-button");
 
     if (shouldRerender) {
+      panel.dataset.version = VERSION;
       panel.dataset.roundKey = key;
       panel.dataset.attempts = String(snitchAttemptsUsed);
       renderCatchButton(panel, state);
@@ -245,27 +269,45 @@
       headers: {
         "Content-Type": "application/json",
       },
+      cache: "no-store",
       body: JSON.stringify(payloadDedicated),
     });
 
-    if (dedicated.ok) {
-      return dedicated;
-    }
-
-    const payloadFallback = {
-      room_code: room,
-      player_name: name,
-      answer: "¡ATRAPAR!",
-      client_elapsed_ms: elapsed,
-    };
+    if (dedicated.ok) return dedicated;
 
     return fetch("/api/player/submit_answer", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify(payloadFallback),
+      cache: "no-store",
+      body: JSON.stringify({
+        room_code: room,
+        player_name: name,
+        answer: "¡ATRAPAR!",
+        client_elapsed_ms: elapsed,
+      }),
     });
+  }
+
+  async function refreshSnitchState() {
+    const room = readRoom();
+    if (!room) return;
+
+    try {
+      const res = await fetch(`/api/room/${room}/status?ts=${Date.now()}`, {
+        cache: "no-store",
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const state = data.game_state || {};
+
+      if (data.status === "playing" && state.phase === "atrapa_snitch") {
+        window.renderSnitchMobile(state);
+      }
+    } catch (error) {}
   }
 
   window.sendSnitchCatch = async function sendSnitchCatch() {
@@ -283,6 +325,8 @@
         box.textContent = "No se detectó sala o jugador. Recarga el celular y vuelve a entrar.";
       }
 
+      playSound("wrong");
+      vibrate([80, 50, 80]);
       return;
     }
 
@@ -290,18 +334,18 @@
 
     if (button) {
       button.classList.add("cooldown");
+      button.disabled = true;
     }
 
     const elapsed = Math.max(0, Date.now() - snitchRoundStartedMs);
 
     if (box) {
-      box.className = "snitch-attempt-box";
+      box.className = "snitch-attempt-box snitch-feedback-loading";
       box.textContent = "Registrando intento...";
     }
 
-    if (typeof MagicSound !== "undefined") {
-      MagicSound.play("click");
-    }
+    playSound("click");
+    vibrate(25);
 
     try {
       const res = await postSnitchAttempt(room, name, elapsed);
@@ -324,22 +368,24 @@
         const panel = ensureSnitchPanel();
         panel.dataset.attempts = String(snitchAttemptsUsed);
 
-        if (typeof MagicSound !== "undefined") {
-          MagicSound.play(data.points > 0 ? "correct" : "wrong");
-        }
+        playSound(data.points > 0 ? "correct" : "wrong");
+        vibrate(data.points > 0 ? [35, 40, 35] : [90]);
       } else if (box) {
         box.className = "snitch-attempt-box snitch-feedback-miss";
         box.textContent = data.message || "Intento no aceptado.";
+        playSound("wrong");
+        vibrate([80, 50, 80]);
       }
+
+      await refreshSnitchState();
     } catch (error) {
       if (box) {
         box.className = "snitch-attempt-box snitch-feedback-miss";
         box.textContent = "Error de conexión al intentar atrapar la Snitch.";
       }
 
-      if (typeof MagicSound !== "undefined") {
-        MagicSound.play("wrong");
-      }
+      playSound("wrong");
+      vibrate([80, 50, 80]);
     }
 
     setTimeout(() => {
@@ -347,7 +393,46 @@
 
       if (button) {
         button.classList.remove("cooldown");
+        button.disabled = false;
       }
-    }, 180);
+    }, 220);
   };
+
+  async function independentSnitchWatcher() {
+    const room = readRoom();
+
+    if (!room) return;
+
+    try {
+      const res = await fetch(`/api/room/${room}/status?ts=${Date.now()}`, {
+        cache: "no-store",
+      });
+
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const state = data.game_state || {};
+      const phase = state.phase || "lobby";
+
+      if (data.status === "playing" && phase === "atrapa_snitch") {
+        window.renderSnitchMobile(state);
+        return;
+      }
+
+      if (snitchWasActive && phase !== "atrapa_snitch") {
+        snitchWasActive = false;
+
+        const panel = document.getElementById("snitch-mobile-panel");
+        if (panel) {
+          panel.classList.remove("visible");
+          panel.innerHTML = "";
+        }
+      }
+    } catch (error) {}
+  }
+
+  if (!watcherStarted) {
+    watcherStarted = true;
+    setInterval(independentSnitchWatcher, 550);
+  }
 })();

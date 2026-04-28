@@ -7,12 +7,20 @@
   let rafId = null;
   let revealCallback = null;
 
-  const localHouseIcons = {
+  const houseIcons = {
     Gryffindor: "🦁",
     Slytherin: "🐍",
     Ravenclaw: "🦅",
     Hufflepuff: "🦡",
   };
+
+  function playSound(name) {
+    try {
+      if (typeof MagicSound !== "undefined" && MagicSound.play) {
+        MagicSound.play(name);
+      }
+    } catch (error) {}
+  }
 
   function h(value) {
     return String(value ?? "")
@@ -46,8 +54,8 @@
   }
 
   function laneY(lane) {
-    if (lane === "top") return 118;
-    if (lane === "bottom") return 282;
+    if (lane === "top") return 112;
+    if (lane === "bottom") return 288;
     return 198;
   }
 
@@ -90,9 +98,7 @@
 
         const direction = item.direction === "right_to_left" ? -1 : 1;
         const progress = Math.max(0, Math.min(1, (elapsed - (time - 1.15)) / 2.3));
-        const x = direction === 1
-          ? 8 + progress * 84
-          : 92 - progress * 84;
+        const x = direction === 1 ? 8 + progress * 84 : 92 - progress * 84;
 
         el.style.left = `${x}%`;
       } else {
@@ -108,6 +114,7 @@
     const snitch = document.getElementById("snitch-object");
     const trail = document.getElementById("snitch-trail");
     const zone = document.getElementById("snitch-capture-zone");
+    const spotlight = document.getElementById("snitch-spotlight");
 
     if (!field || !snitch || !trail || !zone) {
       rafId = requestAnimationFrame(animateSnitch);
@@ -150,10 +157,13 @@
       trail.style.opacity = ".78";
 
       zone.style.left = `calc(50% + ${Number(windowItem.zone_shift || 0)}px)`;
+
+      if (spotlight) {
+        spotlight.style.left = `calc(50% + ${Number(windowItem.zone_shift || 0)}px)`;
+      }
     }
 
     updateFalseObjects(activeState, elapsed);
-
     rafId = requestAnimationFrame(animateSnitch);
   }
 
@@ -161,10 +171,7 @@
     const attempts = state.attempts_by_player || {};
     const value = attempts[playerName];
 
-    if (Array.isArray(value)) {
-      return value.length;
-    }
-
+    if (Array.isArray(value)) return value.length;
     return Number(value || 0);
   }
 
@@ -183,10 +190,7 @@
 
     if (rounded <= 3 && rounded > 0 && rounded !== snitchLastTick) {
       snitchLastTick = rounded;
-
-      if (typeof MagicSound !== "undefined") {
-        MagicSound.play("timer-danger");
-      }
+      playSound("timer-danger");
     }
 
     if (info.left <= 0 && !snitchAutoRevealLock) {
@@ -213,7 +217,10 @@
       const item = document.createElement("div");
 
       item.className = `snitch-player ${count >= total ? "ready" : ""}`;
-      item.textContent = `${localHouseIcons[player.house] || "✨"} ${player.name} — ${count}/${total} intentos`;
+      item.innerHTML = `
+        <span>${houseIcons[player.house] || "✨"} ${h(player.name)}</span>
+        <strong>${count}/${total}</strong>
+      `;
 
       box.appendChild(item);
     });
@@ -222,6 +229,8 @@
   function renderSnitchBoard(state, players) {
     const container = document.getElementById("game-container");
     const falseObjects = state.false_objects || [];
+
+    if (!container) return;
 
     container.innerHTML = `
       <section id="snitch-board" class="snitch-board">
@@ -239,6 +248,7 @@
           <div class="snitch-hoop left"></div>
           <div class="snitch-hoop right"></div>
 
+          <div id="snitch-spotlight" class="snitch-spotlight"></div>
           <div id="snitch-capture-zone" class="capture-zone"></div>
 
           <div id="snitch-trail" class="snitch-trail"></div>
@@ -266,7 +276,7 @@
         <div id="snitch-players" class="snitch-players"></div>
 
         <div class="host-help">
-          Cada jugador tiene 5 intentos. Perfecto +120 · Cerca +70 · Fuera -30 · Mejor reflejo +50 · Mejor casa +100
+          Perfecto +120 · Cerca +70 · Señuelo/Fuera -30 · Mejor reflejo +50 · Mejor casa +100
         </div>
       </section>
     `;
@@ -274,9 +284,7 @@
     updateSnitchTimer(state);
     updateSnitchPlayers(state, players);
 
-    if (rafId) {
-      cancelAnimationFrame(rafId);
-    }
+    if (rafId) cancelAnimationFrame(rafId);
 
     activeState = state;
     activePlayers = players;
@@ -295,10 +303,7 @@
       snitchLastTick = null;
       snitchAutoRevealLock = false;
 
-      if (typeof MagicSound !== "undefined") {
-        MagicSound.play("start");
-      }
-
+      playSound("start");
       renderSnitchBoard(state, activePlayers);
       return;
     }
@@ -321,6 +326,8 @@
     const result = state.snitch_result || {};
     const events = state.point_events || [];
 
+    if (!container) return;
+
     const panel = document.createElement("div");
     panel.className = "snitch-result-panel";
 
@@ -328,7 +335,7 @@
     title.className = "snitch-result-title";
 
     if (result.best_reflex && result.best_reflex.player_name) {
-      title.textContent = `🏆 ${result.best_reflex.player_name} tuvo el mejor reflejo`;
+      title.textContent = `🏆 ${result.best_reflex.player_name} tuvo el mejor reflejo (${result.best_reflex.delta_ms} ms)`;
     } else {
       title.textContent = "🏆 La Snitch escapó con dignidad";
     }
