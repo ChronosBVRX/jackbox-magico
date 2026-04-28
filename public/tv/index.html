@@ -12,6 +12,7 @@
   <audio
     id="tv-bg-music"
     src="/assets/audio/fondo-tv.mp3"
+    autoplay
     loop
     preload="auto">
   </audio>
@@ -38,11 +39,11 @@
       <h1>Jackbox Mágico</h1>
 
       <p>
-        Minijuegos rápidos para celular, puntos por casa y caos mágico controlado.
+        Preparando sala mágica...
       </p>
 
       <button class="primary-btn giant" onclick="crearSala()">
-        Iniciar Nueva Partida
+        Crear sala manualmente
       </button>
     </section>
   </div>
@@ -59,14 +60,16 @@
 
       <p class="join-url" id="join-url"></p>
 
+      <div id="host-status" class="host-status">
+        El primer celular que entre será el host de la partida.
+      </div>
+
       <div id="lista-jugadores" class="players-list"></div>
 
       <div id="controles-host" class="host-controls">
-        <select id="game-select" class="game-select"></select>
-
-        <button class="primary-btn" onclick="lanzarJuegoSeleccionado()">
-          Lanzar Minijuego
-        </button>
+        <div class="host-help">
+          Esperando que el host inicie la partida desde su celular.
+        </div>
       </div>
     </section>
   </div>
@@ -89,9 +92,9 @@
 
       <div id="tv-marcadores" class="score-grid"></div>
 
-      <button class="secondary-btn" onclick="volverAlLobby()">
-        Volver al Lobby
-      </button>
+      <div class="host-help">
+        El host puede continuar desde su celular.
+      </div>
     </section>
   </div>
 
