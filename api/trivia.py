@@ -2,7 +2,8 @@ import random
 import time
 import uuid
 from copy import deepcopy
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter, HTTPException, Request
 
 from api.database import supabase
 
@@ -148,7 +149,6 @@ TRIVIA_POOL = [
         "respuestaCorrecta": "Sectumsempra",
         "comentarioNarrador": "Cuando el libro dice príncipe, pero la consecuencia dice demanda.",
     },
-
     {
         "categoria": "personajes",
         "dificultad": "facil",
@@ -229,7 +229,6 @@ TRIVIA_POOL = [
         "respuestaCorrecta": "Barty Crouch Jr.",
         "comentarioNarrador": "Suplantación de identidad nivel: todo el ciclo escolar.",
     },
-
     {
         "categoria": "criaturas",
         "dificultad": "facil",
@@ -294,7 +293,6 @@ TRIVIA_POOL = [
         "respuestaCorrecta": "Mandrágora",
         "comentarioNarrador": "Botánica, pero con trauma auditivo.",
     },
-
     {
         "categoria": "objetos mágicos",
         "dificultad": "facil",
@@ -360,15 +358,6 @@ TRIVIA_POOL = [
         "comentarioNarrador": "Reliquia poderosa, emocionalmente peligrosa.",
     },
     {
-        "categoria": "objetos mágicos",
-        "dificultad": "experto",
-        "pregunta": "¿Qué objeto de Dumbledore ayuda a Ron a regresar con Harry y Hermione?",
-        "opciones": ["Deluminador", "Pensadero", "Recordadora", "Giratiempo"],
-        "respuestaCorrecta": "Deluminador",
-        "comentarioNarrador": "Linterna mágica con GPS emocional.",
-    },
-
-    {
         "categoria": "películas",
         "dificultad": "facil",
         "pregunta": "¿En qué película aparece por primera vez Hogwarts?",
@@ -424,7 +413,6 @@ TRIVIA_POOL = [
         "respuestaCorrecta": "Las reliquias de la muerte parte 2",
         "comentarioNarrador": "Sala de los Menesteres: útil hasta que arde todo.",
     },
-
     {
         "categoria": "profesores",
         "dificultad": "facil",
@@ -489,7 +477,6 @@ TRIVIA_POOL = [
         "respuestaCorrecta": "Horace Slughorn",
         "comentarioNarrador": "Coleccionista de alumnos destacados y cenas convenientes.",
     },
-
     {
         "categoria": "villanos",
         "dificultad": "facil",
@@ -497,14 +484,6 @@ TRIVIA_POOL = [
         "opciones": ["Lord Voldemort", "Lucius Malfoy", "Fenrir Greyback", "Gilderoy Lockhart"],
         "respuestaCorrecta": "Lord Voldemort",
         "comentarioNarrador": "El villano que ni nariz necesitaba para oler el drama.",
-    },
-    {
-        "categoria": "villanos",
-        "dificultad": "facil",
-        "pregunta": "¿A qué familia pertenece Draco?",
-        "opciones": ["Malfoy", "Black", "Weasley", "Diggory"],
-        "respuestaCorrecta": "Malfoy",
-        "comentarioNarrador": "Apellido de dinero, orgullo y peinados demasiado serios.",
     },
     {
         "categoria": "villanos",
@@ -536,17 +515,8 @@ TRIVIA_POOL = [
         "pregunta": "¿Quién es la serpiente de Voldemort?",
         "opciones": ["Nagini", "Aragog", "Fawkes", "Norberta"],
         "respuestaCorrecta": "Nagini",
-        "comentarioNarrador": "Mascota, horrocrux y problema de salud pública.",
+        "comentarioNarrador": "Mascota, horrocrux y pésima noticia.",
     },
-    {
-        "categoria": "villanos",
-        "dificultad": "experto",
-        "pregunta": "¿Qué familia está ligada directamente al linaje de Voldemort por parte materna?",
-        "opciones": ["Gaunt", "Black", "Malfoy", "Lestrange"],
-        "respuestaCorrecta": "Gaunt",
-        "comentarioNarrador": "Árbol genealógico con más sombras que ramas.",
-    },
-
     {
         "categoria": "frases en español latino",
         "dificultad": "facil",
@@ -579,23 +549,6 @@ TRIVIA_POOL = [
         "respuestaCorrecta": "Siempre",
         "comentarioNarrador": "Una palabra, demasiada carga emocional.",
     },
-    {
-        "categoria": "frases en español latino",
-        "dificultad": "dificil",
-        "pregunta": "¿Qué frase acompaña comúnmente el uso del encantamiento Patronus?",
-        "opciones": ["Expecto Patronum", "Avada Kedavra", "Wingardium Leviosa", "Petrificus Totalus"],
-        "respuestaCorrecta": "Expecto Patronum",
-        "comentarioNarrador": "La frase que convierte recuerdos felices en defensa mágica.",
-    },
-    {
-        "categoria": "frases en español latino",
-        "dificultad": "experto",
-        "pregunta": "¿Qué frase breve se asocia con la lealtad emocional de Snape?",
-        "opciones": ["Siempre", "Por Hogwarts", "Soy el elegido", "Travesura realizada"],
-        "respuestaCorrecta": "Siempre",
-        "comentarioNarrador": "Si sabes, duele. Si no sabes, pronto dolerá.",
-    },
-
     {
         "categoria": "escenas icónicas",
         "dificultad": "facil",
@@ -652,7 +605,6 @@ TRIVIA_POOL = [
         "respuestaCorrecta": "Branquialgas",
         "comentarioNarrador": "Sabor dudoso, utilidad indiscutible.",
     },
-
     {
         "categoria": "casas de Hogwarts",
         "dificultad": "facil",
@@ -686,23 +638,6 @@ TRIVIA_POOL = [
         "comentarioNarrador": "Leal, noble y demasiado bueno para ese torneo.",
     },
     {
-        "categoria": "casas de Hogwarts",
-        "dificultad": "dificil",
-        "pregunta": "¿Qué casa valora especialmente la sabiduría y el aprendizaje?",
-        "opciones": ["Ravenclaw", "Slytherin", "Gryffindor", "Hufflepuff"],
-        "respuestaCorrecta": "Ravenclaw",
-        "comentarioNarrador": "La casa donde corregir a todos cuenta como cardio.",
-    },
-    {
-        "categoria": "casas de Hogwarts",
-        "dificultad": "dificil",
-        "pregunta": "¿Qué casa valora especialmente la lealtad y el trabajo duro?",
-        "opciones": ["Hufflepuff", "Slytherin", "Ravenclaw", "Gryffindor"],
-        "respuestaCorrecta": "Hufflepuff",
-        "comentarioNarrador": "La casa buena onda hasta que le tocan los snacks.",
-    },
-
-    {
         "categoria": "horrocruxes",
         "dificultad": "media",
         "pregunta": "¿Qué objeto de Tom Riddle es un horrocrux?",
@@ -734,23 +669,6 @@ TRIVIA_POOL = [
         "respuestaCorrecta": "Diadema",
         "comentarioNarrador": "Sabiduría, pero poseída por el peor inquilino.",
     },
-    {
-        "categoria": "horrocruxes",
-        "dificultad": "experto",
-        "pregunta": "¿Qué destruye Ron con la espada de Gryffindor?",
-        "opciones": ["Guardapelo", "Diario", "Diadema", "Copa"],
-        "respuestaCorrecta": "Guardapelo",
-        "comentarioNarrador": "Momento de valentía, celos y terapia pendiente.",
-    },
-    {
-        "categoria": "horrocruxes",
-        "dificultad": "experto",
-        "pregunta": "¿Qué horrocrux destruye Hermione en Gringotts?",
-        "opciones": ["Copa de Hufflepuff", "Diario de Tom Riddle", "Diadema de Ravenclaw", "Guardapelo de Slytherin"],
-        "respuestaCorrecta": "Copa de Hufflepuff",
-        "comentarioNarrador": "Atraco bancario mágico con objetivo académico.",
-    },
-
     {
         "categoria": "lugares",
         "dificultad": "facil",
@@ -784,23 +702,6 @@ TRIVIA_POOL = [
         "comentarioNarrador": "Dulces, cerveza de mantequilla y excursión con permiso.",
     },
     {
-        "categoria": "lugares",
-        "dificultad": "dificil",
-        "pregunta": "¿Dónde viven los Dursley?",
-        "opciones": ["Privet Drive", "Godric's Hollow", "Hogsmeade", "El Callejón Diagon"],
-        "respuestaCorrecta": "Privet Drive",
-        "comentarioNarrador": "Lugar donde la magia era mal vista y el drama bienvenido.",
-    },
-    {
-        "categoria": "lugares",
-        "dificultad": "experto",
-        "pregunta": "¿Qué lugar está relacionado con el origen familiar de Harry?",
-        "opciones": ["Godric's Hollow", "Hogsmeade", "Azkaban", "Beauxbatons"],
-        "respuestaCorrecta": "Godric's Hollow",
-        "comentarioNarrador": "Un lugar hermoso con una carga emocional tremenda.",
-    },
-
-    {
         "categoria": "quidditch",
         "dificultad": "facil",
         "pregunta": "¿Qué jugador busca la Snitch dorada?",
@@ -823,47 +724,6 @@ TRIVIA_POOL = [
         "opciones": ["Bludgers", "Quaffles", "Snitches", "Mandrágoras"],
         "respuestaCorrecta": "Bludgers",
         "comentarioNarrador": "Como si volar en escoba no fuera suficiente riesgo.",
-    },
-    {
-        "categoria": "quidditch",
-        "dificultad": "dificil",
-        "pregunta": "¿Qué posición juega Harry en el equipo de Gryffindor?",
-        "opciones": ["Buscador", "Guardián", "Cazador", "Golpeador"],
-        "respuestaCorrecta": "Buscador",
-        "comentarioNarrador": "Literalmente fue contratado para perseguir una bolita con alas.",
-    },
-
-    {
-        "categoria": "doblaje latino",
-        "dificultad": "facil",
-        "pregunta": "En el doblaje latino, ¿cómo se conoce comúnmente a la escuela de Harry?",
-        "opciones": ["Hogwarts", "Beauxbatons", "Durmstrang", "Ilvermorny"],
-        "respuestaCorrecta": "Hogwarts",
-        "comentarioNarrador": "La escuela donde las excursiones casi siempre salen mal.",
-    },
-    {
-        "categoria": "doblaje latino",
-        "dificultad": "media",
-        "pregunta": "¿Cómo se conoce en español latino al juego mágico de escobas?",
-        "opciones": ["Quidditch", "Cuadribol", "Escobabol", "Vuelo mágico"],
-        "respuestaCorrecta": "Quidditch",
-        "comentarioNarrador": "En el fandom latino, todos saben que ese deporte no era seguro.",
-    },
-    {
-        "categoria": "doblaje latino",
-        "dificultad": "dificil",
-        "pregunta": "¿Qué término se usa para quienes no tienen magia?",
-        "opciones": ["Muggles", "Squibs", "Mortífagos", "Animagos"],
-        "respuestaCorrecta": "Muggles",
-        "comentarioNarrador": "Gente sin magia, pero con recibos, tráfico y responsabilidades.",
-    },
-    {
-        "categoria": "doblaje latino",
-        "dificultad": "experto",
-        "pregunta": "¿Qué nombre recibe el grupo de seguidores de Voldemort?",
-        "opciones": ["Mortífagos", "Aurores", "Merodeadores", "Inquisidores"],
-        "respuestaCorrecta": "Mortífagos",
-        "comentarioNarrador": "Club social de malas decisiones y tatuajes peligrosos.",
     },
 ]
 
@@ -992,22 +852,6 @@ def build_trivia_state(room_code=None, previous_state=None):
         "visual": {
             "mode": "premium_great_hall",
             "theme": "gran_comedor",
-            "effects": [
-                "velas_flotantes",
-                "pergaminos",
-                "escudos_de_casas",
-                "campana_magica",
-                "brillo_de_acierto",
-                "sombra_de_error",
-            ],
-            "sound_cues": {
-                "start": "campana_magica",
-                "correct": "destello_correcto",
-                "wrong": "golpe_suave_pergamino",
-                "timer": "tic_tac_magico",
-                "fastest": "whoosh_snitch",
-                "streak": "aplausos_gran_comedor",
-            },
         },
     }
 
@@ -1332,4 +1176,172 @@ async def get_trivia_questions():
     return {
         "total": len(TRIVIA_POOL),
         "questions": TRIVIA_POOL,
+    }
+
+
+@router.post("/api/player/trivia_answer")
+async def trivia_answer_endpoint(request: Request):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    raw_body = await request.body()
+
+    print("========== TRIVIA ANSWER RAW BODY ==========", flush=True)
+    print(raw_body.decode("utf-8", errors="replace"), flush=True)
+    print("========== END TRIVIA ANSWER RAW BODY ==========", flush=True)
+
+    try:
+        payload = await request.json()
+    except Exception as error:
+        raise HTTPException(
+            status_code=400,
+            detail=f"JSON inválido: {repr(error)}"
+        )
+
+    print("TRIVIA PAYLOAD:", payload, flush=True)
+
+    room_code = (
+        payload.get("room_code")
+        or payload.get("room")
+        or payload.get("roomCode")
+        or payload.get("codigo")
+    )
+
+    player_name = (
+        payload.get("player_name")
+        or payload.get("player")
+        or payload.get("playerName")
+        or payload.get("name")
+        or payload.get("nombre")
+    )
+
+    answer = payload.get("answer")
+    answer_index = payload.get("answer_index")
+    answer_label = payload.get("answer_label")
+    client_elapsed_ms = payload.get("client_elapsed_ms")
+
+    if not room_code:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Falta room_code",
+                "payload_recibido": payload,
+            },
+        )
+
+    if not player_name:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Falta player_name",
+                "payload_recibido": payload,
+            },
+        )
+
+    room_code = str(room_code).upper().strip()
+    player_name = str(player_name).strip()
+
+    room = (
+        supabase.table("rooms")
+        .select("id, status, game_state")
+        .eq("room_code", room_code)
+        .execute()
+    )
+
+    print("TRIVIA ROOM:", room.data, flush=True)
+
+    if not room.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    room_data = room.data[0]
+    state = room_data.get("game_state") or {}
+
+    print("TRIVIA PHASE BEFORE:", state.get("phase"), flush=True)
+    print("TRIVIA QUESTION:", state.get("question"), flush=True)
+    print("TRIVIA OPTIONS:", state.get("options"), flush=True)
+    print("TRIVIA ANSWERS BEFORE:", state.get("answers"), flush=True)
+
+    if state.get("phase") != "trivia":
+        raise HTTPException(
+            status_code=409,
+            detail={
+                "error": "La trivia no está activa.",
+                "phase_actual": state.get("phase"),
+                "room_status": room_data.get("status"),
+                "mensaje": "Si aparece lobby o results_trivia, la pregunta ya terminó o aún no inició.",
+            },
+        )
+
+    options = state.get("options") or []
+
+    if answer is None and answer_index is not None:
+        try:
+            idx = int(answer_index)
+            if 0 <= idx < len(options):
+                answer = options[idx]
+        except Exception:
+            answer = None
+
+    if answer is None and answer_label is not None:
+        label = str(answer_label).upper().strip()
+        labels = ["A", "B", "C", "D"]
+
+        if label in labels:
+            idx = labels.index(label)
+            if 0 <= idx < len(options):
+                answer = options[idx]
+
+    if answer is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Falta answer",
+                "payload_recibido": payload,
+                "opciones_actuales": options,
+            },
+        )
+
+    try:
+        client_elapsed_ms = int(client_elapsed_ms) if client_elapsed_ms is not None else None
+    except Exception:
+        client_elapsed_ms = None
+
+    result = score_answer(
+        state=state,
+        player_name=player_name,
+        answer=str(answer),
+        client_elapsed_ms=client_elapsed_ms,
+    )
+
+    print("TRIVIA RESULT ACCEPTED:", result.get("accepted"), flush=True)
+    print("TRIVIA RESULT MESSAGE:", result.get("message"), flush=True)
+    print("TRIVIA RESULT CORRECT:", result.get("correct"), flush=True)
+    print("TRIVIA ANSWERS AFTER:", result.get("state", {}).get("answers"), flush=True)
+
+    supabase.table("rooms").update({
+        "game_state": result["state"],
+    }).eq("room_code", room_code).execute()
+
+    verify = (
+        supabase.table("rooms")
+        .select("game_state")
+        .eq("room_code", room_code)
+        .execute()
+    )
+
+    saved_state = verify.data[0].get("game_state") if verify.data else {}
+    saved_answers = (saved_state or {}).get("answers") or {}
+
+    print("TRIVIA SAVED ANSWERS:", saved_answers, flush=True)
+
+    return {
+        "message": result.get("message", "Respuesta guardada."),
+        "accepted": result.get("accepted", False),
+        "points": result.get("points", 0),
+        "correct": result.get("correct", False),
+        "elapsed_seconds": result.get("elapsed_seconds"),
+        "late": result.get("late", False),
+        "phase": saved_state.get("phase"),
+        "saved": player_name in saved_answers,
+        "answer_saved": saved_answers.get(player_name),
     }
