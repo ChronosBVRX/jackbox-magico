@@ -15,11 +15,12 @@ GAME_CATALOG = {
     "sombrero_burlon": {
         "name": "Sombrero Burlón",
         "status": "implemented",
-        "mode": "vote",
+        "mode": "social_vote",
         "points": {
-            "most_voted": 80,
-            "vote_received": 10,
-            "house_bonus": 50,
+            "most_voted": 120,
+            "vote_received": 15,
+            "winner_house": 80,
+            "zero_votes": 30,
         },
     },
     "clase_pociones": {
