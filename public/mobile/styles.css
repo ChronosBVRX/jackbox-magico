@@ -183,6 +183,13 @@ button:disabled {
   background: linear-gradient(135deg, #27ae60, #147a3e);
 }
 
+.ghost-btn {
+  color: white;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: none;
+}
+
 .buttons-grid {
   display: grid;
   grid-template-columns: 1fr;
@@ -264,6 +271,32 @@ button:disabled {
 .points-feedback.neutral {
   display: block;
   border-color: rgba(255,216,121,.42);
+}
+
+.host-panel {
+  display: none;
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(255,216,121,.28);
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at top right, rgba(255,216,121,.13), transparent 42%),
+    rgba(255,255,255,.07);
+}
+
+.host-panel.visible {
+  display: block;
+}
+
+.host-panel.mini {
+  margin-top: 18px;
+}
+
+.host-title {
+  color: var(--gold);
+  font-size: 1.05rem;
+  font-weight: 1000;
+  letter-spacing: -.02em;
 }
 
 .spinner {
