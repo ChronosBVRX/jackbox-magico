@@ -6,7 +6,7 @@ from copy import deepcopy
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.database import supabase, PlayerJoinInfo, AnswerInfo, HostControlInfo
+from api.database import supabase, PlayerJoinInfo, AnswerInfo, HostControlInfo, DuelClashTapInfo
 from api import trivia, duelo, sombrero
 from api import clase_pociones, atrapa_snitch, retratos_chismosos, mapa_travieso
 from api import hechizo_incompleto, artes_ridiculas, caldero_mentiroso, patronus_personalizado, copa_final
@@ -54,6 +54,15 @@ def add_points(room_id: int, player_name: str, points: int):
         supabase.table("players").update({
             "score": current_score + points
         }).eq("id", player.data[0]["id"]).execute()
+
+
+def apply_point_events(room_id: int, point_events: list):
+    for event in point_events:
+        add_points(
+            room_id=room_id,
+            player_name=event.get("player_name"),
+            points=int(event.get("points") or 0),
+        )
 
 
 def get_room_by_code(room_code: str):
@@ -106,11 +115,19 @@ def sanitize_game_state(state: dict):
         public_state.pop("correct", None)
         public_state.pop("funniest", None)
         public_state.pop("last_results", None)
+        public_state.pop("duel_result", None)
+        public_state.pop("point_events", None)
 
         answered = public_state.get("answered")
         if isinstance(answered, dict):
             public_state["answered"] = {
                 name: True for name in answered.keys()
+            }
+
+        answers = public_state.get("answers")
+        if isinstance(answers, dict):
+            public_state["answers"] = {
+                name: True for name in answers.keys()
             }
 
     return public_state
@@ -147,7 +164,10 @@ def build_game_state(room_code: str, game_id: str, previous_state: dict):
         return trivia.build_trivia_state()
 
     if game_id == "duelo_hechizos":
-        return duelo.build_duelo_state()
+        return duelo.build_duelo_state(
+            room_code=room_code,
+            previous_state=previous_state,
+        )
 
     if game_id == "sombrero_burlon":
         return sombrero.build_sombrero_state(room_code)
@@ -301,19 +321,9 @@ async def join_room(info: PlayerJoinInfo):
         host_token_to_return = host_token
 
     else:
-        if host.get("name") == info.player_name:
-            if info.host_token and info.host_token == host.get("token"):
-                is_host = True
-                host_token_to_return = host.get("token")
-            elif status == "lobby" and not info.host_token:
-                is_host = False
-            elif info.host_token == host.get("token"):
-                is_host = True
-                host_token_to_return = host.get("token")
-            else:
-                is_host = False
-        else:
-            is_host = False
+        if host.get("name") == info.player_name and info.host_token == host.get("token"):
+            is_host = True
+            host_token_to_return = host.get("token")
 
     return {
         "message": "¡Bienvenido de vuelta!" if is_reconnect else "¡Bienvenido!",
@@ -386,16 +396,21 @@ async def submit_answer(info: AnswerInfo):
     phase = state.get("phase")
 
     if phase == "duelo":
-        enemy = state.get("enemy_move")
-
-        wins = (
-            (info.answer == "Protección" and enemy == "Contraataque")
-            or (info.answer == "Contraataque" and enemy == "Esquivar")
-            or (info.answer == "Esquivar" and enemy == "Protección")
+        result = duelo.submit_spell_answer(
+            state=state,
+            player_name=info.player_name,
+            answer=info.answer,
+            client_elapsed_ms=info.client_elapsed_ms,
         )
 
-        if wins:
-            add_points(room_id, info.player_name, 100)
+        supabase.table("rooms").update({
+            "game_state": result["state"],
+        }).eq("room_code", info.room_code.upper()).execute()
+
+        return {
+            "message": result.get("message", "Hechizo guardado."),
+            "accepted": result.get("accepted", False),
+        }
 
     elif phase in {"sombrero", "patronus_personalizado"}:
         votes = state.get("votes", {})
@@ -440,6 +455,39 @@ async def submit_answer(info: AnswerInfo):
     }
 
 
+@app.post("/api/player/duel_clash_tap")
+async def duel_clash_tap(info: DuelClashTapInfo):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    room = (
+        supabase.table("rooms")
+        .select("id, game_state")
+        .eq("room_code", info.room_code.upper())
+        .execute()
+    )
+
+    if not room.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    state = room.data[0].get("game_state") or {}
+
+    result = duelo.submit_clash_tap(
+        state=state,
+        player_name=info.player_name,
+    )
+
+    supabase.table("rooms").update({
+        "game_state": result["state"],
+    }).eq("room_code", info.room_code.upper()).execute()
+
+    return {
+        "message": result.get("message", "Tap registrado."),
+        "accepted": result.get("accepted", False),
+        "taps": result.get("taps", 0),
+    }
+
+
 @app.post("/api/host/{room_code}/reveal")
 async def reveal_results(room_code: str):
     if not supabase:
@@ -457,6 +505,21 @@ async def reveal_results(room_code: str):
 
     state = room.data[0].get("game_state") or {}
     room_id = room.data[0]["id"]
+
+    if state.get("phase") in {"duelo", "duelo_clash"}:
+        state, point_events, is_final = duelo.resolve_for_reveal(state)
+
+        if is_final:
+            apply_point_events(room_id, point_events)
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "Duelo revelado" if is_final else "Choque de varitas iniciado",
+            "is_final": is_final,
+        }
 
     if state.get("phase") in {"sombrero", "patronus_personalizado"}:
         votes = state.get("votes", {})
