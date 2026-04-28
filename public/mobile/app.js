@@ -11,6 +11,7 @@ let hasAnsweredCurrentRound = false;
 let lastTickSecond = null;
 let gamesLoaded = false;
 let clashTapCount = 0;
+let selectedPotionIngredients = [];
 
 const spellDescriptions = {
   Expelliarmus: "Vence a Rictusempra",
@@ -70,6 +71,27 @@ function getRoundKey(state) {
 function isMeDuelist(state) {
   const duelists = state.duelists || [];
   return duelists.some((player) => player.name === myName);
+}
+
+function hideGamePanels() {
+  const duelPanel = document.getElementById("duel-mobile-panel");
+  const sombreroPanel = document.getElementById("sombrero-mobile-panel");
+  const pocionesPanel = document.getElementById("pociones-mobile-panel");
+
+  if (duelPanel) {
+    duelPanel.classList.remove("visible");
+    duelPanel.innerHTML = "";
+  }
+
+  if (sombreroPanel) {
+    sombreroPanel.classList.remove("visible");
+    sombreroPanel.innerHTML = "";
+  }
+
+  if (pocionesPanel) {
+    pocionesPanel.classList.remove("visible");
+    pocionesPanel.innerHTML = "";
+  }
 }
 
 function showHostPanels(show) {
@@ -241,6 +263,11 @@ function iniciarRadarMovil() {
       }
 
       if (data.status === "playing" && phase !== "lobby" && !phase.includes("results_")) {
+        if (phase === "clase_pociones") {
+          renderPocionesMobile(state);
+          return;
+        }
+
         if (phase === "sombrero" || phase === "sombrero_tiebreak") {
           renderSombreroMobile(state);
           return;
@@ -281,6 +308,10 @@ function iniciarRadarMovil() {
       if (state.phase === "duelo_clash") {
         updateMobileDuelClashTimer(state);
       }
+
+      if (state.phase === "clase_pociones") {
+        updateMobilePocionesTimer(state);
+      }
     } catch (error) {
       console.error("Buscando conexión...");
     }
@@ -292,20 +323,10 @@ function renderLobbyWait(data) {
   hasAnsweredCurrentRound = false;
   lastTickSecond = null;
   clashTapCount = 0;
+  selectedPotionIngredients = [];
 
   document.getElementById("m-botones").innerHTML = "";
-
-  const duelPanel = document.getElementById("duel-mobile-panel");
-  if (duelPanel) {
-    duelPanel.classList.remove("visible");
-    duelPanel.innerHTML = "";
-  }
-
-  const sombreroPanel = document.getElementById("sombrero-mobile-panel");
-  if (sombreroPanel) {
-    sombreroPanel.classList.remove("visible");
-    sombreroPanel.innerHTML = "";
-  }
+  hideGamePanels();
 
   showScreen("view-wait");
 
@@ -346,6 +367,7 @@ function renderResultsWait() {
   hasAnsweredCurrentRound = false;
   lastTickSecond = null;
   clashTapCount = 0;
+  selectedPotionIngredients = [];
 
   showScreen("view-wait");
 
@@ -358,6 +380,249 @@ function renderResultsWait() {
   showHostPanels(myIsHost);
 }
 
+function getMobilePocionesInfo(state) {
+  const memorize = Number(state.memorize_seconds || 7);
+  const mix = Number(state.mix_seconds || 15);
+  const startedAt = Number(state.started_at || Date.now() / 1000);
+  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
+
+  if (elapsed < memorize) {
+    return {
+      mode: "memorize",
+      left: Math.max(0, memorize - elapsed),
+      total: memorize,
+    };
+  }
+
+  return {
+    mode: "mix",
+    left: Math.max(0, memorize + mix - elapsed),
+    total: mix,
+  };
+}
+
+function getIngredientEmojiMobile(state, name) {
+  const map = state.ingredient_map || {};
+  return map[name]?.emoji || "🧪";
+}
+
+function renderPocionesMobile(state) {
+  showScreen("view-game");
+  showHostPanels(myIsHost);
+
+  document.getElementById("m-botones").innerHTML = "";
+
+  const duelPanel = document.getElementById("duel-mobile-panel");
+  const sombreroPanel = document.getElementById("sombrero-mobile-panel");
+  const panel = document.getElementById("pociones-mobile-panel");
+
+  if (duelPanel) {
+    duelPanel.classList.remove("visible");
+    duelPanel.innerHTML = "";
+  }
+
+  if (sombreroPanel) {
+    sombreroPanel.classList.remove("visible");
+    sombreroPanel.innerHTML = "";
+  }
+
+  const answers = state.answers || {};
+  const alreadySubmitted = Boolean(answers[myName]);
+
+  if (alreadySubmitted || hasAnsweredCurrentRound) {
+    renderAnsweredWait(state);
+    return;
+  }
+
+  const newKey = getRoundKey(state);
+
+  if (newKey !== currentRoundKey) {
+    currentRoundKey = newKey;
+    currentRoundStartedMs = state.started_at ? Number(state.started_at) * 1000 : Date.now();
+    selectedPotionIngredients = [];
+    hasAnsweredCurrentRound = false;
+    lastTickSecond = null;
+    MagicSound.play("start");
+  }
+
+  const info = getMobilePocionesInfo(state);
+
+  document.getElementById("game-pill").innerText = "🧪 Pociones";
+  document.getElementById("m-pregunta-aviso").innerText =
+    info.mode === "memorize" ? "¡Memoriza la receta!" : "¡Mezcla en orden!";
+  document.getElementById("m-question-small").innerText =
+    info.mode === "memorize"
+      ? "Mira la pantalla principal. La receta desaparecerá en unos segundos."
+      : `Prepara: ${state.potion_name || "Poción misteriosa"}`;
+  document.getElementById("mobile-timer").style.display = "block";
+  document.getElementById("mobile-status").innerText =
+    info.mode === "memorize"
+      ? "Todavía no mezcles. Memoriza primero."
+      : "Toca los ingredientes en el orden correcto.";
+
+  panel.classList.add("visible");
+
+  if (info.mode === "memorize") {
+    panel.innerHTML = `
+      <div class="pociones-selected">
+        🧠 Memoriza la receta en la TV.<br>
+        Cuando desaparezca, aquí aparecerán los ingredientes.
+      </div>
+    `;
+
+    updateMobilePocionesTimer(state);
+    return;
+  }
+
+  panel.innerHTML = `
+    <div class="pociones-selected" id="pociones-selected">
+      Seleccionados: ninguno
+    </div>
+
+    <div class="pociones-ingredient-grid" id="pociones-ingredient-grid"></div>
+
+    <button class="pociones-submit-btn" onclick="submitPotionRecipe()">
+      Entregar poción
+    </button>
+
+    <button class="pociones-clear-btn" onclick="clearPotionRecipe()">
+      Reiniciar mezcla
+    </button>
+  `;
+
+  const grid = document.getElementById("pociones-ingredient-grid");
+  const ingredients = state.shuffled_ingredients || [];
+
+  ingredients.forEach((ingredient) => {
+    const button = document.createElement("button");
+    button.className = "pociones-ingredient-btn";
+    button.textContent = `${getIngredientEmojiMobile(state, ingredient)} ${ingredient}`;
+    button.addEventListener("click", () => selectPotionIngredient(ingredient, button));
+    grid.appendChild(button);
+  });
+
+  updateSelectedPotionText();
+  updateMobilePocionesTimer(state);
+}
+
+function selectPotionIngredient(ingredient, button) {
+  selectedPotionIngredients.push(ingredient);
+
+  button.classList.add("used");
+  MagicSound.play("click");
+
+  updateSelectedPotionText();
+}
+
+function updateSelectedPotionText() {
+  const box = document.getElementById("pociones-selected");
+  if (!box) return;
+
+  if (!selectedPotionIngredients.length) {
+    box.textContent = "Seleccionados: ninguno";
+    return;
+  }
+
+  box.textContent = `Seleccionados: ${selectedPotionIngredients.join(" → ")}`;
+}
+
+function clearPotionRecipe() {
+  selectedPotionIngredients = [];
+
+  document.querySelectorAll(".pociones-ingredient-btn").forEach((btn) => {
+    btn.classList.remove("used");
+  });
+
+  updateSelectedPotionText();
+  MagicSound.play("click");
+}
+
+async function submitPotionRecipe() {
+  if (hasAnsweredCurrentRound) return;
+
+  hasAnsweredCurrentRound = true;
+
+  const elapsed = Math.max(0, Date.now() - currentRoundStartedMs);
+
+  document.querySelectorAll(".pociones-ingredient-btn, .pociones-submit-btn, .pociones-clear-btn").forEach((btn) => {
+    btn.disabled = true;
+  });
+
+  document.getElementById("mobile-status").innerText = "Entregando poción...";
+  MagicSound.play("send");
+
+  try {
+    const res = await fetch("/api/player/submit_answer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        room_code: myRoom,
+        player_name: myName,
+        answer: JSON.stringify(selectedPotionIngredients),
+        client_elapsed_ms: elapsed,
+      }),
+    });
+
+    const data = await res.json();
+
+    showScreen("view-wait");
+
+    document.getElementById("wait-msg").innerText = data.exploded
+      ? "💥 Tu caldero explotó"
+      : data.perfect
+        ? "🧪 ¡Poción perfecta!"
+        : "🧪 Poción entregada";
+
+    document.getElementById("wait-subtitle").innerText = myIsHost
+      ? "Puedes revelar resultados desde aquí."
+      : "Mira la TV para seguir la ronda.";
+
+    const feedback = document.getElementById("points-feedback");
+    feedback.className = `points-feedback ${data.exploded ? "bad" : data.perfect ? "good" : "neutral"}`;
+    feedback.innerText =
+      `${data.points > 0 ? "+" : ""}${data.points || 0} pts · ${data.message || "Poción entregada."}`;
+
+    MagicSound.play(data.exploded ? "wrong" : "correct");
+    showHostPanels(myIsHost);
+  } catch (error) {
+    showScreen("view-wait");
+
+    document.getElementById("wait-msg").innerText = "No se pudo entregar.";
+    document.getElementById("wait-subtitle").innerText =
+      "Revisa la conexión e intenta en la siguiente ronda.";
+
+    const feedback = document.getElementById("points-feedback");
+    feedback.className = "points-feedback bad";
+    feedback.innerText = "Error de conexión.";
+
+    MagicSound.play("wrong");
+    showHostPanels(myIsHost);
+  }
+}
+
+function updateMobilePocionesTimer(state) {
+  const timer = document.getElementById("mobile-timer");
+  const bar = document.getElementById("mobile-timer-bar");
+
+  if (!bar || state.phase !== "clase_pociones") return;
+
+  timer.style.display = "block";
+
+  const info = getMobilePocionesInfo(state);
+  const pct = info.total > 0 ? Math.max(0, Math.min(1, info.left / info.total)) : 0;
+
+  bar.style.transform = `scaleX(${pct})`;
+
+  const rounded = Math.ceil(info.left);
+
+  if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
+    lastTickSecond = rounded;
+    MagicSound.play("timer-danger");
+  }
+}
+
 function renderSombreroMobile(state) {
   showScreen("view-game");
   showHostPanels(myIsHost);
@@ -367,6 +632,12 @@ function renderSombreroMobile(state) {
   const duelPanel = document.getElementById("duel-mobile-panel");
   duelPanel.classList.remove("visible");
   duelPanel.innerHTML = "";
+
+  const pocionesPanel = document.getElementById("pociones-mobile-panel");
+  if (pocionesPanel) {
+    pocionesPanel.classList.remove("visible");
+    pocionesPanel.innerHTML = "";
+  }
 
   const panel = document.getElementById("sombrero-mobile-panel");
   panel.innerHTML = "";
@@ -432,6 +703,12 @@ function renderDuelMobile(state) {
   if (sombreroPanel) {
     sombreroPanel.classList.remove("visible");
     sombreroPanel.innerHTML = "";
+  }
+
+  const pocionesPanel = document.getElementById("pociones-mobile-panel");
+  if (pocionesPanel) {
+    pocionesPanel.classList.remove("visible");
+    pocionesPanel.innerHTML = "";
   }
 
   document.getElementById("duel-mobile-panel").innerHTML = "";
@@ -501,6 +778,12 @@ function renderDuelClashMobile(state) {
   if (sombreroPanel) {
     sombreroPanel.classList.remove("visible");
     sombreroPanel.innerHTML = "";
+  }
+
+  const pocionesPanel = document.getElementById("pociones-mobile-panel");
+  if (pocionesPanel) {
+    pocionesPanel.classList.remove("visible");
+    pocionesPanel.innerHTML = "";
   }
 
   document.getElementById("duel-mobile-panel").innerHTML = "";
@@ -635,15 +918,7 @@ function renderMobileGame(state) {
   showScreen("view-game");
   showHostPanels(myIsHost);
 
-  const duelPanel = document.getElementById("duel-mobile-panel");
-  duelPanel.classList.remove("visible");
-  duelPanel.innerHTML = "";
-
-  const sombreroPanel = document.getElementById("sombrero-mobile-panel");
-  if (sombreroPanel) {
-    sombreroPanel.classList.remove("visible");
-    sombreroPanel.innerHTML = "";
-  }
+  hideGamePanels();
 
   if (newKey === currentRoundKey) {
     if (state.phase === "artes_ridiculas") {

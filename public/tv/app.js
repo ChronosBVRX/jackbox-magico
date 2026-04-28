@@ -262,7 +262,9 @@ function renderPlaying(data) {
     autoRevealLock = false;
     MagicSound.play("start");
 
-    if (state.phase === "sombrero" || state.phase === "sombrero_tiebreak") {
+    if (state.phase === "clase_pociones") {
+      renderPociones(state, data.players);
+    } else if (state.phase === "sombrero" || state.phase === "sombrero_tiebreak") {
       renderSombrero(state);
     } else if (state.phase === "duelo") {
       renderDuel(state);
@@ -273,6 +275,11 @@ function renderPlaying(data) {
     } else {
       renderGenericGame(state);
     }
+  }
+
+  if (state.phase === "clase_pociones") {
+    updatePocionesTimer(state);
+    updatePocionesPlayers(state, data.players);
   }
 
   if (state.phase === "sombrero" || state.phase === "sombrero_tiebreak") {
@@ -314,6 +321,152 @@ function renderGenericGame(state) {
     box.className = "option-box";
     box.textContent = option;
     grid.appendChild(box);
+  });
+}
+
+function getIngredientEmoji(state, name) {
+  const map = state.ingredient_map || {};
+  return map[name]?.emoji || "🧪";
+}
+
+function getPocionesPhaseInfo(state) {
+  const memorize = Number(state.memorize_seconds || 7);
+  const mix = Number(state.mix_seconds || 15);
+  const startedAt = Number(state.started_at || Date.now() / 1000);
+  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
+
+  if (elapsed < memorize) {
+    return {
+      mode: "memorize",
+      left: Math.max(0, memorize - elapsed),
+      total: memorize,
+      text: "Memoriza la receta",
+    };
+  }
+
+  return {
+    mode: "mix",
+    left: Math.max(0, memorize + mix - elapsed),
+    total: mix,
+    text: "Preparando pociones",
+  };
+}
+
+function renderPociones(state, players) {
+  const container = document.getElementById("game-container");
+  const info = getPocionesPhaseInfo(state);
+  const recipe = state.recipe || [];
+
+  const recipeHtml = info.mode === "memorize"
+    ? `
+      <div class="potion-recipe-list">
+        ${recipe.map((item, index) => `
+          <div class="potion-step">
+            <span>${index + 1}.</span>
+            <span>${getIngredientEmoji(state, item)} ${escapeHTML(item)}</span>
+          </div>
+        `).join("")}
+      </div>
+    `
+    : `
+      <div class="potion-hidden">
+        La receta desapareció.<br>
+        Ahora confía en tu memoria, joven alquimista.
+      </div>
+    `;
+
+  container.innerHTML = `
+    <section id="pociones-board" class="pociones-board">
+      <header class="pociones-header">
+        <div class="badge">🧪 Clase de Pociones</div>
+        <h1 class="pociones-title">${escapeHTML(state.title || "Clase de Pociones")}</h1>
+        <p class="pociones-subtitle">${escapeHTML(state.subtitle || "Memoriza, mezcla y reza por no explotar.")}</p>
+      </header>
+
+      <div class="pociones-stage">
+        <div class="cauldron-wrap">
+          <div class="cauldron-smoke"></div>
+          <div class="cauldron"></div>
+        </div>
+
+        <div class="potion-recipe-card">
+          <div class="potion-name">${escapeHTML(state.potion_name || "Poción misteriosa")}</div>
+          <div class="potion-question">${escapeHTML(info.text)}</div>
+          ${recipeHtml}
+          <div class="pociones-narrator">“${escapeHTML(state.narrator || "Si el caldero explota, no me culpen, yo sí di instrucciones.")}”</div>
+        </div>
+      </div>
+
+      <div class="pociones-progress">
+        <div class="pociones-progress-track">
+          <div id="pociones-progress-bar" class="pociones-progress-bar"></div>
+        </div>
+        <div id="pociones-progress-text" class="pociones-progress-text">Tiempo: ${info.left.toFixed(1)}s</div>
+      </div>
+
+      <div id="pociones-players" class="pociones-players"></div>
+
+      <div class="host-help">Primero memoricen 7 segundos. Después mezclen en el celular.</div>
+    </section>
+  `;
+
+  updatePocionesTimer(state);
+  updatePocionesPlayers(state, players);
+}
+
+function updatePocionesTimer(state) {
+  const bar = document.getElementById("pociones-progress-bar");
+  const text = document.getElementById("pociones-progress-text");
+
+  if (!bar || !text) return;
+
+  const info = getPocionesPhaseInfo(state);
+  const pct = info.total > 0 ? Math.max(0, Math.min(1, info.left / info.total)) : 0;
+
+  bar.style.transform = `scaleX(${pct})`;
+  text.textContent = `${info.text}: ${info.left.toFixed(1)}s`;
+
+  const rounded = Math.ceil(info.left);
+
+  if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
+    lastTickSecond = rounded;
+    MagicSound.play("timer-danger");
+  }
+
+  if (info.mode === "mix" && info.left <= 0 && !autoRevealLock) {
+    autoRevealLock = true;
+
+    const board = document.getElementById("pociones-board");
+    if (board) {
+      board.classList.add("explosion");
+    }
+
+    setTimeout(() => {
+      revelarResultados();
+    }, 700);
+  }
+
+  const currentRecipeVisible = document.querySelector(".potion-recipe-list");
+  const currentHidden = document.querySelector(".potion-hidden");
+
+  if (info.mode === "mix" && currentRecipeVisible && !currentHidden) {
+    renderPociones(state, []);
+  }
+}
+
+function updatePocionesPlayers(state, players) {
+  const box = document.getElementById("pociones-players");
+  if (!box) return;
+
+  const submitted = state.potion_submitted_players || [];
+
+  box.innerHTML = "";
+
+  players.forEach((player) => {
+    const item = document.createElement("div");
+    item.className = `pociones-player ${submitted.includes(player.name) ? "ready" : ""}`;
+    item.textContent = `${houseIcons[player.house] || "✨"} ${player.name} — ${submitted.includes(player.name) ? "Poción entregada" : "Mezclando..."}`;
+    box.appendChild(item);
   });
 }
 
@@ -689,7 +842,11 @@ function renderResults(data) {
   extra.innerHTML = "";
   explanation.textContent = "";
 
-  if (phase === "results_sombrero") {
+  if (phase === "results_clase_pociones") {
+    title.innerText = "Resultado de Pociones:";
+    explanation.textContent = state.pociones_result?.summary || "";
+    renderPocionesResults(state, extra);
+  } else if (phase === "results_sombrero") {
     title.innerText = "El Sombrero Burlón eligió:";
     explanation.textContent = state.sombrero_result?.summary || "";
     renderSombreroResults(state, extra);
@@ -715,6 +872,47 @@ function renderResults(data) {
     lastPlayKey = resultSoundKey;
     MagicSound.play("reveal");
   }
+}
+
+function renderPocionesResults(state, container) {
+  const result = state.pociones_result || {};
+  const events = state.point_events || [];
+  const recipe = result.recipe || state.recipe || [];
+
+  const panel = document.createElement("div");
+  panel.className = "pociones-result-panel";
+
+  const title = document.createElement("div");
+  title.className = "pociones-result-title";
+  title.textContent = `🧪 ${result.potion_name || state.potion_name || "Poción finalizada"}`;
+
+  const line = document.createElement("div");
+  line.className = "pociones-result-line";
+  line.textContent = `“${result.narrator || "Esa poción no mataría a nadie… probablemente."}”`;
+
+  const recipeLine = document.createElement("div");
+  recipeLine.className = "pociones-result-line";
+  recipeLine.textContent = `Receta: ${recipe.join(" → ")}`;
+
+  panel.appendChild(title);
+  panel.appendChild(line);
+  panel.appendChild(recipeLine);
+  container.appendChild(panel);
+
+  events.forEach((event) => {
+    const row = document.createElement("div");
+    row.className = `result-row ${event.points > 0 ? "good" : "bad"}`;
+
+    const left = document.createElement("span");
+    left.textContent = `${event.player_name} — ${event.label}`;
+
+    const right = document.createElement("span");
+    right.textContent = `${event.points > 0 ? "+" : ""}${event.points} pts`;
+
+    row.appendChild(left);
+    row.appendChild(right);
+    container.appendChild(row);
+  });
 }
 
 function renderSombreroResults(state, container) {

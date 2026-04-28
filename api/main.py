@@ -6,7 +6,14 @@ from copy import deepcopy
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.database import supabase, PlayerJoinInfo, AnswerInfo, HostControlInfo, DuelClashTapInfo, SombreroStartInfo
+from api.database import (
+    supabase,
+    PlayerJoinInfo,
+    AnswerInfo,
+    HostControlInfo,
+    DuelClashTapInfo,
+    SombreroStartInfo,
+)
 from api import trivia, duelo, sombrero
 from api import clase_pociones, atrapa_snitch, retratos_chismosos, mapa_travieso
 from api import hechizo_incompleto, artes_ridiculas, caldero_mentiroso, patronus_personalizado, copa_final
@@ -118,6 +125,7 @@ def sanitize_game_state(state: dict):
         public_state.pop("duel_result", None)
         public_state.pop("point_events", None)
         public_state.pop("sombrero_result", None)
+        public_state.pop("pociones_result", None)
         public_state.pop("votes_by_voter", None)
         public_state.pop("votes_by_target", None)
 
@@ -179,7 +187,10 @@ def build_game_state(room_code: str, game_id: str, previous_state: dict):
         )
 
     if game_id == "clase_pociones":
-        return clase_pociones.build_state()
+        return clase_pociones.build_state(
+            room_code=room_code,
+            previous_state=previous_state,
+        )
 
     if game_id == "atrapa_snitch":
         return atrapa_snitch.build_state()
@@ -482,6 +493,27 @@ async def submit_answer(info: AnswerInfo):
             "accepted": result.get("accepted", False),
         }
 
+    elif phase == "clase_pociones":
+        result = clase_pociones.submit_recipe_answer(
+            state=state,
+            player_name=info.player_name,
+            answer=info.answer,
+            client_elapsed_ms=info.client_elapsed_ms,
+        )
+
+        supabase.table("rooms").update({
+            "game_state": result["state"],
+        }).eq("room_code", info.room_code.upper()).execute()
+
+        return {
+            "message": result.get("message", "Poción entregada."),
+            "accepted": result.get("accepted", False),
+            "points": result.get("points_preview", 0),
+            "errors": result.get("errors", 0),
+            "perfect": result.get("perfect", False),
+            "exploded": result.get("exploded", False),
+        }
+
     elif phase in {"patronus_personalizado"}:
         votes = state.get("votes", {})
         votes[info.answer] = votes.get(info.answer, 0) + 1
@@ -575,6 +607,7 @@ async def reveal_results(room_code: str):
 
     state = room.data[0].get("game_state") or {}
     room_id = room.data[0]["id"]
+    players = get_players(room_id)
 
     if state.get("phase") in {"duelo", "duelo_clash"}:
         state, point_events, is_final = duelo.resolve_for_reveal(state)
@@ -606,6 +639,24 @@ async def reveal_results(room_code: str):
             "is_final": is_final,
         }
 
+    if state.get("phase") == "clase_pociones":
+        state, point_events, is_final = clase_pociones.resolve_for_reveal(
+            state=state,
+            players=players,
+        )
+
+        if is_final:
+            apply_point_events(room_id, point_events)
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "Clase de Pociones revelada",
+            "is_final": is_final,
+        }
+
     if state.get("phase") in {"patronus_personalizado"}:
         votes = state.get("votes", {})
 
@@ -613,14 +664,14 @@ async def reveal_results(room_code: str):
             winner = max(votes, key=votes.get)
             state["correct"] = f"{winner} ({votes[winner]} votos)"
 
-            players = (
+            players_query = (
                 supabase.table("players")
                 .select("id, name, score")
                 .eq("room_id", room_id)
                 .execute()
             )
 
-            for player in players.data:
+            for player in players_query.data:
                 if player["name"] in votes:
                     pts = votes[player["name"]] * 10
 
