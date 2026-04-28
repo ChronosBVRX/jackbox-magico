@@ -18,6 +18,7 @@ class PlayerJoinInfo(BaseModel):
     room_code: str
     player_name: str
     house: str
+    host_token: Optional[str] = None
 
 
 class AnswerInfo(BaseModel):
@@ -25,3 +26,8 @@ class AnswerInfo(BaseModel):
     player_name: str
     answer: str
     client_elapsed_ms: Optional[int] = None
+
+
+class HostControlInfo(BaseModel):
+    player_name: str
+    host_token: str
