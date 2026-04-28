@@ -2,9 +2,11 @@ import random
 import string
 import uuid
 from copy import deepcopy
+from typing import Optional
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 
 from api.database import (
     supabase,
@@ -13,7 +15,6 @@ from api.database import (
     HostControlInfo,
     DuelClashTapInfo,
     SombreroStartInfo,
-    SnitchCatchInfo,
 )
 from api import trivia, duelo, sombrero
 from api import clase_pociones, atrapa_snitch, retratos_chismosos, mapa_travieso
@@ -34,6 +35,12 @@ app.add_middleware(
 app.include_router(trivia.router)
 app.include_router(duelo.router)
 app.include_router(sombrero.router)
+
+
+class SnitchCatchInfo(BaseModel):
+    room_code: str
+    player_name: str
+    client_elapsed_ms: Optional[int] = None
 
 
 def generate_room_code():

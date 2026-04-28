@@ -3,7 +3,6 @@
   let snitchLastTick = null;
   let snitchAutoRevealLock = false;
   let activeState = null;
-  let activePlayers = [];
   let rafId = null;
 
   const localHouseIcons = {
@@ -32,7 +31,7 @@
   }
 
   function getSnitchTimeInfo(state) {
-    const duration = Number(state.duration_seconds || 24);
+    const duration = Number(state.duration_seconds || 26);
     const elapsed = getElapsed(state);
     const left = Math.max(0, duration - elapsed);
 
@@ -45,9 +44,15 @@
   }
 
   function laneY(lane) {
-    if (lane === "top") return 122;
-    if (lane === "bottom") return 278;
-    return 196;
+    if (lane === "top") return 118;
+    if (lane === "bottom") return 282;
+    return 198;
+  }
+
+  function easeInOut(t) {
+    return t < 0.5
+      ? 2 * t * t
+      : 1 - Math.pow(-2 * t + 2, 2) / 2;
   }
 
   function currentWindow(state, elapsed) {
@@ -59,12 +64,39 @@
 
     for (const item of windows) {
       const center = Number(item.center_time || 0);
+
       if (Math.abs(elapsed - center) < Math.abs(elapsed - Number(chosen.center_time || 0))) {
         chosen = item;
       }
     }
 
     return chosen;
+  }
+
+  function updateFalseObjects(state, elapsed) {
+    const fakes = state.false_objects || [];
+
+    fakes.forEach((item) => {
+      const el = document.getElementById(`fake-${item.id}`);
+      if (!el) return;
+
+      const time = Number(item.time || 0);
+      const distance = Math.abs(elapsed - time);
+
+      if (distance <= 1.15) {
+        el.classList.add("visible");
+
+        const direction = item.direction === "right_to_left" ? -1 : 1;
+        const progress = Math.max(0, Math.min(1, (elapsed - (time - 1.15)) / 2.3));
+        const x = direction === 1
+          ? 8 + progress * 84
+          : 92 - progress * 84;
+
+        el.style.left = `${x}%`;
+      } else {
+        el.classList.remove("visible");
+      }
+    });
   }
 
   function animateSnitch() {
@@ -85,33 +117,35 @@
 
     if (windowItem) {
       const center = Number(windowItem.center_time || 0);
-      const travel = 1.72;
+      const burst = Number(windowItem.burst || 1);
+      const travel = 1.72 / burst;
       const progress = Math.max(0, Math.min(1, (elapsed - (center - travel)) / (travel * 2)));
 
       const fieldWidth = field.clientWidth || 1000;
-      const fromX = windowItem.direction === "right_to_left" ? fieldWidth + 70 : -70;
-      const toX = windowItem.direction === "right_to_left" ? -70 : fieldWidth + 70;
+      const fromX = windowItem.direction === "right_to_left" ? fieldWidth + 90 : -90;
+      const toX = windowItem.direction === "right_to_left" ? -90 : fieldWidth + 90;
       const midX = fieldWidth / 2 + Number(windowItem.zone_shift || 0);
 
       let x;
 
-      if (progress < .5) {
-        const p = progress / .5;
+      if (progress < 0.5) {
+        const p = progress / 0.5;
         x = fromX + (midX - fromX) * easeInOut(p);
       } else {
-        const p = (progress - .5) / .5;
+        const p = (progress - 0.5) / 0.5;
         x = midX + (toX - midX) * easeInOut(p);
       }
 
+      const curve = Number(windowItem.curve_strength || 26);
       const baseY = laneY(windowItem.lane);
-      const wobble = Math.sin(elapsed * 8.8) * 18 + Math.sin(elapsed * 3.2) * 9;
-      const rotate = Math.sin(elapsed * 12) * 16;
+      const wobble = Math.sin(elapsed * 10.8) * curve + Math.sin(elapsed * 4.4) * 12;
+      const rotate = Math.sin(elapsed * 14) * 18;
 
       snitch.style.transform = `translate(${x - 27}px, ${baseY + wobble - 27}px) rotate(${rotate}deg)`;
       snitch.classList.remove("hidden");
 
-      trail.style.transform = `translate(${x - 144}px, ${baseY + wobble - 3}px) rotate(${windowItem.direction === "right_to_left" ? "180deg" : "0deg"})`;
-      trail.style.opacity = ".75";
+      trail.style.transform = `translate(${x - 148}px, ${baseY + wobble - 3}px) rotate(${windowItem.direction === "right_to_left" ? "180deg" : "0deg"})`;
+      trail.style.opacity = ".78";
 
       zone.style.left = `calc(50% + ${Number(windowItem.zone_shift || 0)}px)`;
     }
@@ -119,38 +153,6 @@
     updateFalseObjects(activeState, elapsed);
 
     rafId = requestAnimationFrame(animateSnitch);
-  }
-
-  function easeInOut(t) {
-    return t < .5
-      ? 2 * t * t
-      : 1 - Math.pow(-2 * t + 2, 2) / 2;
-  }
-
-  function updateFalseObjects(state, elapsed) {
-    const fakes = state.false_objects || [];
-
-    fakes.forEach((item) => {
-      const el = document.getElementById(`fake-${item.id}`);
-      if (!el) return;
-
-      const time = Number(item.time || 0);
-      const distance = Math.abs(elapsed - time);
-
-      if (distance <= 1.1) {
-        el.classList.add("visible");
-
-        const direction = item.direction === "right_to_left" ? -1 : 1;
-        const progress = Math.max(0, Math.min(1, (elapsed - (time - 1.1)) / 2.2));
-        const x = direction === 1
-          ? 12 + progress * 74
-          : 86 - progress * 74;
-
-        el.style.left = `${x}%`;
-      } else {
-        el.classList.remove("visible");
-      }
-    });
   }
 
   function renderSnitch(state, players) {
@@ -213,7 +215,6 @@
     }
 
     activeState = state;
-    activePlayers = players;
     rafId = requestAnimationFrame(animateSnitch);
   }
 
@@ -340,7 +341,6 @@
       const key = getSnitchKey(state);
 
       activeState = state;
-      activePlayers = data.players || [];
 
       if (snitchLastKey !== key) {
         snitchLastKey = key;

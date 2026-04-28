@@ -32,7 +32,7 @@ POINTS_BEST_REFLEX = 50
 POINTS_BEST_HOUSE_AVG = 100
 
 ATTEMPTS_TOTAL = 5
-ROUND_DURATION_SECONDS = 24
+ROUND_DURATION_SECONDS = 26
 
 
 def _now():
@@ -40,14 +40,14 @@ def _now():
 
 
 def _build_capture_windows():
-    base_times = [3.0, 6.9, 10.8, 14.7, 18.7]
+    base_times = [3.1, 7.2, 11.4, 15.7, 20.1]
     lanes = ["top", "middle", "bottom", "middle", "top"]
     directions = ["left_to_right", "right_to_left", "left_to_right", "right_to_left", "left_to_right"]
 
     windows = []
 
     for index, base in enumerate(base_times):
-        center = round(base + random.uniform(-0.18, 0.18), 3)
+        center = round(base + random.uniform(-0.28, 0.28), 3)
 
         windows.append({
             "id": f"snitch-{index + 1}",
@@ -55,10 +55,12 @@ def _build_capture_windows():
             "center_time": center,
             "lane": lanes[index],
             "direction": directions[index],
-            "speed_label": random.choice(["rápida", "tramposa", "nerviosa", "salvajemente dorada"]),
-            "perfect_window_ms": max(135, 260 - (index * 26)),
-            "close_window_ms": max(430, 760 - (index * 62)),
-            "zone_shift": random.choice([-38, -24, 0, 24, 38]),
+            "speed_label": random.choice(["rápida", "errante", "tramposa", "nerviosa", "salvajemente dorada"]),
+            "perfect_window_ms": max(120, 260 - (index * 30)),
+            "close_window_ms": max(390, 760 - (index * 70)),
+            "zone_shift": random.choice([-70, -48, -24, 0, 24, 48, 70]),
+            "curve_strength": random.choice([18, 26, 34, 42]),
+            "burst": random.choice([0.85, 1.0, 1.15, 1.28]),
         })
 
     return windows
@@ -66,31 +68,31 @@ def _build_capture_windows():
 
 def _build_false_objects(capture_windows):
     false_objects = []
-    possible_offsets = [-0.85, -0.55, 0.45, 0.75]
+    possible_offsets = [-0.9, -0.62, 0.45, 0.72]
 
     for index, window in enumerate(capture_windows):
-        if random.random() < 0.72:
-            bait = random.choice(FALSE_OBJECTS)
-            offset = random.choice(possible_offsets)
-            false_time = max(1.5, round(float(window["center_time"]) + offset, 3))
-
-            false_objects.append({
-                **bait,
-                "id": f"fake-{index + 1}",
-                "time": false_time,
-                "lane": random.choice(["top", "middle", "bottom"]),
-                "bait_window_ms": random.choice([260, 300, 340]),
-                "direction": random.choice(["left_to_right", "right_to_left"]),
-            })
-
-    while len(false_objects) < 4:
         bait = random.choice(FALSE_OBJECTS)
+        offset = random.choice(possible_offsets)
+        false_time = max(1.6, round(float(window["center_time"]) + offset, 3))
+
+        false_objects.append({
+            **bait,
+            "id": f"fake-{index + 1}",
+            "time": false_time,
+            "lane": random.choice(["top", "middle", "bottom"]),
+            "bait_window_ms": random.choice([250, 290, 330]),
+            "direction": random.choice(["left_to_right", "right_to_left"]),
+        })
+
+    while len(false_objects) < 7:
+        bait = random.choice(FALSE_OBJECTS)
+
         false_objects.append({
             **bait,
             "id": f"fake-extra-{len(false_objects) + 1}",
-            "time": round(random.uniform(2.2, 21.0), 3),
+            "time": round(random.uniform(2.4, 23.0), 3),
             "lane": random.choice(["top", "middle", "bottom"]),
-            "bait_window_ms": random.choice([260, 300, 340]),
+            "bait_window_ms": random.choice([240, 280, 320]),
             "direction": random.choice(["left_to_right", "right_to_left"]),
         })
 
@@ -99,7 +101,6 @@ def _build_false_objects(capture_windows):
 
 def build_state(room_code=None, previous_state=None):
     previous_state = previous_state or {}
-
     capture_windows = _build_capture_windows()
 
     return {
@@ -107,7 +108,7 @@ def build_state(room_code=None, previous_state=None):
         "game_id": "atrapa_snitch",
         "round_id": str(uuid.uuid4()),
         "title": "Atrapa la Snitch",
-        "subtitle": "Cinco intentos. Precisión, reflejos y cero confianza en objetos falsos.",
+        "subtitle": "Cinco intentos. La zona se mueve, la Snitch acelera y hay señuelos.",
         "question": "Presiona ¡ATRAPAR! justo cuando la Snitch cruce la zona iluminada.",
         "narrator": random.choice(NARRATOR_LINES),
         "started_at": _now(),
@@ -124,8 +125,8 @@ def build_state(room_code=None, previous_state=None):
         "scored": False,
         "host": previous_state.get("host"),
         "difficulty": {
-            "name": "Nocturna con señuelos",
-            "description": "La zona cambia ligeramente, la Snitch varía carril y hay sombras falsas.",
+            "name": "Nocturna errante",
+            "description": "La zona cambia de posición, la Snitch cambia carril y aparecen señuelos.",
         },
         "points": {
             "perfect": POINTS_PERFECT,
@@ -180,7 +181,7 @@ def _near_false_object(state, elapsed):
     )[0]
 
     delta_ms = abs(float(nearest.get("time", 999)) - elapsed) * 1000
-    bait_window = int(nearest.get("bait_window_ms", 300))
+    bait_window = int(nearest.get("bait_window_ms", 290))
 
     if delta_ms <= bait_window:
         return nearest
@@ -213,7 +214,7 @@ def _grade_attempt(delta_ms, window, false_object=None):
         }
 
     if delta_ms <= close_window:
-        precision = max(48, int(82 - (delta_ms / max(1, close_window)) * 34))
+        precision = max(46, int(82 - (delta_ms / max(1, close_window)) * 34))
 
         return {
             "grade": "close",
@@ -240,6 +241,7 @@ def submit_catch(state, player_name, client_elapsed_ms=None):
             "state": state,
             "accepted": False,
             "message": "La Snitch no está en juego.",
+            "points_preview": 0,
         }
 
     attempts_by_player = state.get("attempts_by_player", {})
@@ -261,7 +263,7 @@ def submit_catch(state, player_name, client_elapsed_ms=None):
     elapsed = _elapsed_seconds(state, client_elapsed_ms)
     duration = float(state.get("duration_seconds", ROUND_DURATION_SECONDS))
 
-    if elapsed > duration + 1.25:
+    if elapsed > duration + 1.5:
         return {
             "state": state,
             "accepted": False,

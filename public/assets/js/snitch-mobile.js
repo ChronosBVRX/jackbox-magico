@@ -3,57 +3,47 @@
   let snitchLastTick = null;
   let snitchCatchCooldown = false;
   let snitchAttemptsUsed = 0;
+  let snitchRoundStartedMs = Date.now();
   let snitchWatcher = null;
   let activeSnitchRound = false;
 
-  function getSafeGlobal(name, fallback = null) {
+  function readRoom() {
     try {
-      if (typeof window[name] !== "undefined") return window[name];
+      if (typeof myRoom !== "undefined" && myRoom) return myRoom;
     } catch (error) {}
 
-    try {
-      return eval(`typeof ${name} !== "undefined" ? ${name} : fallback`);
-    } catch (error) {
-      return fallback;
-    }
+    const fromStorage = localStorage.getItem("jackbox_magico_room");
+    if (fromStorage) return fromStorage.toUpperCase();
+
+    const input = document.getElementById("m-room");
+    if (input && input.value) return input.value.trim().toUpperCase();
+
+    const params = new URLSearchParams(window.location.search);
+    if (params.has("room")) return params.get("room").toUpperCase();
+
+    return "";
   }
 
-  function readMyRoom() {
+  function readName() {
     try {
-      return typeof myRoom !== "undefined" ? myRoom : "";
-    } catch (error) {
-      return "";
-    }
-  }
-
-  function readMyName() {
-    try {
-      return typeof myName !== "undefined" ? myName : "";
-    } catch (error) {
-      return "";
-    }
-  }
-
-  function readMyIsHost() {
-    try {
-      return typeof myIsHost !== "undefined" ? myIsHost : false;
-    } catch (error) {
-      return false;
-    }
-  }
-
-  function setCurrentRoundStarted(ms) {
-    try {
-      currentRoundStartedMs = ms;
+      if (typeof myName !== "undefined" && myName) return myName;
     } catch (error) {}
+
+    const fromStorage = localStorage.getItem("jackbox_magico_name");
+    if (fromStorage) return fromStorage;
+
+    const input = document.getElementById("m-name");
+    if (input && input.value) return input.value.trim();
+
+    return "";
   }
 
-  function getCurrentRoundStarted() {
+  function readIsHost() {
     try {
-      return typeof currentRoundStartedMs !== "undefined" ? currentRoundStartedMs : Date.now();
-    } catch (error) {
-      return Date.now();
-    }
+      if (typeof myIsHost !== "undefined") return Boolean(myIsHost);
+    } catch (error) {}
+
+    return false;
   }
 
   function getSnitchKey(state) {
@@ -61,7 +51,7 @@
   }
 
   function getSnitchTimeInfo(state) {
-    const duration = Number(state.duration_seconds || 24);
+    const duration = Number(state.duration_seconds || 26);
     const startedAt = Number(state.started_at || Date.now() / 1000);
     const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
     const left = Math.max(0, duration - elapsed);
@@ -76,7 +66,7 @@
 
   function getAttemptCountFromState(state) {
     const attempts = state.attempts_by_player || {};
-    const name = readMyName();
+    const name = readName();
     const value = attempts[name];
 
     if (Array.isArray(value)) {
@@ -119,8 +109,10 @@
       }
     });
 
-    const botones = document.getElementById("m-botones");
-    if (botones) botones.innerHTML = "";
+    const buttons = document.getElementById("m-botones");
+    if (buttons) {
+      buttons.innerHTML = "";
+    }
   }
 
   function updateSnitchMobileTimer(state) {
@@ -153,47 +145,8 @@
     }
   }
 
-  function renderSnitchMobile(state) {
-    if (typeof showScreen === "function") {
-      showScreen("view-game");
-    }
-
-    if (typeof showHostPanels === "function") {
-      showHostPanels(readMyIsHost());
-    }
-
-    hideOtherPanels();
-
-    const key = getSnitchKey(state);
-
-    if (snitchLastKey !== key) {
-      snitchLastKey = key;
-      snitchLastTick = null;
-      snitchCatchCooldown = false;
-      snitchAttemptsUsed = getAttemptCountFromState(state);
-      setCurrentRoundStarted(state.started_at ? Number(state.started_at) * 1000 : Date.now());
-
-      if (typeof MagicSound !== "undefined") {
-        MagicSound.play("start");
-      }
-    } else {
-      snitchAttemptsUsed = Math.max(snitchAttemptsUsed, getAttemptCountFromState(state));
-    }
-
+  function renderCatchButton(panel, state) {
     const total = Number(state.attempts_total || 5);
-
-    const pill = document.getElementById("game-pill");
-    const title = document.getElementById("m-pregunta-aviso");
-    const question = document.getElementById("m-question-small");
-
-    if (pill) pill.innerText = "🏆 Snitch";
-    if (title) title.innerText = "¡Atrapa la Snitch!";
-    if (question) {
-      question.innerText = "Presiona justo cuando cruce la zona iluminada. Cuidado con las sombras falsas.";
-    }
-
-    const panel = ensureSnitchPanel();
-    panel.classList.add("visible");
 
     if (snitchAttemptsUsed >= total) {
       panel.innerHTML = `
@@ -202,7 +155,6 @@
         </div>
       `;
 
-      updateSnitchMobileTimer(state);
       return;
     }
 
@@ -215,35 +167,132 @@
         Intentos usados: ${snitchAttemptsUsed}/${total}
       </div>
     `;
+  }
+
+  function renderSnitchMobile(state) {
+    if (typeof showScreen === "function") {
+      showScreen("view-game");
+    }
+
+    if (typeof showHostPanels === "function") {
+      showHostPanels(readIsHost());
+    }
+
+    hideOtherPanels();
+
+    const key = getSnitchKey(state);
+    const stateAttempts = getAttemptCountFromState(state);
+
+    if (snitchLastKey !== key) {
+      snitchLastKey = key;
+      snitchLastTick = null;
+      snitchCatchCooldown = false;
+      snitchAttemptsUsed = stateAttempts;
+      snitchRoundStartedMs = state.started_at ? Number(state.started_at) * 1000 : Date.now();
+
+      if (typeof currentRoundStartedMs !== "undefined") {
+        currentRoundStartedMs = snitchRoundStartedMs;
+      }
+
+      if (typeof MagicSound !== "undefined") {
+        MagicSound.play("start");
+      }
+    } else {
+      snitchAttemptsUsed = Math.max(snitchAttemptsUsed, stateAttempts);
+    }
+
+    const pill = document.getElementById("game-pill");
+    const title = document.getElementById("m-pregunta-aviso");
+    const question = document.getElementById("m-question-small");
+
+    if (pill) pill.innerText = "🏆 Snitch";
+    if (title) title.innerText = "¡Atrapa la Snitch!";
+    if (question) {
+      question.innerText = "La zona se mueve. La Snitch acelera. No caigas en señuelos.";
+    }
+
+    const panel = ensureSnitchPanel();
+    panel.classList.add("visible");
+
+    const total = Number(state.attempts_total || 5);
+    const shouldRerender =
+      panel.dataset.roundKey !== key ||
+      panel.dataset.attempts !== String(snitchAttemptsUsed) ||
+      !document.getElementById("snitch-catch-button");
+
+    if (shouldRerender) {
+      panel.dataset.roundKey = key;
+      panel.dataset.attempts = String(snitchAttemptsUsed);
+      renderCatchButton(panel, state);
+    }
+
+    if (snitchAttemptsUsed >= total) {
+      renderCatchButton(panel, state);
+    }
 
     updateSnitchMobileTimer(state);
+  }
+
+  async function postSnitchAttempt(room, name, elapsed) {
+    const payloadDedicated = {
+      room_code: room,
+      player_name: name,
+      client_elapsed_ms: elapsed,
+    };
+
+    const dedicated = await fetch("/api/player/snitch_catch", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payloadDedicated),
+    });
+
+    if (dedicated.ok) {
+      return dedicated;
+    }
+
+    const payloadFallback = {
+      room_code: room,
+      player_name: name,
+      answer: "¡ATRAPAR!",
+      client_elapsed_ms: elapsed,
+    };
+
+    return fetch("/api/player/submit_answer", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(payloadFallback),
+    });
   }
 
   window.sendSnitchCatch = async function sendSnitchCatch() {
     if (snitchCatchCooldown) return;
 
-    const room = readMyRoom();
-    const name = readMyName();
+    const room = readRoom();
+    const name = readName();
+
+    const box = document.getElementById("snitch-attempt-box");
+    const button = document.getElementById("snitch-catch-button");
 
     if (!room || !name) {
-      const box = document.getElementById("snitch-attempt-box");
       if (box) {
         box.className = "snitch-attempt-box snitch-feedback-miss";
         box.textContent = "No se detectó sala o jugador. Recarga el celular y vuelve a entrar.";
       }
+
       return;
     }
 
     snitchCatchCooldown = true;
 
-    const button = document.getElementById("snitch-catch-button");
-    const box = document.getElementById("snitch-attempt-box");
-
     if (button) {
       button.classList.add("cooldown");
     }
 
-    const elapsed = Math.max(0, Date.now() - getCurrentRoundStarted());
+    const elapsed = Math.max(0, Date.now() - snitchRoundStartedMs);
 
     if (box) {
       box.className = "snitch-attempt-box";
@@ -255,18 +304,7 @@
     }
 
     try {
-      const res = await fetch("/api/player/snitch_catch", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          room_code: room,
-          player_name: name,
-          client_elapsed_ms: elapsed,
-        }),
-      });
-
+      const res = await postSnitchAttempt(room, name, elapsed);
       const data = await res.json();
 
       if (data.accepted) {
@@ -282,6 +320,9 @@
           box.textContent =
             `${data.points > 0 ? "+" : ""}${data.points || 0} pts · ${data.message || "Intento registrado."}${delta}${precision} · Intentos: ${snitchAttemptsUsed}/${total}`;
         }
+
+        const panel = ensureSnitchPanel();
+        panel.dataset.attempts = String(snitchAttemptsUsed);
 
         if (typeof MagicSound !== "undefined") {
           MagicSound.play(data.points > 0 ? "correct" : "wrong");
@@ -307,11 +348,11 @@
       if (button) {
         button.classList.remove("cooldown");
       }
-    }, 220);
+    }, 180);
   };
 
   async function snitchIndependentWatcher() {
-    const room = readMyRoom();
+    const room = readRoom();
 
     if (!room) return;
 
