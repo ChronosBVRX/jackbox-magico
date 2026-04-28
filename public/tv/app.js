@@ -24,37 +24,46 @@ function getBgMusic() {
 
   if (!audio) return null;
 
-  audio.volume = 0.28;
+  audio.volume = 0.35;
   audio.loop = true;
 
   return audio;
 }
 
+function updateMusicButton(isPlaying, text = null) {
+  const btn = document.getElementById("music-toggle");
+
+  if (!btn) return;
+
+  if (isPlaying) {
+    btn.innerText = text || "🔊 Música";
+    btn.classList.add("playing");
+  } else {
+    btn.innerText = text || "▶️ Activar música";
+    btn.classList.remove("playing");
+  }
+}
+
 async function startBackgroundMusic() {
   const audio = getBgMusic();
 
-  if (!audio) return;
+  if (!audio) {
+    updateMusicButton(false, "⚠️ Sin audio");
+    return;
+  }
 
   try {
+    audio.muted = false;
+    audio.volume = 0.35;
+
     await audio.play();
 
     bgMusicStarted = true;
-
-    const btn = document.getElementById("music-toggle");
-
-    if (btn) {
-      btn.innerText = "🔊 Música";
-      btn.classList.add("playing");
-    }
+    updateMusicButton(true, "🔊 Música");
   } catch (error) {
     bgMusicStarted = false;
-
-    const btn = document.getElementById("music-toggle");
-
-    if (btn) {
-      btn.innerText = "▶️ Activar música";
-      btn.classList.remove("playing");
-    }
+    updateMusicButton(false, "▶️ Activar música");
+    console.warn("No se pudo reproducir la música:", error);
   }
 }
 
@@ -66,19 +75,16 @@ function pauseBackgroundMusic() {
   audio.pause();
 
   bgMusicStarted = false;
-
-  const btn = document.getElementById("music-toggle");
-
-  if (btn) {
-    btn.innerText = "🔇 Música";
-    btn.classList.remove("playing");
-  }
+  updateMusicButton(false, "🔇 Música");
 }
 
 function toggleBackgroundMusic() {
   const audio = getBgMusic();
 
-  if (!audio) return;
+  if (!audio) {
+    updateMusicButton(false, "⚠️ Sin audio");
+    return;
+  }
 
   if (audio.paused) {
     startBackgroundMusic();
@@ -86,6 +92,26 @@ function toggleBackgroundMusic() {
     pauseBackgroundMusic();
   }
 }
+
+document.addEventListener("DOMContentLoaded", () => {
+  const audio = getBgMusic();
+
+  if (!audio) {
+    updateMusicButton(false, "⚠️ Sin audio");
+    return;
+  }
+
+  audio.addEventListener("canplaythrough", () => {
+    if (!bgMusicStarted) {
+      updateMusicButton(false, "▶️ Activar música");
+    }
+  });
+
+  audio.addEventListener("error", () => {
+    updateMusicButton(false, "⚠️ Audio no encontrado");
+    console.error("No se pudo cargar /assets/audio/fondo-tv.mp3");
+  });
+});
 
 document.addEventListener("click", () => {
   if (!bgMusicStarted) {
