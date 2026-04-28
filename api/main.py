@@ -4,7 +4,7 @@ import uuid
 from copy import deepcopy
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -31,6 +31,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 app.include_router(trivia.router)
 app.include_router(duelo.router)
@@ -112,8 +113,46 @@ def get_snitch_attempt_count_from_state(state: dict, player_name: str):
     return 0
 
 
+def parse_int_or_none(value):
+    if value is None:
+        return None
+
+    try:
+        return int(value)
+    except Exception:
+        return None
+
+
+async def read_json_body_flexible(request: Request):
+    raw_body = await request.body()
+
+    print("========== RAW REQUEST BODY ==========", flush=True)
+    print(raw_body.decode("utf-8", errors="replace"), flush=True)
+    print("========== END RAW BODY ==========", flush=True)
+
+    if not raw_body:
+        return {}
+
+    try:
+        return await request.json()
+    except Exception as error:
+        print("ERROR PARSING JSON:", repr(error), flush=True)
+        raise HTTPException(
+            status_code=400,
+            detail=f"JSON inválido: {repr(error)}"
+        )
+
+
 def record_snitch_catch(room_code: str, player_name: str, client_elapsed_ms=None):
-    room_code = room_code.upper()
+    room_code = str(room_code or "").upper().strip()
+    player_name = str(player_name or "").strip()
+
+    if not room_code:
+        raise HTTPException(status_code=400, detail="Falta room_code")
+
+    if not player_name:
+        raise HTTPException(status_code=400, detail="Falta player_name")
+
     last_result = None
 
     for _ in range(3):
@@ -542,17 +581,110 @@ async def mobile_host_start_sombrero_custom(room_code: str, info: SombreroStartI
 
 
 @app.post("/api/player/snitch_catch")
-async def snitch_catch(info: SnitchCatchInfo):
+async def snitch_catch(request: Request):
+    print("========== SNITCH CATCH REQUEST ==========", flush=True)
+
     if not supabase:
+        print("ERROR: Supabase no configurado", flush=True)
         raise HTTPException(status_code=500, detail="Faltan credenciales")
 
-    result = record_snitch_catch(
-        room_code=info.room_code,
-        player_name=info.player_name,
-        client_elapsed_ms=info.client_elapsed_ms,
+    payload = await read_json_body_flexible(request)
+
+    print("PAYLOAD:", payload, flush=True)
+
+    room_code = (
+        payload.get("room_code")
+        or payload.get("room")
+        or payload.get("roomCode")
+        or payload.get("codigo")
+        or request.query_params.get("room_code")
+        or request.query_params.get("room")
     )
 
-    return format_snitch_response(result)
+    player_name = (
+        payload.get("player_name")
+        or payload.get("player")
+        or payload.get("playerName")
+        or payload.get("name")
+        or payload.get("nombre")
+        or request.query_params.get("player_name")
+        or request.query_params.get("name")
+    )
+
+    client_elapsed_ms = (
+        payload.get("client_elapsed_ms")
+        or payload.get("clientElapsedMs")
+        or payload.get("elapsed_ms")
+        or payload.get("elapsed")
+        or request.query_params.get("client_elapsed_ms")
+    )
+
+    client_elapsed_ms = parse_int_or_none(client_elapsed_ms)
+
+    print("room_code:", room_code, flush=True)
+    print("player_name:", player_name, flush=True)
+    print("client_elapsed_ms:", client_elapsed_ms, flush=True)
+
+    if not room_code:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Falta room_code",
+                "payload_recibido": payload,
+            },
+        )
+
+    if not player_name:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Falta player_name",
+                "payload_recibido": payload,
+            },
+        )
+
+    try:
+        room_debug = (
+            supabase.table("rooms")
+            .select("id, status, game_state")
+            .eq("room_code", str(room_code).upper())
+            .execute()
+        )
+
+        print("ROOM DEBUG:", room_debug.data, flush=True)
+
+        if room_debug.data:
+            debug_state = room_debug.data[0].get("game_state") or {}
+            print("PHASE BEFORE:", debug_state.get("phase"), flush=True)
+            print("ATTEMPTS BEFORE:", debug_state.get("attempts_by_player"), flush=True)
+
+        result = record_snitch_catch(
+            room_code=room_code,
+            player_name=player_name,
+            client_elapsed_ms=client_elapsed_ms,
+        )
+
+        print("RESULT ACCEPTED:", result.get("accepted"), flush=True)
+        print("RESULT MESSAGE:", result.get("message"), flush=True)
+        print("RESULT ATTEMPTS USED:", result.get("attempts_used"), flush=True)
+        print("RESULT STATE ATTEMPTS:", result.get("state", {}).get("attempts_by_player"), flush=True)
+
+        response = format_snitch_response(result)
+
+        print("RESPONSE:", response, flush=True)
+        print("========== END SNITCH CATCH ==========", flush=True)
+
+        return response
+
+    except HTTPException:
+        raise
+
+    except Exception as error:
+        print("SNITCH ERROR:", repr(error), flush=True)
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error interno Snitch: {repr(error)}"
+        )
 
 
 @app.post("/api/player/submit_answer")
@@ -901,3 +1033,38 @@ async def mobile_host_return_lobby(room_code: str, info: HostControlInfo):
     validate_mobile_host(room_code, info)
 
     return await return_lobby(room_code)
+
+
+@app.get("/api/debug/snitch/{room_code}")
+async def debug_snitch(room_code: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    room = (
+        supabase.table("rooms")
+        .select("id, status, game_state")
+        .eq("room_code", room_code.upper())
+        .execute()
+    )
+
+    if not room.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    room_data = room.data[0]
+    state = room_data.get("game_state") or {}
+    players = get_players(room_data["id"])
+
+    return {
+        "room_code": room_code.upper(),
+        "room_status": room_data.get("status"),
+        "phase": state.get("phase"),
+        "game_id": state.get("game_id"),
+        "round_id": state.get("round_id"),
+        "started_at": state.get("started_at"),
+        "duration_seconds": state.get("duration_seconds"),
+        "attempts_total": state.get("attempts_total"),
+        "attempts_by_player": state.get("attempts_by_player"),
+        "snitch_submitted_players": state.get("snitch_submitted_players"),
+        "players": players,
+        "raw_game_state": state,
+    }
