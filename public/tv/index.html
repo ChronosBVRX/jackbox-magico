@@ -1,174 +1,83 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Jackbox Mágico - TV</title>
-    <style>
-        body { background-color: #1a1a2e; color: white; font-family: 'Segoe UI', sans-serif; text-align: center; margin: 0; overflow: hidden; }
-        .screen { display: none; height: 100vh; flex-direction: column; align-items: center; justify-content: center; }
-        h1 { color: #f39c12; font-size: 4rem; margin-bottom: 10px; }
-        .room-code { font-size: 6rem; color: #e74c3c; font-weight: bold; letter-spacing: 5px; margin: 10px 0; }
-        #tv-qr { border: 10px solid white; border-radius: 15px; width: 250px; margin: 20px 0; }
-        .btn-start { padding: 15px 30px; font-size: 1.5rem; background: #27ae60; color: white; border: none; border-radius: 15px; cursor: pointer; font-weight: bold; margin: 10px; }
-        .btn-reveal { background: #8e44ad; font-size: 2rem; padding: 20px 40px;}
-        .btn-duelo { background: #c0392b; }
-        .btn-sombrero { background: #2980b9; }
-        .btn-volver { background: #7f8c8d; }
-        
-        .question-title { font-size: 3.5rem; padding: 0 50px; }
-        .options-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; width: 80%; margin-top: 30px; }
-        .option-box { background: #34495e; padding: 30px; font-size: 2rem; border-radius: 15px; border: 4px solid #f39c12; }
-        
-        #lista-jugadores { display: flex; flex-wrap: wrap; gap: 15px; justify-content: center; margin-top: 30px; }
-        .player-tag { background-color: #2c3e50; padding: 15px 25px; border-radius: 10px; font-size: 1.5rem; font-weight: bold; }
-        .house-score { background: #2c3e50; padding: 20px; border-radius: 15px; font-size: 2rem; width: 200px; border: 3px solid white;}
-        
-        .duelo-container { border: 5px dashed #c0392b; padding: 50px; background: rgba(192, 57, 43, 0.2); border-radius: 20px;}
-    </style>
+  <meta charset="UTF-8">
+  <title>Jackbox Mágico - TV</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="/tv/styles.css">
 </head>
+
 <body>
+  <div class="ambient ambient-one"></div>
+  <div class="ambient ambient-two"></div>
+  <div class="floating-candles" aria-hidden="true">
+    <span></span><span></span><span></span><span></span><span></span>
+  </div>
 
-    <div id="view-inicio" class="screen" style="display: flex;">
-        <h1>Hogwarts Snacks Torneo</h1>
-        <button class="btn-start" style="font-size: 2rem;" onclick="crearSala()">Iniciar Nueva Partida</button>
-    </div>
+  <div id="view-inicio" class="screen visible">
+    <section class="hero-card">
+      <div class="badge">⚡ Copa de las Casas</div>
+      <h1>Jackbox Mágico</h1>
+      <p>
+        Minijuegos rápidos para celular, puntos por casa y caos mágico controlado.
+      </p>
 
-    <div id="view-lobby" class="screen">
-        <h2>¡ÚNETE DESDE TU CELULAR!</h2>
-        <div class="room-code" id="tv-code">----</div>
-        <img id="tv-qr" src="" alt="QR">
-        <div id="lista-jugadores"></div>
-        <div style="margin-top: 30px;" id="controles-host" style="display:none;">
-            <select id="game-select" style="padding:15px; border-radius:10px; font-size:1.1rem; min-width:360px;"></select>
-            <button class="btn-start" onclick="lanzarJuegoSeleccionado()">Lanzar Minijuego</button>
-        </div>
-    </div>
+      <button class="primary-btn giant" onclick="crearSala()">
+        Iniciar Nueva Partida
+      </button>
+    </section>
+  </div>
 
-    <div id="view-game" class="screen">
-        <div id="game-container">
-            <h2 class="question-title" id="tv-pregunta">Cargando...</h2>
-            <div class="options-grid" id="tv-opciones"></div>
-        </div>
-        <button class="btn-start btn-reveal" style="margin-top: 40px;" onclick="revelarResultados()">Revelar Resultados</button>
-    </div>
+  <div id="view-lobby" class="screen">
+    <section class="lobby-card">
+      <div class="badge">📱 Únete desde tu celular</div>
 
-    <div id="view-results" class="screen">
-        <h2 id="titulo-resultados">La respuesta correcta era:</h2>
-        <h1 id="tv-correcta" style="color: #2ecc71; font-size: 5rem; margin: 10px 0;"></h1>
-        <div id="tv-marcadores" style="display: flex; gap: 20px; margin-top: 30px; flex-wrap: wrap; justify-content: center;"></div>
-        <div style="margin-top: 40px;">
-            <button class="btn-start btn-volver" onclick="volverAlLobby()">Volver al Lobby</button>
-        </div>
-    </div>
+      <div class="room-code" id="tv-code">----</div>
 
-    <script>
-        let currentRoom = "";
+      <div class="qr-wrap">
+        <img id="tv-qr" src="" alt="Código QR para unirse">
+      </div>
 
-        async function crearSala() {
-            const res = await fetch('/api/host/create_room', { method: 'POST' });
-            const data = await res.json();
-            currentRoom = data.room_code;
-            
-            document.getElementById('view-inicio').style.display = 'none';
-            document.getElementById('view-lobby').style.display = 'flex';
-            document.getElementById('tv-code').innerText = currentRoom;
-            
-            const urlUnirse = `${window.location.origin}/mobile/index.html?room=${currentRoom}`;
-            document.getElementById('tv-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
-            
-            await cargarCatalogoJuegos();
-            iniciarRadar();
-        }
+      <p class="join-url" id="join-url"></p>
 
-        function iniciarRadar() {
-            setInterval(async () => {
-                try {
-                    const res = await fetch(`/api/room/${currentRoom}/status`);
-                    if(!res.ok) return;
-                    const data = await res.json();
-                    
-                    if(data.status === 'lobby') {
-                        ocultarPantallas();
-                        document.getElementById('view-lobby').style.display = 'flex';
-                        
-                        const lista = document.getElementById('lista-jugadores');
-                        lista.innerHTML = "";
-                        data.players.forEach(p => { 
-                            let icono = p.house === 'Slytherin' ? '🐍' : p.house === 'Ravenclaw' ? '🦅' : p.house === 'Hufflepuff' ? '🦡' : '🦁';
-                            lista.innerHTML += `<div class="player-tag">${icono} ${p.name}</div>`; 
-                        });
-                        if(data.players.length >= 1) document.getElementById('controles-host').style.display = 'block';
-                    }
+      <div id="lista-jugadores" class="players-list"></div>
 
-                    if(data.status === 'playing') {
-                        const phase = data.game_state.phase;
-                        
-                        if(!phase.includes('results_') && phase !== 'lobby') {
-                            ocultarPantallas();
-                            document.getElementById('view-game').style.display = 'flex';
-                            
-                            const container = document.getElementById('game-container');
-                            if(phase === 'duelo') container.className = "duelo-container";
-                            else container.className = "";
+      <div id="controles-host" class="host-controls">
+        <select id="game-select" class="game-select"></select>
 
-                            document.getElementById('tv-pregunta').innerText = data.game_state.question || data.game_state.attack_msg || '¡Responde!';
-                            
-                            const grid = document.getElementById('tv-opciones');
-                            grid.innerHTML = "";
-                            data.game_state.options.forEach(opt => { grid.innerHTML += `<div class="option-box">${opt}</div>`; });
-                        }
+        <button class="primary-btn" onclick="lanzarJuegoSeleccionado()">
+          Lanzar Minijuego
+        </button>
+      </div>
+    </section>
+  </div>
 
-                        if(phase.includes('results_')) {
-                            ocultarPantallas();
-                            document.getElementById('view-results').style.display = 'flex';
-                            
-                            if(phase === 'results_duelo') {
-                                document.getElementById('titulo-resultados').innerText = "El enemigo usó:";
-                            } else if(phase === 'results_sombrero' || phase === 'results_patronus_personalizado') {
-                                document.getElementById('titulo-resultados').innerText = "¡El más votado es!";
-                            } else {
-                                document.getElementById('titulo-resultados').innerText = "Resultado de la ronda:";
-                            }
-                            
-                            document.getElementById('tv-correcta').innerText = data.game_state.correct || "Nadie votó";
-                            
-                            let puntos = { "Gryffindor": 0, "Slytherin": 0, "Ravenclaw": 0, "Hufflepuff": 0 };
-                            data.players.forEach(p => { puntos[p.house] += p.score; });
-                            
-                            document.getElementById('tv-marcadores').innerHTML = `
-                                <div class="house-score" style="border-color: #c0392b;">🦁 ${puntos['Gryffindor']} pts</div>
-                                <div class="house-score" style="border-color: #27ae60;">🐍 ${puntos['Slytherin']} pts</div>
-                                <div class="house-score" style="border-color: #2980b9;">🦅 ${puntos['Ravenclaw']} pts</div>
-                                <div class="house-score" style="border-color: #f1c40f;">🦡 ${puntos['Hufflepuff']} pts</div>
-                            `;
-                        }
-                    }
-                } catch (error) { console.error("Buscando radar..."); }
-            }, 2000);
-        }
+  <div id="view-game" class="screen">
+    <main id="game-container" class="game-container"></main>
+  </div>
 
-        function ocultarPantallas() { document.querySelectorAll('.screen').forEach(s => s.style.display = 'none'); }
-        async function cargarCatalogoJuegos() {
-            const res = await fetch('/api/games');
-            const data = await res.json();
-            const sel = document.getElementById('game-select');
-            sel.innerHTML = '';
-            Object.entries(data.games).forEach(([gameId, game]) => {
-                sel.innerHTML += `<option value="${gameId}">${game.name}</option>`;
-            });
-        }
+  <div id="view-results" class="screen">
+    <section class="results-card">
+      <div class="badge">🏆 Resultados</div>
 
-        async function lanzarJuegoSeleccionado() {
-            const gameId = document.getElementById('game-select').value;
-            await fetch(`/api/host/${currentRoom}/start_game/${gameId}`, { method: 'POST' });
-        }
+      <h2 id="titulo-resultados">Resultado de la ronda</h2>
 
-        async function revelarResultados() { await fetch(`/api/host/${currentRoom}/reveal`, { method: 'POST' }); }
-        
-        // LA FUNCIÓN QUE LIMPIA LA BASE DE DATOS Y NOS REGRESA EN PAZ
-        async function volverAlLobby() {
-            await fetch(`/api/host/${currentRoom}/return_lobby`, { method: 'POST' });
-        }
-    </script>
+      <div id="tv-correcta" class="correct-answer"></div>
+
+      <p id="tv-explicacion" class="result-explanation"></p>
+
+      <div id="tv-extra-results" class="result-list"></div>
+
+      <div id="tv-marcadores" class="score-grid"></div>
+
+      <button class="secondary-btn" onclick="volverAlLobby()">
+        Volver al Lobby
+      </button>
+    </section>
+  </div>
+
+  <script src="/assets/js/magic-sounds.js"></script>
+  <script src="/tv/app.js"></script>
 </body>
 </html>
