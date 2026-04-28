@@ -1,10 +1,15 @@
 let myRoom = "";
 let myName = "";
+let myHouse = "";
+let myHostToken = "";
+let myIsHost = false;
+
 let radarInterval = null;
 let currentRoundKey = "";
 let currentRoundStartedMs = Date.now();
 let hasAnsweredCurrentRound = false;
 let lastTickSecond = null;
+let gamesLoaded = false;
 
 const urlParams = new URLSearchParams(window.location.search);
 
@@ -13,8 +18,14 @@ if (urlParams.has("room")) {
   document.getElementById("m-room").disabled = true;
 }
 
+const savedRoom = localStorage.getItem("jackbox_magico_room");
 const savedName = localStorage.getItem("jackbox_magico_name");
 const savedHouse = localStorage.getItem("jackbox_magico_house");
+const savedHostToken = localStorage.getItem("jackbox_magico_host_token");
+
+if (!urlParams.has("room") && savedRoom) {
+  document.getElementById("m-room").value = savedRoom;
+}
 
 if (savedName) {
   document.getElementById("m-name").value = savedName;
@@ -40,7 +51,43 @@ function getRoundKey(state) {
   return `${state.phase}-${state.round_id || getQuestion(state)}`;
 }
 
-document.getElementById("btn-unirse").addEventListener("click", async () => {
+function showHostPanels(show) {
+  const hostPanel = document.getElementById("host-panel");
+  const hostGamePanel = document.getElementById("host-game-panel");
+
+  if (hostPanel) {
+    hostPanel.classList.toggle("visible", show);
+  }
+
+  if (hostGamePanel) {
+    hostGamePanel.classList.toggle("visible", show);
+  }
+}
+
+async function loadGamesForHost() {
+  if (gamesLoaded) return;
+
+  try {
+    const res = await fetch("/api/games");
+    const data = await res.json();
+
+    const select = document.getElementById("host-game-select");
+    select.innerHTML = "";
+
+    Object.entries(data.games).forEach(([gameId, game]) => {
+      const option = document.createElement("option");
+      option.value = gameId;
+      option.textContent = game.name;
+      select.appendChild(option);
+    });
+
+    gamesLoaded = true;
+  } catch (error) {
+    console.error("No se pudo cargar catálogo de juegos");
+  }
+}
+
+async function joinRoom(auto = false) {
   MagicSound.unlock();
   MagicSound.play("click");
 
@@ -48,18 +95,21 @@ document.getElementById("btn-unirse").addEventListener("click", async () => {
 
   myRoom = document.getElementById("m-room").value.trim().toUpperCase();
   myName = document.getElementById("m-name").value.trim();
-
-  const house = document.getElementById("m-house").value;
+  myHouse = document.getElementById("m-house").value;
+  myHostToken = localStorage.getItem("jackbox_magico_host_token") || "";
 
   if (!myRoom || !myName) {
-    alert("No seas muggle, llena todos los campos.");
+    if (!auto) {
+      alert("No seas muggle, llena todos los campos.");
+    }
     return;
   }
 
+  localStorage.setItem("jackbox_magico_room", myRoom);
   localStorage.setItem("jackbox_magico_name", myName);
-  localStorage.setItem("jackbox_magico_house", house);
+  localStorage.setItem("jackbox_magico_house", myHouse);
 
-  btn.innerText = "Conectando...";
+  btn.innerText = auto ? "Reconectando..." : "Conectando...";
   btn.disabled = true;
 
   try {
@@ -71,31 +121,83 @@ document.getElementById("btn-unirse").addEventListener("click", async () => {
       body: JSON.stringify({
         room_code: myRoom,
         player_name: myName,
-        house: house,
+        house: myHouse,
+        host_token: myHostToken || null,
       }),
     });
 
     const data = await res.json();
 
     if (res.ok) {
+      myIsHost = Boolean(data.is_host);
+
+      if (data.host_token) {
+        myHostToken = data.host_token;
+        localStorage.setItem("jackbox_magico_host_token", myHostToken);
+      }
+
+      if (!myIsHost && data.host_name !== myName) {
+        myHostToken = "";
+      }
+
+      if (myIsHost) {
+        await loadGamesForHost();
+      }
+
       showScreen("view-wait");
-      document.getElementById("wait-msg").innerText = "¡Estás dentro!";
-      document.getElementById("wait-subtitle").innerText = "Mira la pantalla principal.";
+
+      document.getElementById("wait-msg").innerText = data.reconnected
+        ? "¡Reconectado!"
+        : myIsHost
+          ? "¡Eres el host!"
+          : "¡Estás dentro!";
+
+      document.getElementById("wait-subtitle").innerText = myIsHost
+        ? "Cuando todos entren, inicia la partida desde aquí."
+        : "Espera a que el host inicie la partida.";
+
       document.getElementById("points-feedback").className = "points-feedback";
       document.getElementById("points-feedback").innerText = "";
+
+      showHostPanels(myIsHost);
 
       iniciarRadarMovil();
       MagicSound.play("start");
     } else {
-      alert("Error: " + data.detail);
+      if (!auto) {
+        alert("Error: " + data.detail);
+      }
+
       btn.innerText = "Entrar a la Sala";
       btn.disabled = false;
     }
   } catch (error) {
-    alert("Error de conexión al castillo.");
+    if (!auto) {
+      alert("Error de conexión al castillo.");
+    }
+
     btn.innerText = "Entrar a la Sala";
     btn.disabled = false;
   }
+}
+
+document.getElementById("btn-unirse").addEventListener("click", () => {
+  joinRoom(false);
+});
+
+async function maybeAutoReconnect() {
+  const roomInput = document.getElementById("m-room").value.trim().toUpperCase();
+  const nameInput = document.getElementById("m-name").value.trim();
+
+  if (roomInput && nameInput && savedName) {
+    setTimeout(() => {
+      joinRoom(true);
+    }, 450);
+  }
+}
+
+document.addEventListener("DOMContentLoaded", () => {
+  maybeAutoReconnect();
 });
 
 function iniciarRadarMovil() {
@@ -112,28 +214,28 @@ function iniciarRadarMovil() {
       const state = data.game_state || {};
       const phase = state.phase || "lobby";
 
-      if (data.status === "playing" && phase !== "lobby" && !phase.includes("results_")) {
-        renderMobileGame(state);
+      if (myIsHost) {
+        await loadGamesForHost();
       }
 
-      if (data.status === "lobby" || (data.status === "playing" && phase.includes("results_"))) {
-        currentRoundKey = "";
-        hasAnsweredCurrentRound = false;
-        lastTickSecond = null;
+      if (data.status === "lobby") {
+        renderLobbyWait(data);
+        return;
+      }
 
-        document.getElementById("m-botones").innerHTML = "";
+      if (data.status === "playing" && phase !== "lobby" && !phase.includes("results_")) {
+        const answered = state.answered || {};
+        const iAlreadyAnswered = Boolean(answered[myName]);
 
-        showScreen("view-wait");
-
-        if (data.status === "lobby") {
-          document.getElementById("wait-msg").innerText = "¡Estás dentro!";
-          document.getElementById("wait-subtitle").innerText = "Mira la pantalla principal.";
-          document.getElementById("points-feedback").className = "points-feedback";
-          document.getElementById("points-feedback").innerText = "";
+        if (iAlreadyAnswered || hasAnsweredCurrentRound) {
+          renderAnsweredWait(state);
         } else {
-          document.getElementById("wait-msg").innerText = "¡Mira la TV!";
-          document.getElementById("wait-subtitle").innerText = "La ronda terminó. Revisa los resultados.";
+          renderMobileGame(state);
         }
+      }
+
+      if (data.status === "playing" && phase.includes("results_")) {
+        renderResultsWait();
       }
 
       if (state.phase === "artes_ridiculas") {
@@ -145,10 +247,68 @@ function iniciarRadarMovil() {
   }, 700);
 }
 
+function renderLobbyWait(data) {
+  currentRoundKey = "";
+  hasAnsweredCurrentRound = false;
+  lastTickSecond = null;
+
+  document.getElementById("m-botones").innerHTML = "";
+
+  showScreen("view-wait");
+
+  if (myIsHost) {
+    document.getElementById("wait-pill").innerText = "👑 Host";
+    document.getElementById("wait-msg").innerText = "Tú controlas la partida";
+    document.getElementById("wait-subtitle").innerText =
+      "Cuando todos estén listos, inicia un minijuego.";
+  } else {
+    document.getElementById("wait-pill").innerText = "🕯️ Conectado";
+    document.getElementById("wait-msg").innerText = "¡Estás dentro!";
+    document.getElementById("wait-subtitle").innerText =
+      data.host && data.host.name
+        ? `Espera a que ${data.host.name} inicie la partida.`
+        : "Esperando host...";
+  }
+
+  document.getElementById("points-feedback").className = "points-feedback";
+  document.getElementById("points-feedback").innerText = "";
+
+  showHostPanels(myIsHost);
+}
+
+function renderAnsweredWait(state) {
+  showScreen("view-wait");
+
+  document.getElementById("wait-pill").innerText = myIsHost ? "👑 Host" : "🕯️ Conectado";
+  document.getElementById("wait-msg").innerText = "¡Respuesta enviada!";
+  document.getElementById("wait-subtitle").innerText = myIsHost
+    ? "Puedes revelar resultados desde aquí cuando quieras."
+    : "Mira la TV para seguir la ronda.";
+
+  showHostPanels(myIsHost);
+}
+
+function renderResultsWait() {
+  currentRoundKey = "";
+  hasAnsweredCurrentRound = false;
+  lastTickSecond = null;
+
+  showScreen("view-wait");
+
+  document.getElementById("wait-pill").innerText = myIsHost ? "👑 Host" : "🏆 Resultados";
+  document.getElementById("wait-msg").innerText = "¡Mira la TV!";
+  document.getElementById("wait-subtitle").innerText = myIsHost
+    ? "Puedes volver al lobby e iniciar otro minijuego."
+    : "La ronda terminó. Revisa los resultados.";
+
+  showHostPanels(myIsHost);
+}
+
 function renderMobileGame(state) {
   const newKey = getRoundKey(state);
 
   showScreen("view-game");
+  showHostPanels(myIsHost);
 
   if (newKey === currentRoundKey) {
     if (state.phase === "artes_ridiculas") {
@@ -263,7 +423,9 @@ async function enviarRespuesta(option, clickedButton) {
     showScreen("view-wait");
 
     document.getElementById("wait-msg").innerText = "¡Respuesta enviada!";
-    document.getElementById("wait-subtitle").innerText = "Mira la TV para seguir la ronda.";
+    document.getElementById("wait-subtitle").innerText = myIsHost
+      ? "Puedes revelar resultados desde aquí."
+      : "Mira la TV para seguir la ronda.";
 
     const feedback = document.getElementById("points-feedback");
 
@@ -280,6 +442,8 @@ async function enviarRespuesta(option, clickedButton) {
       feedback.innerText = "Respuesta guardada.";
       MagicSound.play("correct");
     }
+
+    showHostPanels(myIsHost);
   } catch (error) {
     showScreen("view-wait");
 
@@ -292,5 +456,59 @@ async function enviarRespuesta(option, clickedButton) {
     feedback.innerText = "Error de conexión.";
 
     MagicSound.play("wrong");
+    showHostPanels(myIsHost);
   }
+}
+
+async function hostStartSelectedGame() {
+  if (!myIsHost || !myHostToken) return;
+
+  const gameId = document.getElementById("host-game-select").value;
+
+  MagicSound.play("click");
+
+  await fetch(`/api/mobile/host/${myRoom}/start_game/${gameId}`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      player_name: myName,
+      host_token: myHostToken,
+    }),
+  });
+}
+
+async function hostRevealResults() {
+  if (!myIsHost || !myHostToken) return;
+
+  MagicSound.play("click");
+
+  await fetch(`/api/mobile/host/${myRoom}/reveal`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      player_name: myName,
+      host_token: myHostToken,
+    }),
+  });
+}
+
+async function hostReturnLobby() {
+  if (!myIsHost || !myHostToken) return;
+
+  MagicSound.play("click");
+
+  await fetch(`/api/mobile/host/${myRoom}/return_lobby`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      player_name: myName,
+      host_token: myHostToken,
+    }),
+  });
 }
