@@ -13,6 +13,7 @@ from api.database import (
     HostControlInfo,
     DuelClashTapInfo,
     SombreroStartInfo,
+    SnitchCatchInfo,
 )
 from api import trivia, duelo, sombrero
 from api import clase_pociones, atrapa_snitch, retratos_chismosos, mapa_travieso
@@ -446,6 +447,47 @@ async def mobile_host_start_sombrero_custom(room_code: str, info: SombreroStartI
     }
 
 
+@app.post("/api/player/snitch_catch")
+async def snitch_catch(info: SnitchCatchInfo):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    room = (
+        supabase.table("rooms")
+        .select("id, game_state")
+        .eq("room_code", info.room_code.upper())
+        .execute()
+    )
+
+    if not room.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    state = room.data[0].get("game_state") or {}
+
+    result = atrapa_snitch.submit_catch(
+        state=state,
+        player_name=info.player_name,
+        client_elapsed_ms=info.client_elapsed_ms,
+    )
+
+    supabase.table("rooms").update({
+        "game_state": result["state"],
+    }).eq("room_code", info.room_code.upper()).execute()
+
+    return {
+        "message": result.get("message", "Intento registrado."),
+        "accepted": result.get("accepted", False),
+        "points": result.get("points_preview", 0),
+        "grade": result.get("grade"),
+        "label": result.get("label"),
+        "delta_ms": result.get("delta_ms"),
+        "caught": result.get("caught", False),
+        "precision": result.get("precision", 0),
+        "attempts_used": result.get("attempts_used", 0),
+        "attempts_total": result.get("attempts_total", 5),
+    }
+
+
 @app.post("/api/player/submit_answer")
 async def submit_answer(info: AnswerInfo):
     if not supabase:
@@ -544,6 +586,7 @@ async def submit_answer(info: AnswerInfo):
             "label": result.get("label"),
             "delta_ms": result.get("delta_ms"),
             "caught": result.get("caught", False),
+            "precision": result.get("precision", 0),
             "attempts_used": result.get("attempts_used", 0),
             "attempts_total": result.get("attempts_total", 5),
         }

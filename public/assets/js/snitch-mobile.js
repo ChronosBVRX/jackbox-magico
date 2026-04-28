@@ -3,13 +3,65 @@
   let snitchLastTick = null;
   let snitchCatchCooldown = false;
   let snitchAttemptsUsed = 0;
+  let snitchWatcher = null;
+  let activeSnitchRound = false;
+
+  function getSafeGlobal(name, fallback = null) {
+    try {
+      if (typeof window[name] !== "undefined") return window[name];
+    } catch (error) {}
+
+    try {
+      return eval(`typeof ${name} !== "undefined" ? ${name} : fallback`);
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function readMyRoom() {
+    try {
+      return typeof myRoom !== "undefined" ? myRoom : "";
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function readMyName() {
+    try {
+      return typeof myName !== "undefined" ? myName : "";
+    } catch (error) {
+      return "";
+    }
+  }
+
+  function readMyIsHost() {
+    try {
+      return typeof myIsHost !== "undefined" ? myIsHost : false;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function setCurrentRoundStarted(ms) {
+    try {
+      currentRoundStartedMs = ms;
+    } catch (error) {}
+  }
+
+  function getCurrentRoundStarted() {
+    try {
+      return typeof currentRoundStartedMs !== "undefined" ? currentRoundStartedMs : Date.now();
+    } catch (error) {
+      return Date.now();
+    }
+  }
 
   function getSnitchKey(state) {
     return `${state.phase}-${state.round_id || state.question || "snitch"}`;
   }
 
   function getSnitchTimeInfo(state) {
-    const duration = Number(state.duration_seconds || 23);
+    const duration = Number(state.duration_seconds || 24);
     const startedAt = Number(state.started_at || Date.now() / 1000);
     const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
     const left = Math.max(0, duration - elapsed);
@@ -24,7 +76,8 @@
 
   function getAttemptCountFromState(state) {
     const attempts = state.attempts_by_player || {};
-    const value = attempts[myName];
+    const name = readMyName();
+    const value = attempts[name];
 
     if (Array.isArray(value)) {
       return value.length;
@@ -66,7 +119,8 @@
       }
     });
 
-    document.getElementById("m-botones").innerHTML = "";
+    const botones = document.getElementById("m-botones");
+    if (botones) botones.innerHTML = "";
   }
 
   function updateSnitchMobileTimer(state) {
@@ -105,7 +159,7 @@
     }
 
     if (typeof showHostPanels === "function") {
-      showHostPanels(myIsHost);
+      showHostPanels(readMyIsHost());
     }
 
     hideOtherPanels();
@@ -117,7 +171,7 @@
       snitchLastTick = null;
       snitchCatchCooldown = false;
       snitchAttemptsUsed = getAttemptCountFromState(state);
-      currentRoundStartedMs = state.started_at ? Number(state.started_at) * 1000 : Date.now();
+      setCurrentRoundStarted(state.started_at ? Number(state.started_at) * 1000 : Date.now());
 
       if (typeof MagicSound !== "undefined") {
         MagicSound.play("start");
@@ -128,10 +182,15 @@
 
     const total = Number(state.attempts_total || 5);
 
-    document.getElementById("game-pill").innerText = "🏆 Snitch";
-    document.getElementById("m-pregunta-aviso").innerText = "¡Atrapa la Snitch!";
-    document.getElementById("m-question-small").innerText =
-      "Presiona justo cuando cruce la zona iluminada en la TV.";
+    const pill = document.getElementById("game-pill");
+    const title = document.getElementById("m-pregunta-aviso");
+    const question = document.getElementById("m-question-small");
+
+    if (pill) pill.innerText = "🏆 Snitch";
+    if (title) title.innerText = "¡Atrapa la Snitch!";
+    if (question) {
+      question.innerText = "Presiona justo cuando cruce la zona iluminada. Cuidado con las sombras falsas.";
+    }
 
     const panel = ensureSnitchPanel();
     panel.classList.add("visible");
@@ -148,7 +207,7 @@
     }
 
     panel.innerHTML = `
-      <button class="snitch-catch-btn" onclick="sendSnitchCatch()">
+      <button id="snitch-catch-button" class="snitch-catch-btn" onclick="sendSnitchCatch()">
         🏆 ¡ATRAPAR!
       </button>
 
@@ -163,12 +222,31 @@
   window.sendSnitchCatch = async function sendSnitchCatch() {
     if (snitchCatchCooldown) return;
 
+    const room = readMyRoom();
+    const name = readMyName();
+
+    if (!room || !name) {
+      const box = document.getElementById("snitch-attempt-box");
+      if (box) {
+        box.className = "snitch-attempt-box snitch-feedback-miss";
+        box.textContent = "No se detectó sala o jugador. Recarga el celular y vuelve a entrar.";
+      }
+      return;
+    }
+
     snitchCatchCooldown = true;
 
-    const elapsed = Math.max(0, Date.now() - currentRoundStartedMs);
+    const button = document.getElementById("snitch-catch-button");
     const box = document.getElementById("snitch-attempt-box");
 
+    if (button) {
+      button.classList.add("cooldown");
+    }
+
+    const elapsed = Math.max(0, Date.now() - getCurrentRoundStarted());
+
     if (box) {
+      box.className = "snitch-attempt-box";
       box.textContent = "Registrando intento...";
     }
 
@@ -177,15 +255,14 @@
     }
 
     try {
-      const res = await fetch("/api/player/submit_answer", {
+      const res = await fetch("/api/player/snitch_catch", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          room_code: myRoom,
-          player_name: myName,
-          answer: "¡ATRAPAR!",
+          room_code: room,
+          player_name: name,
           client_elapsed_ms: elapsed,
         }),
       });
@@ -195,21 +272,27 @@
       if (data.accepted) {
         snitchAttemptsUsed = Number(data.attempts_used || snitchAttemptsUsed + 1);
 
-        const feedbackText =
-          `${data.points > 0 ? "+" : ""}${data.points || 0} pts · ${data.message || "Intento registrado."}`;
+        const total = Number(data.attempts_total || 5);
+        const grade = data.grade || "miss";
+        const delta = typeof data.delta_ms === "number" ? ` · ${data.delta_ms} ms` : "";
+        const precision = data.precision ? ` · Precisión ${data.precision}%` : "";
 
         if (box) {
-          box.textContent = `${feedbackText} · Intentos: ${snitchAttemptsUsed}/${data.attempts_total || 5}`;
+          box.className = `snitch-attempt-box snitch-feedback-${grade}`;
+          box.textContent =
+            `${data.points > 0 ? "+" : ""}${data.points || 0} pts · ${data.message || "Intento registrado."}${delta}${precision} · Intentos: ${snitchAttemptsUsed}/${total}`;
         }
 
         if (typeof MagicSound !== "undefined") {
           MagicSound.play(data.points > 0 ? "correct" : "wrong");
         }
       } else if (box) {
+        box.className = "snitch-attempt-box snitch-feedback-miss";
         box.textContent = data.message || "Intento no aceptado.";
       }
     } catch (error) {
       if (box) {
+        box.className = "snitch-attempt-box snitch-feedback-miss";
         box.textContent = "Error de conexión al intentar atrapar la Snitch.";
       }
 
@@ -220,8 +303,47 @@
 
     setTimeout(() => {
       snitchCatchCooldown = false;
-    }, 280);
+
+      if (button) {
+        button.classList.remove("cooldown");
+      }
+    }, 220);
   };
+
+  async function snitchIndependentWatcher() {
+    const room = readMyRoom();
+
+    if (!room) return;
+
+    try {
+      const res = await fetch(`/api/room/${room}/status`);
+      if (!res.ok) return;
+
+      const data = await res.json();
+      const state = data.game_state || {};
+      const phase = state.phase || "";
+
+      if (phase === "atrapa_snitch") {
+        activeSnitchRound = true;
+        renderSnitchMobile(state);
+        return;
+      }
+
+      if (activeSnitchRound && phase !== "atrapa_snitch") {
+        activeSnitchRound = false;
+
+        const panel = document.getElementById("snitch-mobile-panel");
+        if (panel) {
+          panel.classList.remove("visible");
+          panel.innerHTML = "";
+        }
+      }
+    } catch (error) {}
+  }
+
+  if (!snitchWatcher) {
+    snitchWatcher = setInterval(snitchIndependentWatcher, 420);
+  }
 
   const originalRenderMobileGame = window.renderMobileGame;
   const originalRenderResultsWait = window.renderResultsWait;
@@ -233,7 +355,9 @@
       return;
     }
 
-    originalRenderMobileGame(state);
+    if (typeof originalRenderMobileGame === "function") {
+      originalRenderMobileGame(state);
+    }
   };
 
   window.renderResultsWait = function patchedRenderResultsWait() {
@@ -244,7 +368,9 @@
       panel.innerHTML = "";
     }
 
-    originalRenderResultsWait();
+    if (typeof originalRenderResultsWait === "function") {
+      originalRenderResultsWait();
+    }
   };
 
   window.renderLobbyWait = function patchedRenderLobbyWait(data) {
@@ -255,6 +381,8 @@
       panel.innerHTML = "";
     }
 
-    originalRenderLobbyWait(data);
+    if (typeof originalRenderLobbyWait === "function") {
+      originalRenderLobbyWait(data);
+    }
   };
 })();

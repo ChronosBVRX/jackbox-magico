@@ -42,3 +42,9 @@ class SombreroStartInfo(BaseModel):
     player_name: str
     host_token: str
     question: Optional[str] = None
+
+
+class SnitchCatchInfo(BaseModel):
+    room_code: str
+    player_name: str
+    client_elapsed_ms: Optional[int] = None

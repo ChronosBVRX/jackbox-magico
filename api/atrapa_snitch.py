@@ -12,6 +12,8 @@ NARRATOR_LINES = [
     "La Snitch no espera a nadie, mucho menos a quien anda viendo memes.",
     "Ese reflejo estuvo más filoso que comentario de profesor amargado.",
     "Hoy aprenderemos que presionar tarde también es una forma de humillación.",
+    "La Snitch va más rápido que chisme en grupo de WhatsApp.",
+    "Respiren, miren la zona iluminada y no se dejen engañar por cualquier cosa brillante.",
 ]
 
 FALSE_OBJECTS = [
@@ -19,6 +21,8 @@ FALSE_OBJECTS = [
     {"type": "bludger", "label": "Bludger falsa", "emoji": "⚫"},
     {"type": "coin", "label": "Moneda brillante sospechosa", "emoji": "🪙"},
     {"type": "bat", "label": "Murciélago dramático", "emoji": "🦇"},
+    {"type": "spark", "label": "Destello tramposo", "emoji": "✨"},
+    {"type": "ghost", "label": "Fantasma metiche", "emoji": "👻"},
 ]
 
 POINTS_PERFECT = 120
@@ -28,36 +32,66 @@ POINTS_BEST_REFLEX = 50
 POINTS_BEST_HOUSE_AVG = 100
 
 ATTEMPTS_TOTAL = 5
-PERFECT_WINDOW_MS = 240
-CLOSE_WINDOW_MS = 720
-ROUND_DURATION_SECONDS = 23
+ROUND_DURATION_SECONDS = 24
 
 
 def _now():
     return time.time()
 
 
-def _build_capture_times():
-    base_times = [2.0, 6.0, 10.0, 14.0, 18.0]
-    return [
-        round(base + random.uniform(-0.25, 0.25), 3)
-        for base in base_times
-    ]
+def _build_capture_windows():
+    base_times = [3.0, 6.9, 10.8, 14.7, 18.7]
+    lanes = ["top", "middle", "bottom", "middle", "top"]
+    directions = ["left_to_right", "right_to_left", "left_to_right", "right_to_left", "left_to_right"]
+
+    windows = []
+
+    for index, base in enumerate(base_times):
+        center = round(base + random.uniform(-0.18, 0.18), 3)
+
+        windows.append({
+            "id": f"snitch-{index + 1}",
+            "attempt_number": index + 1,
+            "center_time": center,
+            "lane": lanes[index],
+            "direction": directions[index],
+            "speed_label": random.choice(["rápida", "tramposa", "nerviosa", "salvajemente dorada"]),
+            "perfect_window_ms": max(135, 260 - (index * 26)),
+            "close_window_ms": max(430, 760 - (index * 62)),
+            "zone_shift": random.choice([-38, -24, 0, 24, 38]),
+        })
+
+    return windows
 
 
-def _build_false_objects(capture_times):
-    possible_times = [3.8, 7.9, 12.2, 16.3, 20.1]
-    random.shuffle(possible_times)
-
+def _build_false_objects(capture_windows):
     false_objects = []
+    possible_offsets = [-0.85, -0.55, 0.45, 0.75]
 
-    for index, moment in enumerate(possible_times[:3]):
-        item = random.choice(FALSE_OBJECTS)
+    for index, window in enumerate(capture_windows):
+        if random.random() < 0.72:
+            bait = random.choice(FALSE_OBJECTS)
+            offset = random.choice(possible_offsets)
+            false_time = max(1.5, round(float(window["center_time"]) + offset, 3))
+
+            false_objects.append({
+                **bait,
+                "id": f"fake-{index + 1}",
+                "time": false_time,
+                "lane": random.choice(["top", "middle", "bottom"]),
+                "bait_window_ms": random.choice([260, 300, 340]),
+                "direction": random.choice(["left_to_right", "right_to_left"]),
+            })
+
+    while len(false_objects) < 4:
+        bait = random.choice(FALSE_OBJECTS)
         false_objects.append({
-            **item,
-            "time": round(moment + random.uniform(-0.3, 0.3), 3),
+            **bait,
+            "id": f"fake-extra-{len(false_objects) + 1}",
+            "time": round(random.uniform(2.2, 21.0), 3),
             "lane": random.choice(["top", "middle", "bottom"]),
-            "id": f"false-{index + 1}",
+            "bait_window_ms": random.choice([260, 300, 340]),
+            "direction": random.choice(["left_to_right", "right_to_left"]),
         })
 
     return false_objects
@@ -65,23 +99,23 @@ def _build_false_objects(capture_times):
 
 def build_state(room_code=None, previous_state=None):
     previous_state = previous_state or {}
-    capture_times = _build_capture_times()
+
+    capture_windows = _build_capture_windows()
 
     return {
         "phase": "atrapa_snitch",
         "game_id": "atrapa_snitch",
         "round_id": str(uuid.uuid4()),
         "title": "Atrapa la Snitch",
-        "subtitle": "Cinco intentos. Toca cuando la Snitch cruce la zona iluminada.",
-        "question": "Presiona ¡ATRAPAR! justo cuando la Snitch cruce la zona de captura.",
+        "subtitle": "Cinco intentos. Precisión, reflejos y cero confianza en objetos falsos.",
+        "question": "Presiona ¡ATRAPAR! justo cuando la Snitch cruce la zona iluminada.",
         "narrator": random.choice(NARRATOR_LINES),
         "started_at": _now(),
         "duration_seconds": ROUND_DURATION_SECONDS,
         "attempts_total": ATTEMPTS_TOTAL,
-        "capture_times": capture_times,
-        "false_objects": _build_false_objects(capture_times),
-        "perfect_window_ms": PERFECT_WINDOW_MS,
-        "close_window_ms": CLOSE_WINDOW_MS,
+        "capture_windows": capture_windows,
+        "capture_times": [window["center_time"] for window in capture_windows],
+        "false_objects": _build_false_objects(capture_windows),
         "options": ["¡ATRAPAR!"],
         "attempts_by_player": {},
         "snitch_submitted_players": [],
@@ -89,6 +123,10 @@ def build_state(room_code=None, previous_state=None):
         "point_events": [],
         "scored": False,
         "host": previous_state.get("host"),
+        "difficulty": {
+            "name": "Nocturna con señuelos",
+            "description": "La zona cambia ligeramente, la Snitch varía carril y hay sombras falsas.",
+        },
         "points": {
             "perfect": POINTS_PERFECT,
             "close": POINTS_CLOSE,
@@ -110,22 +148,24 @@ def _elapsed_seconds(state, client_elapsed_ms=None):
     return max(0, _now() - started_at)
 
 
-def _nearest_capture(state, elapsed, used_indexes):
-    capture_times = state.get("capture_times", [])
+def _nearest_unused_window(state, elapsed, used_indexes):
+    windows = state.get("capture_windows", [])
 
-    available = [
-        (index, capture_time, abs(elapsed - capture_time))
-        for index, capture_time in enumerate(capture_times)
-        if index not in used_indexes
-    ]
+    available = []
+
+    for index, window in enumerate(windows):
+        if index not in used_indexes:
+            center_time = float(window.get("center_time", 999))
+            available.append((index, window, abs(elapsed - center_time)))
 
     if not available:
         return None, None, None
 
     available.sort(key=lambda item: item[2])
-    index, capture_time, delta_seconds = available[0]
 
-    return index, capture_time, delta_seconds
+    index, window, delta_seconds = available[0]
+
+    return index, window, delta_seconds
 
 
 def _near_false_object(state, elapsed):
@@ -140,43 +180,55 @@ def _near_false_object(state, elapsed):
     )[0]
 
     delta_ms = abs(float(nearest.get("time", 999)) - elapsed) * 1000
+    bait_window = int(nearest.get("bait_window_ms", 300))
 
-    if delta_ms <= 320:
+    if delta_ms <= bait_window:
         return nearest
 
     return None
 
 
-def _grade_attempt(delta_ms, false_object=None):
+def _grade_attempt(delta_ms, window, false_object=None):
     if false_object:
         return {
             "grade": "false",
-            "label": f"Objeto falso: {false_object.get('label', 'sombra sospechosa')}",
+            "label": f"Señuelo: {false_object.get('label', 'sombra sospechosa')}",
             "points_preview": POINTS_MISS,
             "caught": False,
+            "precision": 0,
         }
 
-    if delta_ms <= PERFECT_WINDOW_MS:
+    perfect_window = int(window.get("perfect_window_ms", 220)) if window else 220
+    close_window = int(window.get("close_window_ms", 700)) if window else 700
+
+    if delta_ms <= perfect_window:
+        precision = max(88, int(100 - (delta_ms / max(1, perfect_window)) * 10))
+
         return {
             "grade": "perfect",
-            "label": "Captura perfecta",
+            "label": f"Captura perfecta ({delta_ms} ms)",
             "points_preview": POINTS_PERFECT,
             "caught": True,
+            "precision": precision,
         }
 
-    if delta_ms <= CLOSE_WINDOW_MS:
+    if delta_ms <= close_window:
+        precision = max(48, int(82 - (delta_ms / max(1, close_window)) * 34))
+
         return {
             "grade": "close",
-            "label": "Casi la atrapa",
+            "label": f"Casi la atrapa ({delta_ms} ms)",
             "points_preview": POINTS_CLOSE,
             "caught": True,
+            "precision": precision,
         }
 
     return {
         "grade": "miss",
-        "label": "Fuera de tiempo",
+        "label": f"Fuera de tiempo ({delta_ms} ms)",
         "points_preview": POINTS_MISS,
         "caught": False,
+        "precision": 0,
     }
 
 
@@ -193,24 +245,40 @@ def submit_catch(state, player_name, client_elapsed_ms=None):
     attempts_by_player = state.get("attempts_by_player", {})
     player_attempts = attempts_by_player.get(player_name, [])
 
-    if len(player_attempts) >= int(state.get("attempts_total", ATTEMPTS_TOTAL)):
+    attempts_total = int(state.get("attempts_total", ATTEMPTS_TOTAL))
+
+    if len(player_attempts) >= attempts_total:
         return {
             "state": state,
             "accepted": False,
             "message": "Ya usaste tus 5 intentos.",
             "attempts_used": len(player_attempts),
+            "attempts_total": attempts_total,
             "points_preview": 0,
             "grade": "done",
         }
 
     elapsed = _elapsed_seconds(state, client_elapsed_ms)
+    duration = float(state.get("duration_seconds", ROUND_DURATION_SECONDS))
+
+    if elapsed > duration + 1.25:
+        return {
+            "state": state,
+            "accepted": False,
+            "message": "La ronda ya terminó.",
+            "attempts_used": len(player_attempts),
+            "attempts_total": attempts_total,
+            "points_preview": 0,
+            "grade": "late",
+        }
+
     used_indexes = [
         attempt.get("capture_index")
         for attempt in player_attempts
         if attempt.get("capture_index") is not None
     ]
 
-    capture_index, capture_time, delta_seconds = _nearest_capture(
+    capture_index, capture_window, delta_seconds = _nearest_unused_window(
         state=state,
         elapsed=elapsed,
         used_indexes=used_indexes,
@@ -218,23 +286,27 @@ def submit_catch(state, player_name, client_elapsed_ms=None):
 
     false_object = _near_false_object(state, elapsed)
 
-    if capture_index is None:
+    if capture_window is None:
         delta_ms = 9999
+        capture_time = None
     else:
+        capture_time = float(capture_window.get("center_time", 0))
         delta_ms = int(round(delta_seconds * 1000))
 
-    grade = _grade_attempt(delta_ms, false_object=false_object)
+    grade = _grade_attempt(delta_ms, capture_window, false_object=false_object)
 
     attempt = {
         "attempt_number": len(player_attempts) + 1,
         "elapsed_seconds": round(elapsed, 3),
         "capture_index": capture_index,
+        "capture_window": capture_window,
         "capture_time": capture_time,
         "delta_ms": delta_ms,
         "grade": grade["grade"],
         "label": grade["label"],
         "points_preview": grade["points_preview"],
         "caught": grade["caught"],
+        "precision": grade["precision"],
         "false_object": false_object,
     }
 
@@ -245,7 +317,7 @@ def submit_catch(state, player_name, client_elapsed_ms=None):
     state["snitch_submitted_players"] = [
         name
         for name, attempts in attempts_by_player.items()
-        if len(attempts) >= int(state.get("attempts_total", ATTEMPTS_TOTAL))
+        if len(attempts) >= attempts_total
     ]
 
     if grade["grade"] == "perfect":
@@ -262,12 +334,13 @@ def submit_catch(state, player_name, client_elapsed_ms=None):
         "accepted": True,
         "message": message,
         "attempts_used": len(player_attempts),
-        "attempts_total": int(state.get("attempts_total", ATTEMPTS_TOTAL)),
+        "attempts_total": attempts_total,
         "points_preview": grade["points_preview"],
         "grade": grade["grade"],
         "label": grade["label"],
         "delta_ms": delta_ms,
         "caught": grade["caught"],
+        "precision": grade["precision"],
     }
 
 
@@ -278,14 +351,6 @@ def _add_event(events, player_name, house, points, label):
         "points": points,
         "label": label,
     })
-
-
-def _house_of(players, player_name):
-    for player in players:
-        if player.get("name") == player_name:
-            return player.get("house")
-
-    return None
 
 
 def _first_player_in_house(players, house):
@@ -304,9 +369,10 @@ def resolve_for_reveal(state, players=None):
         return state, state.get("point_events", []), True
 
     attempts_by_player = state.get("attempts_by_player", {})
+    attempts_total = int(state.get("attempts_total", ATTEMPTS_TOTAL))
+
     events = []
     player_results = []
-
     best_reflex = None
     house_positive_deltas = {}
 
@@ -320,6 +386,7 @@ def resolve_for_reveal(state, players=None):
         perfect_count = 0
         close_count = 0
         miss_count = 0
+        false_count = 0
 
         for attempt in attempts:
             points = int(attempt.get("points_preview", 0))
@@ -328,10 +395,15 @@ def resolve_for_reveal(state, players=None):
             label = f"Intento {attempt.get('attempt_number')}: {attempt.get('label')}"
             _add_event(events, name, house, points, label)
 
-            if attempt.get("grade") == "perfect":
+            grade = attempt.get("grade")
+
+            if grade == "perfect":
                 perfect_count += 1
-            elif attempt.get("grade") == "close":
+            elif grade == "close":
                 close_count += 1
+            elif grade == "false":
+                false_count += 1
+                miss_count += 1
             else:
                 miss_count += 1
 
@@ -348,10 +420,11 @@ def resolve_for_reveal(state, players=None):
                         "player_name": name,
                         "house": house,
                         "delta_ms": delta,
-                        "grade": attempt.get("grade"),
+                        "grade": grade,
+                        "precision": attempt.get("precision", 0),
                     }
 
-        remaining = int(state.get("attempts_total", ATTEMPTS_TOTAL)) - len(attempts)
+        remaining = attempts_total - len(attempts)
 
         for index in range(max(0, remaining)):
             _add_event(events, name, house, POINTS_MISS, f"Intento no usado {index + 1}")
@@ -367,6 +440,7 @@ def resolve_for_reveal(state, players=None):
             "perfect_count": perfect_count,
             "close_count": close_count,
             "miss_count": miss_count,
+            "false_count": false_count,
         })
 
     best_house_average = None
@@ -413,12 +487,13 @@ def resolve_for_reveal(state, players=None):
             "Ese reflejo estuvo digno de Quidditch. Lo demás fue teatro experimental.",
             "La Snitch está impresionada. No por todos, pero algo es algo.",
             "Hubo magia, velocidad y varios toques con retraso emocional.",
+            "La Snitch sobrevivió, pero varias dignidades no.",
         ]),
         "player_results": player_results,
         "best_reflex": best_reflex,
         "best_house_average": best_house_average,
         "house_averages": house_averages,
-        "capture_times": state.get("capture_times", []),
+        "capture_windows": state.get("capture_windows", []),
     }
     state["point_events"] = events
     state["scored"] = True

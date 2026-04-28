@@ -2,6 +2,9 @@
   let snitchLastKey = "";
   let snitchLastTick = null;
   let snitchAutoRevealLock = false;
+  let activeState = null;
+  let activePlayers = [];
+  let rafId = null;
 
   const localHouseIcons = {
     Gryffindor: "🦁",
@@ -23,10 +26,14 @@
     return `${state.phase}-${state.round_id || state.question || "snitch"}`;
   }
 
-  function getSnitchTimeInfo(state) {
-    const duration = Number(state.duration_seconds || 23);
+  function getElapsed(state) {
     const startedAt = Number(state.started_at || Date.now() / 1000);
-    const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
+    return Math.max(0, Date.now() / 1000 - startedAt);
+  }
+
+  function getSnitchTimeInfo(state) {
+    const duration = Number(state.duration_seconds || 24);
+    const elapsed = getElapsed(state);
     const left = Math.max(0, duration - elapsed);
 
     return {
@@ -35,6 +42,115 @@
       left,
       pct: duration > 0 ? Math.max(0, Math.min(1, left / duration)) : 0,
     };
+  }
+
+  function laneY(lane) {
+    if (lane === "top") return 122;
+    if (lane === "bottom") return 278;
+    return 196;
+  }
+
+  function currentWindow(state, elapsed) {
+    const windows = state.capture_windows || [];
+
+    if (!windows.length) return null;
+
+    let chosen = windows[0];
+
+    for (const item of windows) {
+      const center = Number(item.center_time || 0);
+      if (Math.abs(elapsed - center) < Math.abs(elapsed - Number(chosen.center_time || 0))) {
+        chosen = item;
+      }
+    }
+
+    return chosen;
+  }
+
+  function animateSnitch() {
+    if (!activeState) return;
+
+    const field = document.getElementById("snitch-field");
+    const snitch = document.getElementById("snitch-object");
+    const trail = document.getElementById("snitch-trail");
+    const zone = document.getElementById("snitch-capture-zone");
+
+    if (!field || !snitch || !trail || !zone) {
+      rafId = requestAnimationFrame(animateSnitch);
+      return;
+    }
+
+    const elapsed = getElapsed(activeState);
+    const windowItem = currentWindow(activeState, elapsed);
+
+    if (windowItem) {
+      const center = Number(windowItem.center_time || 0);
+      const travel = 1.72;
+      const progress = Math.max(0, Math.min(1, (elapsed - (center - travel)) / (travel * 2)));
+
+      const fieldWidth = field.clientWidth || 1000;
+      const fromX = windowItem.direction === "right_to_left" ? fieldWidth + 70 : -70;
+      const toX = windowItem.direction === "right_to_left" ? -70 : fieldWidth + 70;
+      const midX = fieldWidth / 2 + Number(windowItem.zone_shift || 0);
+
+      let x;
+
+      if (progress < .5) {
+        const p = progress / .5;
+        x = fromX + (midX - fromX) * easeInOut(p);
+      } else {
+        const p = (progress - .5) / .5;
+        x = midX + (toX - midX) * easeInOut(p);
+      }
+
+      const baseY = laneY(windowItem.lane);
+      const wobble = Math.sin(elapsed * 8.8) * 18 + Math.sin(elapsed * 3.2) * 9;
+      const rotate = Math.sin(elapsed * 12) * 16;
+
+      snitch.style.transform = `translate(${x - 27}px, ${baseY + wobble - 27}px) rotate(${rotate}deg)`;
+      snitch.classList.remove("hidden");
+
+      trail.style.transform = `translate(${x - 144}px, ${baseY + wobble - 3}px) rotate(${windowItem.direction === "right_to_left" ? "180deg" : "0deg"})`;
+      trail.style.opacity = ".75";
+
+      zone.style.left = `calc(50% + ${Number(windowItem.zone_shift || 0)}px)`;
+    }
+
+    updateFalseObjects(activeState, elapsed);
+
+    rafId = requestAnimationFrame(animateSnitch);
+  }
+
+  function easeInOut(t) {
+    return t < .5
+      ? 2 * t * t
+      : 1 - Math.pow(-2 * t + 2, 2) / 2;
+  }
+
+  function updateFalseObjects(state, elapsed) {
+    const fakes = state.false_objects || [];
+
+    fakes.forEach((item) => {
+      const el = document.getElementById(`fake-${item.id}`);
+      if (!el) return;
+
+      const time = Number(item.time || 0);
+      const distance = Math.abs(elapsed - time);
+
+      if (distance <= 1.1) {
+        el.classList.add("visible");
+
+        const direction = item.direction === "right_to_left" ? -1 : 1;
+        const progress = Math.max(0, Math.min(1, (elapsed - (time - 1.1)) / 2.2));
+        const x = direction === 1
+          ? 12 + progress * 74
+          : 86 - progress * 74;
+
+        el.style.left = `${x}%`;
+      } else {
+        el.classList.remove("visible");
+      }
+    });
   }
 
   function renderSnitch(state, players) {
@@ -49,21 +165,26 @@
           <p class="snitch-subtitle">${h(state.subtitle || "Presiona justo cuando cruce la zona iluminada.")}</p>
         </header>
 
-        <div class="snitch-field">
+        <div id="snitch-field" class="snitch-field">
           <div class="snitch-stands"></div>
+          <div class="snitch-crowd"></div>
+          <div class="snitch-storm"></div>
+
           <div class="snitch-hoop left"></div>
           <div class="snitch-hoop right"></div>
 
-          <div class="capture-zone"></div>
+          <div id="snitch-capture-zone" class="capture-zone"></div>
 
-          <div class="snitch-object">
+          <div id="snitch-trail" class="snitch-trail"></div>
+
+          <div id="snitch-object" class="snitch-object">
             <div class="snitch-wing left"></div>
             <div class="snitch-wing right"></div>
             <div class="snitch-core"></div>
           </div>
 
           ${falseObjects.map((item) => `
-            <div class="false-object ${h(item.lane || "middle")}">${h(item.emoji || "🌫️")}</div>
+            <div id="fake-${h(item.id)}" class="false-object ${h(item.lane || "middle")}">${h(item.emoji || "🌫️")}</div>
           `).join("")}
 
           <div class="snitch-narrator">“${h(state.narrator || "¡La Snitch está en juego!") }”</div>
@@ -86,6 +207,14 @@
 
     updateSnitchTimer(state);
     updateSnitchPlayers(state, players);
+
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+    }
+
+    activeState = state;
+    activePlayers = players;
+    rafId = requestAnimationFrame(animateSnitch);
   }
 
   function updateSnitchTimer(state) {
@@ -210,6 +339,9 @@
 
       const key = getSnitchKey(state);
 
+      activeState = state;
+      activePlayers = data.players || [];
+
       if (snitchLastKey !== key) {
         snitchLastKey = key;
         snitchLastTick = null;
@@ -228,7 +360,9 @@
       return;
     }
 
-    originalRenderPlaying(data);
+    if (typeof originalRenderPlaying === "function") {
+      originalRenderPlaying(data);
+    }
   };
 
   window.renderResults = function patchedRenderResults(data) {
@@ -236,6 +370,13 @@
     const phase = state.phase || "";
 
     if (phase === "results_atrapa_snitch") {
+      activeState = null;
+
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+        rafId = null;
+      }
+
       if (typeof showScreen === "function") {
         showScreen("view-results");
       }
@@ -248,6 +389,7 @@
       if (title) title.innerText = "Resultado de la Snitch:";
       if (correct) correct.innerText = state.correct || "La Snitch fue capturada";
       if (explanation) explanation.textContent = state.snitch_result?.summary || "";
+
       if (extra) {
         extra.innerHTML = "";
         renderSnitchResults(state, extra);
@@ -264,6 +406,8 @@
       return;
     }
 
-    originalRenderResults(data);
+    if (typeof originalRenderResults === "function") {
+      originalRenderResults(data);
+    }
   };
 })();
