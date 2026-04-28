@@ -3,7 +3,9 @@
   let snitchLastTick = null;
   let snitchAutoRevealLock = false;
   let activeState = null;
+  let activePlayers = [];
   let rafId = null;
+  let revealCallback = null;
 
   const localHouseIcons = {
     Gryffindor: "🦁",
@@ -155,7 +157,69 @@
     rafId = requestAnimationFrame(animateSnitch);
   }
 
-  function renderSnitch(state, players) {
+  function getAttemptCount(state, playerName) {
+    const attempts = state.attempts_by_player || {};
+    const value = attempts[playerName];
+
+    if (Array.isArray(value)) {
+      return value.length;
+    }
+
+    return Number(value || 0);
+  }
+
+  function updateSnitchTimer(state) {
+    const bar = document.getElementById("snitch-progress-bar");
+    const text = document.getElementById("snitch-progress-text");
+
+    if (!bar || !text) return;
+
+    const info = getSnitchTimeInfo(state);
+
+    bar.style.transform = `scaleX(${info.pct})`;
+    text.textContent = `Tiempo restante: ${info.left.toFixed(1)}s · Intentos por jugador: ${state.attempts_total || 5}`;
+
+    const rounded = Math.ceil(info.left);
+
+    if (rounded <= 3 && rounded > 0 && rounded !== snitchLastTick) {
+      snitchLastTick = rounded;
+
+      if (typeof MagicSound !== "undefined") {
+        MagicSound.play("timer-danger");
+      }
+    }
+
+    if (info.left <= 0 && !snitchAutoRevealLock) {
+      snitchAutoRevealLock = true;
+
+      setTimeout(() => {
+        if (typeof revealCallback === "function") {
+          revealCallback();
+        }
+      }, 700);
+    }
+  }
+
+  function updateSnitchPlayers(state, players) {
+    const box = document.getElementById("snitch-players");
+    if (!box) return;
+
+    const total = Number(state.attempts_total || 5);
+
+    box.innerHTML = "";
+
+    players.forEach((player) => {
+      const count = getAttemptCount(state, player.name);
+      const item = document.createElement("div");
+
+      item.className = `snitch-player ${count >= total ? "ready" : ""}`;
+      item.textContent = `${localHouseIcons[player.house] || "✨"} ${player.name} — ${count}/${total} intentos`;
+
+      box.appendChild(item);
+    });
+  }
+
+  function renderSnitchBoard(state, players) {
     const container = document.getElementById("game-container");
     const falseObjects = state.false_objects || [];
 
@@ -215,72 +279,45 @@
     }
 
     activeState = state;
+    activePlayers = players;
     rafId = requestAnimationFrame(animateSnitch);
   }
 
-  function updateSnitchTimer(state) {
-    const bar = document.getElementById("snitch-progress-bar");
-    const text = document.getElementById("snitch-progress-text");
+  window.renderSnitchTv = function renderSnitchTv(state, players, options = {}) {
+    const key = getSnitchKey(state);
+    revealCallback = options.reveal || revealCallback;
 
-    if (!bar || !text) return;
+    activeState = state;
+    activePlayers = players || [];
 
-    const info = getSnitchTimeInfo(state);
-
-    bar.style.transform = `scaleX(${info.pct})`;
-    text.textContent = `Tiempo restante: ${info.left.toFixed(1)}s · Intentos por jugador: ${state.attempts_total || 5}`;
-
-    const rounded = Math.ceil(info.left);
-
-    if (rounded <= 3 && rounded > 0 && rounded !== snitchLastTick) {
-      snitchLastTick = rounded;
+    if (snitchLastKey !== key) {
+      snitchLastKey = key;
+      snitchLastTick = null;
+      snitchAutoRevealLock = false;
 
       if (typeof MagicSound !== "undefined") {
-        MagicSound.play("timer-danger");
+        MagicSound.play("start");
       }
+
+      renderSnitchBoard(state, activePlayers);
+      return;
     }
 
-    if (info.left <= 0 && !snitchAutoRevealLock) {
-      snitchAutoRevealLock = true;
+    updateSnitchTimer(state);
+    updateSnitchPlayers(state, activePlayers);
+  };
 
-      setTimeout(() => {
-        if (typeof revelarResultados === "function") {
-          revelarResultados();
-        }
-      }, 700);
+  window.destroySnitchTv = function destroySnitchTv() {
+    activeState = null;
+    activePlayers = [];
+
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
     }
-  }
+  };
 
-  function getAttemptCount(state, playerName) {
-    const attempts = state.attempts_by_player || {};
-    const value = attempts[playerName];
-
-    if (Array.isArray(value)) {
-      return value.length;
-    }
-
-    return Number(value || 0);
-  }
-
-  function updateSnitchPlayers(state, players) {
-    const box = document.getElementById("snitch-players");
-    if (!box) return;
-
-    const total = Number(state.attempts_total || 5);
-
-    box.innerHTML = "";
-
-    players.forEach((player) => {
-      const count = getAttemptCount(state, player.name);
-      const item = document.createElement("div");
-
-      item.className = `snitch-player ${count >= total ? "ready" : ""}`;
-      item.textContent = `${localHouseIcons[player.house] || "✨"} ${player.name} — ${count}/${total} intentos`;
-
-      box.appendChild(item);
-    });
-  }
-
-  function renderSnitchResults(state, container) {
+  window.renderSnitchTvResults = function renderSnitchTvResults(state, container) {
     const result = state.snitch_result || {};
     const events = state.point_events || [];
 
@@ -313,7 +350,7 @@
 
     events.forEach((event) => {
       const row = document.createElement("div");
-      row.className = `result-row ${event.points > 0 ? "good" : "bad"}`;
+      row.className = `result-row ${event.points > 0 ? "good" : event.points < 0 ? "bad" : "neutral"}`;
 
       const left = document.createElement("span");
       left.textContent = `${event.player_name} — ${event.label}`;
@@ -325,89 +362,5 @@
       row.appendChild(right);
       container.appendChild(row);
     });
-  }
-
-  const originalRenderPlaying = window.renderPlaying;
-  const originalRenderResults = window.renderResults;
-
-  window.renderPlaying = function patchedRenderPlaying(data) {
-    const state = data.game_state || {};
-
-    if (state.phase === "atrapa_snitch") {
-      if (typeof showScreen === "function") {
-        showScreen("view-game");
-      }
-
-      const key = getSnitchKey(state);
-
-      activeState = state;
-
-      if (snitchLastKey !== key) {
-        snitchLastKey = key;
-        snitchLastTick = null;
-        snitchAutoRevealLock = false;
-
-        if (typeof MagicSound !== "undefined") {
-          MagicSound.play("start");
-        }
-
-        renderSnitch(state, data.players || []);
-      }
-
-      updateSnitchTimer(state);
-      updateSnitchPlayers(state, data.players || []);
-
-      return;
-    }
-
-    if (typeof originalRenderPlaying === "function") {
-      originalRenderPlaying(data);
-    }
-  };
-
-  window.renderResults = function patchedRenderResults(data) {
-    const state = data.game_state || {};
-    const phase = state.phase || "";
-
-    if (phase === "results_atrapa_snitch") {
-      activeState = null;
-
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-        rafId = null;
-      }
-
-      if (typeof showScreen === "function") {
-        showScreen("view-results");
-      }
-
-      const title = document.getElementById("titulo-resultados");
-      const correct = document.getElementById("tv-correcta");
-      const explanation = document.getElementById("tv-explicacion");
-      const extra = document.getElementById("tv-extra-results");
-
-      if (title) title.innerText = "Resultado de la Snitch:";
-      if (correct) correct.innerText = state.correct || "La Snitch fue capturada";
-      if (explanation) explanation.textContent = state.snitch_result?.summary || "";
-
-      if (extra) {
-        extra.innerHTML = "";
-        renderSnitchResults(state, extra);
-      }
-
-      if (typeof renderHouseScores === "function") {
-        renderHouseScores(data.players || []);
-      }
-
-      if (typeof MagicSound !== "undefined") {
-        MagicSound.play("reveal");
-      }
-
-      return;
-    }
-
-    if (typeof originalRenderResults === "function") {
-      originalRenderResults(data);
-    }
   };
 })();

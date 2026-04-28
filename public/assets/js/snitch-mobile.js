@@ -4,8 +4,6 @@
   let snitchCatchCooldown = false;
   let snitchAttemptsUsed = 0;
   let snitchRoundStartedMs = Date.now();
-  let snitchWatcher = null;
-  let activeSnitchRound = false;
 
   function readRoom() {
     try {
@@ -115,7 +113,31 @@
     }
   }
 
-  function updateSnitchMobileTimer(state) {
+  function renderCatchButton(panel, state) {
+    const total = Number(state.attempts_total || 5);
+
+    if (snitchAttemptsUsed >= total) {
+      panel.innerHTML = `
+        <div class="snitch-attempt-box">
+          Usaste tus ${total} intentos. Mira la TV para ver quién atrapó oro y quién atrapó vergüenza.
+        </div>
+      `;
+
+      return;
+    }
+
+    panel.innerHTML = `
+      <button id="snitch-catch-button" class="snitch-catch-btn" onclick="sendSnitchCatch()">
+        🏆 ¡ATRAPAR!
+      </button>
+
+      <div class="snitch-attempt-box" id="snitch-attempt-box">
+        Intentos usados: ${snitchAttemptsUsed}/${total}
+      </div>
+    `;
+  }
+
+  window.updateMobileSnitchTimer = function updateMobileSnitchTimer(state) {
     const timer = document.getElementById("mobile-timer");
     const bar = document.getElementById("mobile-timer-bar");
 
@@ -143,33 +165,9 @@
     if (status) {
       status.innerText = `Tiempo restante: ${info.left.toFixed(1)}s · Intentos: ${snitchAttemptsUsed}/${state.attempts_total || 5}`;
     }
-  }
+  };
 
-  function renderCatchButton(panel, state) {
-    const total = Number(state.attempts_total || 5);
-
-    if (snitchAttemptsUsed >= total) {
-      panel.innerHTML = `
-        <div class="snitch-attempt-box">
-          Usaste tus ${total} intentos. Mira la TV para ver quién atrapó oro y quién atrapó vergüenza.
-        </div>
-      `;
-
-      return;
-    }
-
-    panel.innerHTML = `
-      <button id="snitch-catch-button" class="snitch-catch-btn" onclick="sendSnitchCatch()">
-        🏆 ¡ATRAPAR!
-      </button>
-
-      <div class="snitch-attempt-box" id="snitch-attempt-box">
-        Intentos usados: ${snitchAttemptsUsed}/${total}
-      </div>
-    `;
-  }
-
-  function renderSnitchMobile(state) {
+  window.renderSnitchMobile = function renderSnitchMobile(state) {
     if (typeof showScreen === "function") {
       showScreen("view-game");
     }
@@ -190,9 +188,11 @@
       snitchAttemptsUsed = stateAttempts;
       snitchRoundStartedMs = state.started_at ? Number(state.started_at) * 1000 : Date.now();
 
-      if (typeof currentRoundStartedMs !== "undefined") {
-        currentRoundStartedMs = snitchRoundStartedMs;
-      }
+      try {
+        if (typeof currentRoundStartedMs !== "undefined") {
+          currentRoundStartedMs = snitchRoundStartedMs;
+        }
+      } catch (error) {}
 
       if (typeof MagicSound !== "undefined") {
         MagicSound.play("start");
@@ -230,8 +230,8 @@
       renderCatchButton(panel, state);
     }
 
-    updateSnitchMobileTimer(state);
-  }
+    window.updateMobileSnitchTimer(state);
+  };
 
   async function postSnitchAttempt(room, name, elapsed) {
     const payloadDedicated = {
@@ -349,81 +349,5 @@
         button.classList.remove("cooldown");
       }
     }, 180);
-  };
-
-  async function snitchIndependentWatcher() {
-    const room = readRoom();
-
-    if (!room) return;
-
-    try {
-      const res = await fetch(`/api/room/${room}/status`);
-      if (!res.ok) return;
-
-      const data = await res.json();
-      const state = data.game_state || {};
-      const phase = state.phase || "";
-
-      if (phase === "atrapa_snitch") {
-        activeSnitchRound = true;
-        renderSnitchMobile(state);
-        return;
-      }
-
-      if (activeSnitchRound && phase !== "atrapa_snitch") {
-        activeSnitchRound = false;
-
-        const panel = document.getElementById("snitch-mobile-panel");
-        if (panel) {
-          panel.classList.remove("visible");
-          panel.innerHTML = "";
-        }
-      }
-    } catch (error) {}
-  }
-
-  if (!snitchWatcher) {
-    snitchWatcher = setInterval(snitchIndependentWatcher, 420);
-  }
-
-  const originalRenderMobileGame = window.renderMobileGame;
-  const originalRenderResultsWait = window.renderResultsWait;
-  const originalRenderLobbyWait = window.renderLobbyWait;
-
-  window.renderMobileGame = function patchedRenderMobileGame(state) {
-    if (state.phase === "atrapa_snitch") {
-      renderSnitchMobile(state);
-      return;
-    }
-
-    if (typeof originalRenderMobileGame === "function") {
-      originalRenderMobileGame(state);
-    }
-  };
-
-  window.renderResultsWait = function patchedRenderResultsWait() {
-    const panel = document.getElementById("snitch-mobile-panel");
-
-    if (panel) {
-      panel.classList.remove("visible");
-      panel.innerHTML = "";
-    }
-
-    if (typeof originalRenderResultsWait === "function") {
-      originalRenderResultsWait();
-    }
-  };
-
-  window.renderLobbyWait = function patchedRenderLobbyWait(data) {
-    const panel = document.getElementById("snitch-mobile-panel");
-
-    if (panel) {
-      panel.classList.remove("visible");
-      panel.innerHTML = "";
-    }
-
-    if (typeof originalRenderLobbyWait === "function") {
-      originalRenderLobbyWait(data);
-    }
   };
 })();

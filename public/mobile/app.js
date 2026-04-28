@@ -77,21 +77,14 @@ function hideGamePanels() {
   const duelPanel = document.getElementById("duel-mobile-panel");
   const sombreroPanel = document.getElementById("sombrero-mobile-panel");
   const pocionesPanel = document.getElementById("pociones-mobile-panel");
+  const snitchPanel = document.getElementById("snitch-mobile-panel");
 
-  if (duelPanel) {
-    duelPanel.classList.remove("visible");
-    duelPanel.innerHTML = "";
-  }
-
-  if (sombreroPanel) {
-    sombreroPanel.classList.remove("visible");
-    sombreroPanel.innerHTML = "";
-  }
-
-  if (pocionesPanel) {
-    pocionesPanel.classList.remove("visible");
-    pocionesPanel.innerHTML = "";
-  }
+  [duelPanel, sombreroPanel, pocionesPanel, snitchPanel].forEach((panel) => {
+    if (panel) {
+      panel.classList.remove("visible");
+      panel.innerHTML = "";
+    }
+  });
 }
 
 function showHostPanels(show) {
@@ -263,6 +256,16 @@ function iniciarRadarMovil() {
       }
 
       if (data.status === "playing" && phase !== "lobby" && !phase.includes("results_")) {
+        if (phase === "atrapa_snitch") {
+          if (typeof window.renderSnitchMobile === "function") {
+            window.renderSnitchMobile(state);
+          } else {
+            renderMobileGame(state);
+          }
+
+          return;
+        }
+
         if (phase === "clase_pociones") {
           renderPocionesMobile(state);
           return;
@@ -311,6 +314,10 @@ function iniciarRadarMovil() {
 
       if (state.phase === "clase_pociones") {
         updateMobilePocionesTimer(state);
+      }
+
+      if (state.phase === "atrapa_snitch" && typeof window.updateMobileSnitchTimer === "function") {
+        window.updateMobileSnitchTimer(state);
       }
     } catch (error) {
       console.error("Buscando conexión...");
@@ -369,6 +376,8 @@ function renderResultsWait() {
   clashTapCount = 0;
   selectedPotionIngredients = [];
 
+  hideGamePanels();
+
   showScreen("view-wait");
 
   document.getElementById("wait-pill").innerText = myIsHost ? "👑 Host" : "🏆 Resultados";
@@ -415,6 +424,7 @@ function renderPocionesMobile(state) {
   const duelPanel = document.getElementById("duel-mobile-panel");
   const sombreroPanel = document.getElementById("sombrero-mobile-panel");
   const panel = document.getElementById("pociones-mobile-panel");
+  const snitchPanel = document.getElementById("snitch-mobile-panel");
 
   if (duelPanel) {
     duelPanel.classList.remove("visible");
@@ -424,6 +434,11 @@ function renderPocionesMobile(state) {
   if (sombreroPanel) {
     sombreroPanel.classList.remove("visible");
     sombreroPanel.innerHTML = "";
+  }
+
+  if (snitchPanel) {
+    snitchPanel.classList.remove("visible");
+    snitchPanel.innerHTML = "";
   }
 
   const answers = state.answers || {};
@@ -630,13 +645,22 @@ function renderSombreroMobile(state) {
   document.getElementById("m-botones").innerHTML = "";
 
   const duelPanel = document.getElementById("duel-mobile-panel");
-  duelPanel.classList.remove("visible");
-  duelPanel.innerHTML = "";
-
   const pocionesPanel = document.getElementById("pociones-mobile-panel");
+  const snitchPanel = document.getElementById("snitch-mobile-panel");
+
+  if (duelPanel) {
+    duelPanel.classList.remove("visible");
+    duelPanel.innerHTML = "";
+  }
+
   if (pocionesPanel) {
     pocionesPanel.classList.remove("visible");
     pocionesPanel.innerHTML = "";
+  }
+
+  if (snitchPanel) {
+    snitchPanel.classList.remove("visible");
+    snitchPanel.innerHTML = "";
   }
 
   const panel = document.getElementById("sombrero-mobile-panel");
@@ -700,15 +724,22 @@ function renderDuelMobile(state) {
   document.getElementById("m-botones").innerHTML = "";
 
   const sombreroPanel = document.getElementById("sombrero-mobile-panel");
+  const pocionesPanel = document.getElementById("pociones-mobile-panel");
+  const snitchPanel = document.getElementById("snitch-mobile-panel");
+
   if (sombreroPanel) {
     sombreroPanel.classList.remove("visible");
     sombreroPanel.innerHTML = "";
   }
 
-  const pocionesPanel = document.getElementById("pociones-mobile-panel");
   if (pocionesPanel) {
     pocionesPanel.classList.remove("visible");
     pocionesPanel.innerHTML = "";
+  }
+
+  if (snitchPanel) {
+    snitchPanel.classList.remove("visible");
+    snitchPanel.innerHTML = "";
   }
 
   document.getElementById("duel-mobile-panel").innerHTML = "";
@@ -775,15 +806,22 @@ function renderDuelClashMobile(state) {
   document.getElementById("m-botones").innerHTML = "";
 
   const sombreroPanel = document.getElementById("sombrero-mobile-panel");
+  const pocionesPanel = document.getElementById("pociones-mobile-panel");
+  const snitchPanel = document.getElementById("snitch-mobile-panel");
+
   if (sombreroPanel) {
     sombreroPanel.classList.remove("visible");
     sombreroPanel.innerHTML = "";
   }
 
-  const pocionesPanel = document.getElementById("pociones-mobile-panel");
   if (pocionesPanel) {
     pocionesPanel.classList.remove("visible");
     pocionesPanel.innerHTML = "";
+  }
+
+  if (snitchPanel) {
+    snitchPanel.classList.remove("visible");
+    snitchPanel.innerHTML = "";
   }
 
   document.getElementById("duel-mobile-panel").innerHTML = "";
@@ -913,6 +951,11 @@ async function sendDuelClashTap() {
 }
 
 function renderMobileGame(state) {
+  if (state.phase === "atrapa_snitch" && typeof window.renderSnitchMobile === "function") {
+    window.renderSnitchMobile(state);
+    return;
+  }
+
   const newKey = getRoundKey(state);
 
   showScreen("view-game");

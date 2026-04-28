@@ -198,6 +198,10 @@ function iniciarRadar() {
       const data = await res.json();
 
       if (data.status === "lobby") {
+        if (typeof window.destroySnitchTv === "function") {
+          window.destroySnitchTv();
+        }
+
         renderLobby(data);
         return;
       }
@@ -255,6 +259,22 @@ function renderPlaying(data) {
   const key = getRoundKey(state);
 
   showScreen("view-game");
+
+  if (state.phase === "atrapa_snitch") {
+    if (typeof window.renderSnitchTv === "function") {
+      window.renderSnitchTv(state, data.players || [], {
+        reveal: revelarResultados,
+      });
+    } else {
+      renderGenericGame(state);
+    }
+
+    return;
+  }
+
+  if (typeof window.destroySnitchTv === "function") {
+    window.destroySnitchTv();
+  }
 
   if (lastPlayKey !== key) {
     lastPlayKey = key;
@@ -842,29 +862,48 @@ function renderResults(data) {
   extra.innerHTML = "";
   explanation.textContent = "";
 
-  if (phase === "results_clase_pociones") {
+  if (phase === "results_atrapa_snitch") {
+    if (typeof window.destroySnitchTv === "function") {
+      window.destroySnitchTv();
+    }
+
+    title.innerText = "Resultado de la Snitch:";
+    correct.innerText = state.correct || "La Snitch fue capturada";
+    explanation.textContent = state.snitch_result?.summary || "";
+
+    if (typeof window.renderSnitchTvResults === "function") {
+      window.renderSnitchTvResults(state, extra);
+    } else {
+      renderGenericResults(state, extra);
+    }
+  } else if (phase === "results_clase_pociones") {
     title.innerText = "Resultado de Pociones:";
+    correct.innerText = state.correct || "";
     explanation.textContent = state.pociones_result?.summary || "";
     renderPocionesResults(state, extra);
   } else if (phase === "results_sombrero") {
     title.innerText = "El Sombrero Burlón eligió:";
+    correct.innerText = state.correct || "";
     explanation.textContent = state.sombrero_result?.summary || "";
     renderSombreroResults(state, extra);
   } else if (phase === "results_duelo") {
     title.innerText = "Resultado del duelo:";
+    correct.innerText = state.correct || "";
     explanation.textContent = state.duel_result?.summary || "";
     renderDuelResults(state, extra);
   } else if (phase === "results_artes_ridiculas") {
     title.innerText = "La defensa correcta era:";
+    correct.innerText = state.correct || "";
     explanation.textContent = state.explanation || "";
     renderArtesResults(state, extra);
   } else if (phase === "results_patronus_personalizado") {
     title.innerText = "¡El más votado es!";
+    correct.innerText = state.correct || "Nadie votó";
   } else {
     title.innerText = "Resultado de la ronda:";
+    correct.innerText = state.correct || "Nadie votó";
+    renderGenericResults(state, extra);
   }
-
-  correct.innerText = state.correct || "Nadie votó";
 
   renderHouseScores(data.players);
 
@@ -872,6 +911,33 @@ function renderResults(data) {
     lastPlayKey = resultSoundKey;
     MagicSound.play("reveal");
   }
+}
+
+function renderGenericResults(state, container) {
+  const events = state.point_events || [];
+
+  if (!events.length) {
+    const row = document.createElement("div");
+    row.className = "result-row neutral";
+    row.textContent = "Sin detalle de resultados.";
+    container.appendChild(row);
+    return;
+  }
+
+  events.forEach((event) => {
+    const row = document.createElement("div");
+    row.className = `result-row ${event.points > 0 ? "good" : event.points < 0 ? "bad" : "neutral"}`;
+
+    const left = document.createElement("span");
+    left.textContent = `${event.player_name} — ${event.label}`;
+
+    const right = document.createElement("span");
+    right.textContent = `${event.points > 0 ? "+" : ""}${event.points} pts`;
+
+    row.appendChild(left);
+    row.appendChild(right);
+    container.appendChild(row);
+  });
 }
 
 function renderPocionesResults(state, container) {
