@@ -200,6 +200,29 @@ body::after {
   }
 }
 
+.music-toggle {
+  position: fixed;
+  top: 18px;
+  right: 18px;
+  z-index: 999;
+  width: auto;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 216, 121, .26);
+  border-radius: 999px;
+  color: #ffd879;
+  background: rgba(10, 8, 16, .72);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 14px 40px rgba(0,0,0,.28);
+  font-size: .9rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.music-toggle.playing {
+  color: #111;
+  background: linear-gradient(135deg, #ffd879, #ffb44d);
+}
+
 .screen {
   position: relative;
   z-index: 3;
@@ -735,5 +758,12 @@ p {
     left: 12px;
     right: 12px;
     bottom: 12px;
+  }
+
+  .music-toggle {
+    top: 12px;
+    right: 12px;
+    font-size: .78rem;
+    padding: 9px 12px;
   }
 }
