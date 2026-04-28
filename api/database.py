@@ -31,3 +31,8 @@ class AnswerInfo(BaseModel):
 class HostControlInfo(BaseModel):
     player_name: str
     host_token: str
+
+
+class DuelClashTapInfo(BaseModel):
+    room_code: str
+    player_name: str
