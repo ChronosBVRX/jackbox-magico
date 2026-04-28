@@ -767,3 +767,26 @@ p {
     padding: 9px 12px;
   }
 }
+.host-status,
+.host-help {
+  position: relative;
+  z-index: 2;
+  width: min(760px, 90vw);
+  margin: 18px auto 0;
+  padding: 14px 18px;
+  border: 1px solid rgba(255,216,121,.22);
+  border-radius: 18px;
+  color: rgba(255,248,221,.82);
+  background: rgba(255,255,255,.07);
+  font-size: 1.05rem;
+  font-weight: 850;
+}
+
+.host-status.claimed {
+  color: #111;
+  background: linear-gradient(135deg, #ffd879, #ffb44d);
+}
+
+#view-inicio .hero-card p {
+  font-size: 1.45rem;
+}
