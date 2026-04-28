@@ -126,9 +126,9 @@ def parse_int_or_none(value):
 async def read_json_body_flexible(request: Request):
     raw_body = await request.body()
 
-    print("========== RAW REQUEST BODY ==========", flush=True)
+    print("========== RAW REQUEST BODY =========", flush=True)
     print(raw_body.decode("utf-8", errors="replace"), flush=True)
-    print("========== END RAW BODY ==========", flush=True)
+    print("========== END RAW BODY =========", flush=True)
 
     if not raw_body:
         return {}
@@ -231,6 +231,21 @@ def get_players(room_id: int):
     return players.data or []
 
 
+def get_player_house(room_id: int, player_name: str):
+    player = (
+        supabase.table("players")
+        .select("house")
+        .eq("room_id", room_id)
+        .eq("name", player_name)
+        .execute()
+    )
+
+    if player.data:
+        return player.data[0].get("house")
+
+    return None
+
+
 def get_host_from_state(state: dict):
     state = state or {}
     host = state.get("host")
@@ -263,6 +278,7 @@ def sanitize_game_state(state: dict):
         public_state.pop("pociones_result", None)
         public_state.pop("snitch_result", None)
         public_state.pop("trivia_result", None)
+        public_state.pop("retratos_result", None)
         public_state.pop("votes_by_voter", None)
         public_state.pop("votes_by_target", None)
 
@@ -346,7 +362,9 @@ def build_game_state(room_code: str, game_id: str, previous_state: dict):
         )
 
     if game_id == "retratos_chismosos":
-        return retratos_chismosos.build_state()
+        return retratos_chismosos.build_state(
+            previous_state=previous_state,
+        )
 
     if game_id == "mapa_travieso":
         return mapa_travieso.build_state()
@@ -587,7 +605,7 @@ async def mobile_host_start_sombrero_custom(room_code: str, info: SombreroStartI
 
 @app.post("/api/player/snitch_catch")
 async def snitch_catch(request: Request):
-    print("========== SNITCH CATCH REQUEST ==========", flush=True)
+    print("========== SNITCH CATCH REQUEST =========", flush=True)
 
     if not supabase:
         print("ERROR: Supabase no configurado", flush=True)
@@ -677,7 +695,7 @@ async def snitch_catch(request: Request):
         response = format_snitch_response(result)
 
         print("RESPONSE:", response, flush=True)
-        print("========== END SNITCH CATCH ==========", flush=True)
+        print("========== END SNITCH CATCH =========", flush=True)
 
         return response
 
@@ -809,6 +827,32 @@ async def submit_answer(info: AnswerInfo):
         supabase.table("rooms").update({
             "game_state": state,
         }).eq("room_code", info.room_code.upper()).execute()
+
+    elif phase == "retratos_chismosos":
+        player_house = get_player_house(
+            room_id=room_id,
+            player_name=info.player_name,
+        )
+
+        result = retratos_chismosos.score_answer(
+            state=state,
+            player_name=info.player_name,
+            answer=info.answer,
+            player_house=player_house,
+            client_elapsed_ms=info.client_elapsed_ms,
+        )
+
+        supabase.table("rooms").update({
+            "game_state": result["state"],
+        }).eq("room_code", info.room_code.upper()).execute()
+
+        return {
+            "message": result.get("message", "Respuesta guardada"),
+            "accepted": result.get("accepted", False),
+            "points": result.get("points", 0),
+            "correct": result.get("correct", False),
+            "clue_number": result.get("clue_number"),
+        }
 
     elif phase == "artes_ridiculas":
         result = artes_ridiculas.score_answer(
@@ -977,6 +1021,24 @@ async def reveal_results(room_code: str):
 
         return {
             "message": "Atrapa la Snitch revelado",
+            "is_final": is_final,
+        }
+
+    if state.get("phase") == "retratos_chismosos":
+        state, point_events, is_final = retratos_chismosos.resolve_for_reveal(
+            state=state,
+            players=players,
+        )
+
+        if is_final:
+            apply_point_events(room_id, point_events)
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "Retratos Chismosos revelado",
             "is_final": is_final,
         }
 
