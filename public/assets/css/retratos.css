@@ -1,0 +1,527 @@
+/* Retratos Chismosos | Galería mágica para TV y celular */
+
+.retratos-gallery-board {
+  position: relative;
+  overflow: hidden;
+  width: min(1240px, 96vw);
+  min-height: 90vh;
+  padding: 28px;
+  border-radius: 38px;
+  color: #fff7dc;
+  border: 1px solid rgba(255, 216, 121, .32);
+  background:
+    radial-gradient(circle at 18% 8%, rgba(255, 216, 121, .18), transparent 28%),
+    radial-gradient(circle at 82% 18%, rgba(147, 197, 253, .14), transparent 26%),
+    linear-gradient(180deg, rgba(22, 12, 8, .98), rgba(5, 3, 8, .99));
+  box-shadow:
+    0 36px 120px rgba(0, 0, 0, .66),
+    inset 0 0 0 1px rgba(255, 255, 255, .045);
+}
+
+.retratos-gallery-board::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(90deg, rgba(255, 216, 121, .035) 1px, transparent 1px),
+    linear-gradient(rgba(255, 216, 121, .026) 1px, transparent 1px);
+  background-size: 82px 82px;
+  opacity: .42;
+  pointer-events: none;
+}
+
+.retratos-gallery-board::after {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle, rgba(255, 216, 121, .22) 0 2px, transparent 3px),
+    radial-gradient(circle, rgba(255, 255, 255, .10) 0 1px, transparent 2px);
+  background-size: 118px 118px, 74px 74px;
+  animation: retratosDust 26s linear infinite;
+  opacity: .34;
+  pointer-events: none;
+}
+
+@keyframes retratosDust {
+  from { transform: translate3d(0, 0, 0); }
+  to { transform: translate3d(-90px, 64px, 0); }
+}
+
+.retratos-content {
+  position: relative;
+  z-index: 2;
+}
+
+.retratos-header {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 18px;
+  align-items: start;
+  margin-bottom: 16px;
+}
+
+.retratos-kicker-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.retratos-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 13px;
+  border-radius: 999px;
+  color: #ffe7a3;
+  background: rgba(255, 216, 121, .12);
+  border: 1px solid rgba(255, 216, 121, .28);
+  font-weight: 1000;
+  font-size: .82rem;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.retratos-title {
+  margin: 10px 0 5px;
+  color: #fff;
+  font-size: clamp(2.5rem, 5vw, 5.4rem);
+  line-height: .88;
+  letter-spacing: -.075em;
+}
+
+.retratos-subtitle {
+  margin: 0;
+  max-width: 770px;
+  color: rgba(255, 247, 220, .72);
+  font-size: 1.03rem;
+  font-weight: 750;
+}
+
+.retratos-timer-card {
+  min-width: 170px;
+  padding: 16px 18px;
+  border-radius: 26px;
+  text-align: center;
+  background:
+    radial-gradient(circle at top, rgba(255, 216, 121, .16), transparent 58%),
+    rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .11);
+  backdrop-filter: blur(16px);
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .28);
+}
+
+.retratos-timer-card span {
+  display: block;
+  margin-bottom: 6px;
+  color: rgba(255, 247, 220, .62);
+  text-transform: uppercase;
+  letter-spacing: .14em;
+  font-weight: 1000;
+  font-size: .72rem;
+}
+
+.retratos-timer-card strong {
+  display: block;
+  color: #ffe089;
+  font-size: 3.2rem;
+  line-height: 1;
+  font-weight: 1000;
+}
+
+.retratos-main-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 320px;
+  gap: 18px;
+}
+
+.retratos-stage {
+  display: grid;
+  grid-template-columns: 320px minmax(0, 1fr);
+  gap: 18px;
+  min-height: 520px;
+  padding: 18px;
+  border-radius: 32px;
+  background:
+    radial-gradient(circle at 38% 0%, rgba(255, 216, 121, .12), transparent 38%),
+    rgba(255, 255, 255, .055);
+  border: 1px solid rgba(255, 255, 255, .10);
+  box-shadow: inset 0 0 70px rgba(255, 216, 121, .035);
+}
+
+.retratos-frame {
+  position: relative;
+  min-height: 430px;
+  padding: 20px;
+  border-radius: 30px;
+  background:
+    linear-gradient(135deg, rgba(255, 240, 170, .96), rgba(147, 93, 24, .98) 40%, rgba(255, 220, 120, .92));
+  box-shadow:
+    0 26px 70px rgba(0, 0, 0, .38),
+    inset 0 0 0 4px rgba(70, 36, 10, .45),
+    inset 0 0 0 12px rgba(255, 248, 210, .18);
+}
+
+.retratos-frame::before,
+.retratos-frame::after {
+  content: "✦";
+  position: absolute;
+  color: rgba(60, 31, 9, .54);
+  font-size: 1.2rem;
+}
+
+.retratos-frame::before { left: 18px; top: 13px; }
+.retratos-frame::after { right: 18px; bottom: 13px; }
+
+.retratos-portrait-face {
+  position: relative;
+  overflow: hidden;
+  height: 100%;
+  min-height: 390px;
+  display: grid;
+  place-items: center;
+  border-radius: 22px;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(255, 238, 188, .22), transparent 30%),
+    linear-gradient(180deg, #2a1a15, #090607);
+  border: 1px solid rgba(60, 31, 9, .65);
+}
+
+.retratos-portrait-face::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 38% 38%, rgba(255, 255, 255, .08), transparent 4%),
+    radial-gradient(circle at 62% 38%, rgba(255, 255, 255, .08), transparent 4%),
+    linear-gradient(90deg, transparent 45%, rgba(255, 216, 121, .055), transparent 55%);
+  animation: retratosPortraitGlow 3.8s ease-in-out infinite alternate;
+}
+
+@keyframes retratosPortraitGlow {
+  from { opacity: .55; transform: scale(1); }
+  to { opacity: 1; transform: scale(1.025); }
+}
+
+.retratos-face-icon {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  place-items: center;
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  color: #ffe089;
+  background: rgba(0, 0, 0, .30);
+  border: 1px solid rgba(255, 216, 121, .26);
+  font-size: 5rem;
+  box-shadow: 0 0 54px rgba(255, 216, 121, .18);
+}
+
+.retratos-mouth {
+  position: absolute;
+  z-index: 3;
+  left: 50%;
+  bottom: 112px;
+  width: 60px;
+  height: 15px;
+  transform: translateX(-50%);
+  border-radius: 0 0 999px 999px;
+  background: rgba(0, 0, 0, .86);
+  box-shadow: 0 0 14px rgba(255, 216, 121, .25);
+  animation: retratosMouthTalk .34s ease-in-out infinite alternate;
+}
+
+@keyframes retratosMouthTalk {
+  from { height: 8px; width: 52px; opacity: .78; }
+  to { height: 27px; width: 66px; opacity: 1; }
+}
+
+.retratos-speech {
+  display: grid;
+  align-content: stretch;
+  gap: 14px;
+}
+
+.retratos-clue-card {
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  border-radius: 26px;
+  background: rgba(3, 7, 18, .46);
+  border: 1px solid rgba(255, 216, 121, .18);
+  box-shadow: 0 16px 45px rgba(0, 0, 0, .24);
+}
+
+.retratos-clue-label {
+  margin-bottom: 8px;
+  color: #ffe7a3;
+  text-transform: uppercase;
+  letter-spacing: .12em;
+  font-size: .78rem;
+  font-weight: 1000;
+}
+
+.retratos-clue-text {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(1.35rem, 2.35vw, 2.45rem);
+  line-height: 1.04;
+  letter-spacing: -.045em;
+  font-weight: 1000;
+  text-wrap: balance;
+}
+
+.retratos-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.retratos-option {
+  min-height: 92px;
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 12px;
+  align-items: center;
+  padding: 13px 15px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, .07);
+  border: 1px solid rgba(255, 255, 255, .11);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .15);
+}
+
+.retratos-option-letter {
+  width: 50px;
+  height: 50px;
+  display: grid;
+  place-items: center;
+  border-radius: 15px;
+  color: #2a1700;
+  background: linear-gradient(135deg, #fff8d6, #facc15);
+  font-weight: 1000;
+  font-size: 1.3rem;
+}
+
+.retratos-option-text {
+  color: rgba(255, 255, 255, .94);
+  font-size: clamp(1rem, 1.45vw, 1.32rem);
+  line-height: 1.12;
+  font-weight: 950;
+}
+
+.retratos-side {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+}
+
+.retratos-side-card {
+  padding: 16px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, .065);
+  border: 1px solid rgba(255, 255, 255, .10);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 16px 42px rgba(0, 0, 0, .20);
+}
+
+.retratos-side-title {
+  margin: 0 0 10px;
+  color: rgba(255, 247, 220, .72);
+  font-size: .78rem;
+  text-transform: uppercase;
+  letter-spacing: .13em;
+  font-weight: 1000;
+}
+
+.retratos-player-row,
+.retratos-house-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 8px;
+  align-items: center;
+  padding: 9px 10px;
+  border-radius: 14px;
+  color: rgba(255, 247, 220, .82);
+  background: rgba(255, 255, 255, .045);
+  border: 1px solid rgba(255, 255, 255, .075);
+  margin-top: 7px;
+}
+
+.retratos-player-row.answered {
+  color: #fff;
+  background: rgba(34, 197, 94, .13);
+  border-color: rgba(74, 222, 128, .28);
+}
+
+.retratos-progress {
+  margin-top: 14px;
+  height: 13px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, .10);
+}
+
+.retratos-progress > div {
+  height: 100%;
+  width: 100%;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #22c55e, #fde68a, #ef4444);
+  transition: transform .12s linear;
+}
+
+.retratos-mobile-panel {
+  display: none;
+  width: 100%;
+  margin-top: 16px;
+}
+
+.retratos-mobile-panel.visible {
+  display: block;
+}
+
+.retratos-mobile-card {
+  position: relative;
+  overflow: hidden;
+  padding: 16px;
+  border-radius: 24px;
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 216, 121, .18), transparent 36%),
+    rgba(255, 255, 255, .075);
+  border: 1px solid rgba(255, 216, 121, .18);
+  box-shadow: 0 18px 42px rgba(0, 0, 0, .28);
+}
+
+.retratos-mobile-title {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: clamp(1.4rem, 7vw, 2rem);
+  line-height: 1.04;
+  letter-spacing: -.05em;
+  font-weight: 1000;
+}
+
+.retratos-mobile-clue {
+  margin: 0 0 13px;
+  padding: 13px 14px;
+  border-radius: 18px;
+  color: rgba(255, 248, 221, .92);
+  background: rgba(3, 7, 18, .34);
+  border: 1px solid rgba(255, 216, 121, .16);
+  font-weight: 850;
+  line-height: 1.2;
+}
+
+.retratos-mobile-options {
+  display: grid;
+  gap: 10px;
+}
+
+.retratos-answer-btn {
+  width: 100%;
+  min-height: 72px;
+  display: grid;
+  grid-template-columns: 52px 1fr;
+  gap: 10px;
+  align-items: center;
+  padding: 10px 12px;
+  border-radius: 21px;
+  color: white;
+  text-align: left;
+  background: rgba(255, 255, 255, .085);
+  border: 1px solid rgba(255, 255, 255, .13);
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .18);
+}
+
+.retratos-answer-btn:active {
+  transform: scale(.976);
+  filter: brightness(1.12);
+}
+
+.retratos-answer-btn:disabled {
+  opacity: .58;
+}
+
+.retratos-answer-letter {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  color: #2a1700;
+  background: linear-gradient(135deg, #fff8d6, #facc15);
+  font-size: 1.2rem;
+  font-weight: 1000;
+}
+
+.retratos-results-wrap {
+  width: min(1160px, 94vw);
+  padding: 30px;
+  border-radius: 34px;
+  color: #fff7dc;
+  border: 1px solid rgba(255, 216, 121, .28);
+  background:
+    radial-gradient(circle at 50% 0%, rgba(255, 216, 121, .16), transparent 32%),
+    linear-gradient(180deg, rgba(22, 12, 8, .98), rgba(5, 3, 8, .99));
+  box-shadow: 0 36px 120px rgba(0, 0, 0, .62);
+}
+
+.retratos-result-title {
+  margin: 0;
+  color: #fff;
+  font-size: clamp(2.4rem, 5vw, 5rem);
+  line-height: .9;
+  letter-spacing: -.075em;
+  text-align: center;
+}
+
+.retratos-correct-answer {
+  margin: 18px auto 10px;
+  width: fit-content;
+  max-width: 92%;
+  padding: 16px 22px;
+  border-radius: 24px;
+  color: #251600;
+  background: linear-gradient(135deg, #fff8d6, #facc15);
+  box-shadow: 0 18px 50px rgba(250, 204, 21, .22);
+  font-size: clamp(1.4rem, 2.5vw, 2.4rem);
+  font-weight: 1000;
+  text-align: center;
+}
+
+.retratos-result-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.retratos-result-card {
+  padding: 15px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, .065);
+  border: 1px solid rgba(255, 255, 255, .10);
+}
+
+.retratos-result-card.correct {
+  background: rgba(34, 197, 94, .13);
+  border-color: rgba(74, 222, 128, .28);
+}
+
+.retratos-result-card.wrong {
+  background: rgba(239, 68, 68, .12);
+  border-color: rgba(248, 113, 113, .24);
+}
+
+@media (max-width: 920px) {
+  .retratos-main-grid,
+  .retratos-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .retratos-options,
+  .retratos-result-grid {
+    grid-template-columns: 1fr;
+  }
+}
