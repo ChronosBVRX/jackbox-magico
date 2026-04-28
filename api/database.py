@@ -36,3 +36,9 @@ class HostControlInfo(BaseModel):
 class DuelClashTapInfo(BaseModel):
     room_code: str
     player_name: str
+
+
+class SombreroStartInfo(BaseModel):
+    player_name: str
+    host_token: str
+    question: Optional[str] = None
