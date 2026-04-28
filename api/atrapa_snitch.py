@@ -1,333 +1,465 @@
 import math
 import random
+import time
+import uuid
 from copy import deepcopy
-from datetime import datetime, timedelta, timezone
 
 
 GAME_ID = "atrapa_snitch"
 
-ARENA_WIDTH = 1280
-ARENA_HEIGHT = 720
-
-VISIBLE_MARGIN_X = 120
-VISIBLE_MARGIN_Y = 85
-
-ZONE_RADIUS = 92
-SNITCH_RADIUS = 24
-
+ROUND_DURATION_SECONDS = 24
 ATTEMPTS_TOTAL = 5
-ROUND_DURATION_SECONDS = 18
-INTRO_DELAY_MS = 1100
 
-GRADE_TABLE = [
-    ("perfect", "¡PERFECTO!", 320, 24),
-    ("great", "¡CASI MÁGICO!", 220, 52),
-    ("good", "¡BUENA!", 140, 82),
-    ("close", "¡POR POCO!", 70, 112),
+ARENA_WIDTH = 100
+ARENA_HEIGHT = 100
+
+SNITCH_RADIUS = 3.2
+ZONE_RADIUS = 8.5
+
+POINTS_LEGENDARY = 180
+POINTS_PERFECT = 130
+POINTS_GREAT = 90
+POINTS_CLOSE = 45
+POINTS_MISS = -20
+
+BONUS_BEST_SEEKER = 80
+
+
+NARRATOR_LINES = [
+    "¡La Snitch se volvió loca!",
+    "No parpadeen. La Snitch huele el miedo.",
+    "Ese bicho dorado tiene más cambios de dirección que grupo de WhatsApp organizando cena.",
+    "La zona de captura se mueve. La Snitch acelera. Su dignidad está en juego.",
+    "Si fallan, no pasa nada. Bueno sí, todos lo van a ver en la TV.",
+    "Buscadores listos: esto ya no es tutorial, esto es humillación premium.",
+]
+
+MISS_LINES = [
+    "¡SE ESCAPÓ!",
+    "¡AIRE PURO!",
+    "¡LA SALUDASTE!",
+    "¡TOCASTE EL VACÍO!",
+    "¡ESO ERA CON EL DEDO, NO CON FE!",
+    "¡LA SNITCH YA IBA EN OTRO CÓDIGO POSTAL!",
+]
+
+CLOSE_LINES = [
+    "¡POR POQUITO!",
+    "¡LE ROZASTE EL ALA!",
+    "¡CASI LE DAS UN SUSTO!",
+    "¡ESO ESTUVO CERCA!",
+]
+
+GREAT_LINES = [
+    "¡BUENÍSIMA!",
+    "¡REFLEJO DE BUSCADOR!",
+    "¡ESA SÍ OLÍA A MAGIA!",
+    "¡LA SNITCH SINTIÓ PRESIÓN!",
+]
+
+PERFECT_LINES = [
+    "¡CAPTURA PERFECTA!",
+    "¡BUSCADOR LEGENDARIO!",
+    "¡ESO FUE CINE!",
+    "¡NI HARRY EN SUS MEJORES DÍAS!",
+]
+
+LEGENDARY_LINES = [
+    "¡BUSCADOR LEGENDARIO!",
+    "¡LA SNITCH FUE HUMILLADA!",
+    "¡ATRAPADA CON ELEGANCIA!",
+    "¡ESO MERECE FOTO EN EL PROFETA!",
+]
+
+FAKE_OBJECTS = [
+    {"emoji": "🦇", "label": "murciélago dramático"},
+    {"emoji": "👻", "label": "fantasma metiche"},
+    {"emoji": "⚫", "label": "bludger chismosa"},
+    {"emoji": "✨", "label": "brillo sospechoso"},
+    {"emoji": "🌫️", "label": "sombra intensa"},
+    {"emoji": "🪙", "label": "moneda tramposa"},
 ]
 
 
-def utc_now():
-    return datetime.now(timezone.utc)
+def _now():
+    return time.time()
 
 
-def isoformat_z(dt: datetime):
-    return dt.astimezone(timezone.utc).isoformat().replace("+00:00", "Z")
+def _safe_float(value, fallback=0.0):
+    try:
+        return float(value)
+    except Exception:
+        return fallback
 
 
-def parse_iso(dt_str: str):
-    if not dt_str:
-        return utc_now()
+def _safe_int(value, fallback=0):
+    try:
+        return int(value)
+    except Exception:
+        return fallback
 
-    normalized = dt_str.replace("Z", "+00:00")
-    return datetime.fromisoformat(normalized)
 
-
-def clamp(value, min_value, max_value):
+def _clamp(value, min_value, max_value):
     return max(min_value, min(max_value, value))
 
 
-def lerp(a, b, t):
+def _lerp(a, b, t):
     return a + (b - a) * t
 
 
-def ease_value(name: str, t: float):
-    t = clamp(t, 0.0, 1.0)
+def _ease(name, t):
+    t = _clamp(t, 0.0, 1.0)
 
-    if name == "easeOutQuad":
+    if name == "linear":
+        return t
+
+    if name == "ease_out_quad":
         return 1 - (1 - t) * (1 - t)
 
-    if name == "easeInOutQuad":
+    if name == "ease_in_quad":
+        return t * t
+
+    if name == "ease_in_out_quad":
         return 2 * t * t if t < 0.5 else 1 - pow(-2 * t + 2, 2) / 2
 
-    if name == "easeOutCubic":
+    if name == "ease_out_cubic":
         return 1 - pow(1 - t, 3)
 
-    if name == "easeInOutCubic":
+    if name == "ease_in_out_cubic":
         return 4 * t * t * t if t < 0.5 else 1 - pow(-2 * t + 2, 3) / 2
 
-    # default
     return -(math.cos(math.pi * t) - 1) / 2
 
 
-def random_point(rng: random.Random, x_min, x_max, y_min, y_max, center_bias=0.5):
+def _distance(a, b):
+    return math.hypot(float(a["x"]) - float(b["x"]), float(a["y"]) - float(b["y"]))
+
+
+def _random_point(rng, kind="snitch"):
+    if kind == "snitch":
+        # Mantenerla más visible: no se va hasta las orillas.
+        x_min, x_max = 10, 90
+        y_min, y_max = 16, 82
+        center_bias = 0.68
+    else:
+        # Zona de captura más centrada para que la acción esté visible.
+        x_min, x_max = 18, 82
+        y_min, y_max = 22, 76
+        center_bias = 0.82
+
     if rng.random() < center_bias:
-        center_x = (x_min + x_max) / 2
-        center_y = (y_min + y_max) / 2
-        x = rng.triangular(x_min, x_max, center_x)
-        y = rng.triangular(y_min, y_max, center_y)
-    else:
-        x = rng.uniform(x_min, x_max)
-        y = rng.uniform(y_min, y_max)
+        return {
+            "x": rng.triangular(x_min, x_max, 50),
+            "y": rng.triangular(y_min, y_max, 50),
+        }
 
-    return x, y
-
-
-def distance(x1, y1, x2, y2):
-    return math.hypot(x2 - x1, y2 - y1)
+    return {
+        "x": rng.uniform(x_min, x_max),
+        "y": rng.uniform(y_min, y_max),
+    }
 
 
-def pick_next_point(rng, current_x, current_y, kind="snitch"):
-    if kind == "snitch":
-        x_min = VISIBLE_MARGIN_X
-        x_max = ARENA_WIDTH - VISIBLE_MARGIN_X
-        y_min = VISIBLE_MARGIN_Y
-        y_max = ARENA_HEIGHT - VISIBLE_MARGIN_Y
-        min_distance = 180
-        center_bias = 0.65
-    else:
-        x_min = VISIBLE_MARGIN_X + 80
-        x_max = ARENA_WIDTH - VISIBLE_MARGIN_X - 80
-        y_min = VISIBLE_MARGIN_Y + 45
-        y_max = ARENA_HEIGHT - VISIBLE_MARGIN_Y - 45
-        min_distance = 140
-        center_bias = 0.75
+def _next_point_far_enough(rng, current, kind="snitch"):
+    min_dist = 22 if kind == "snitch" else 14
 
-    for _ in range(30):
-        x, y = random_point(rng, x_min, x_max, y_min, y_max, center_bias=center_bias)
-        if distance(current_x, current_y, x, y) >= min_distance:
-            return x, y
+    for _ in range(40):
+        point = _random_point(rng, kind)
+        if _distance(current, point) >= min_dist:
+            return point
 
-    return random_point(rng, x_min, x_max, y_min, y_max, center_bias=center_bias)
+    return _random_point(rng, kind)
 
 
-def generate_motion_segments(rng: random.Random, total_duration_ms: int, kind="snitch"):
-    if kind == "snitch":
-        start_x, start_y = random_point(
-            rng,
-            VISIBLE_MARGIN_X,
-            ARENA_WIDTH - VISIBLE_MARGIN_X,
-            VISIBLE_MARGIN_Y,
-            ARENA_HEIGHT - VISIBLE_MARGIN_Y,
-            center_bias=0.70,
-        )
-    else:
-        start_x, start_y = random_point(
-            rng,
-            VISIBLE_MARGIN_X + 80,
-            ARENA_WIDTH - VISIBLE_MARGIN_X - 80,
-            VISIBLE_MARGIN_Y + 45,
-            ARENA_HEIGHT - VISIBLE_MARGIN_Y - 45,
-            center_bias=0.85,
-        )
-
+def _build_motion_segments(rng, duration_seconds, kind="snitch"):
     segments = []
-    current_x = start_x
-    current_y = start_y
-    current_time = 0
+    elapsed = 0.0
+    current = _random_point(rng, kind)
 
-    while current_time < total_duration_ms:
-        remaining = total_duration_ms - current_time
+    while elapsed < duration_seconds:
+        remaining = duration_seconds - elapsed
 
         if kind == "snitch":
-            dash = rng.random() < 0.38
+            dash = rng.random() < 0.42
+            sudden_turn = rng.random() < 0.32
 
             if dash:
-                duration = rng.randint(260, 430)
-                flutter_amp = rng.uniform(10, 24)
-                flutter_freq = rng.uniform(2.4, 4.4)
-                easing = rng.choice(["easeOutQuad", "easeOutCubic", "easeInOutQuad"])
+                segment_duration = rng.uniform(0.28, 0.48)
+                wobble = rng.uniform(2.2, 4.2)
+                speed_label = "dash"
+                easing = rng.choice(["ease_out_cubic", "ease_out_quad", "linear"])
+            elif sudden_turn:
+                segment_duration = rng.uniform(0.44, 0.72)
+                wobble = rng.uniform(3.0, 5.5)
+                speed_label = "quiebre"
+                easing = rng.choice(["ease_in_out_quad", "ease_out_cubic"])
             else:
-                duration = rng.randint(540, 980)
-                flutter_amp = rng.uniform(18, 44)
-                flutter_freq = rng.uniform(1.2, 2.5)
-                easing = rng.choice(["easeInOutSine", "easeInOutQuad", "easeInOutCubic"])
+                segment_duration = rng.uniform(0.78, 1.35)
+                wobble = rng.uniform(2.0, 5.0)
+                speed_label = "fluida"
+                easing = rng.choice(["ease_in_out_sine", "ease_in_out_quad", "ease_in_out_cubic"])
 
-            x1, y1 = pick_next_point(rng, current_x, current_y, kind="snitch")
+            next_point = _next_point_far_enough(rng, current, kind="snitch")
 
         else:
-            duration = rng.randint(900, 1700)
-            flutter_amp = rng.uniform(8, 18)
-            flutter_freq = rng.uniform(0.7, 1.2)
-            easing = rng.choice(["easeInOutSine", "easeInOutQuad", "easeInOutCubic"])
-            x1, y1 = pick_next_point(rng, current_x, current_y, kind="zone")
+            # La zona también se mueve más rápido, pero no tanto como la Snitch.
+            quick_zone = rng.random() < 0.34
 
-        duration = min(duration, remaining)
-        t0 = current_time
-        t1 = current_time + duration
+            if quick_zone:
+                segment_duration = rng.uniform(0.55, 0.9)
+                wobble = rng.uniform(0.8, 1.8)
+                speed_label = "zona_rápida"
+                easing = rng.choice(["ease_in_out_quad", "ease_out_quad"])
+            else:
+                segment_duration = rng.uniform(0.95, 1.55)
+                wobble = rng.uniform(0.5, 1.3)
+                speed_label = "zona_fluida"
+                easing = rng.choice(["ease_in_out_sine", "ease_in_out_cubic"])
 
-        segments.append({
+            next_point = _next_point_far_enough(rng, current, kind="zone")
+
+        segment_duration = min(segment_duration, remaining)
+
+        segment = {
+            "id": str(uuid.uuid4()),
             "kind": kind,
-            "t0": t0,
-            "t1": t1,
-            "x0": current_x,
-            "y0": current_y,
-            "x1": x1,
-            "y1": y1,
+            "t0": round(elapsed, 4),
+            "t1": round(elapsed + segment_duration, 4),
+            "x0": round(current["x"], 4),
+            "y0": round(current["y"], 4),
+            "x1": round(next_point["x"], 4),
+            "y1": round(next_point["y"], 4),
             "easing": easing,
-            "flutter_amp": flutter_amp,
-            "flutter_freq": flutter_freq,
-            "flutter_phase": rng.uniform(0, math.pi * 2),
-        })
+            "wobble": round(wobble, 4),
+            "wave": round(rng.uniform(1.2, 4.8), 4),
+            "phase": round(rng.uniform(0, math.pi * 2), 4),
+            "speed_label": speed_label,
+        }
 
-        current_x = x1
-        current_y = y1
-        current_time = t1
+        segments.append(segment)
+        current = next_point
+        elapsed += segment_duration
 
     return segments
 
 
-def get_segment_for_time(segments, elapsed_ms):
+def _build_fake_objects(rng, duration_seconds):
+    fake_objects = []
+
+    for index in range(12):
+        start = rng.uniform(1.2, duration_seconds - 1.2)
+        point_a = _random_point(rng, "snitch")
+        point_b = _next_point_far_enough(rng, point_a, "snitch")
+        fake = rng.choice(FAKE_OBJECTS)
+
+        fake_objects.append({
+            "id": f"fake-{index + 1}",
+            "emoji": fake["emoji"],
+            "label": fake["label"],
+            "t0": round(start, 3),
+            "t1": round(start + rng.uniform(0.65, 1.15), 3),
+            "x0": round(point_a["x"], 3),
+            "y0": round(point_a["y"], 3),
+            "x1": round(point_b["x"], 3),
+            "y1": round(point_b["y"], 3),
+            "size": round(rng.uniform(2.8, 5.2), 2),
+            "spin": round(rng.uniform(-2.8, 2.8), 3),
+        })
+
+    return fake_objects
+
+
+def _position_at(segments, elapsed_seconds):
     if not segments:
-        return None
+        return {"x": 50, "y": 50}
 
-    if elapsed_ms <= 0:
-        return segments[0]
+    if elapsed_seconds <= segments[0]["t0"]:
+        return {
+            "x": segments[0]["x0"],
+            "y": segments[0]["y0"],
+        }
 
-    last_segment = segments[-1]
-
-    if elapsed_ms >= last_segment["t1"]:
-        return last_segment
+    selected = segments[-1]
 
     for segment in segments:
-        if segment["t0"] <= elapsed_ms <= segment["t1"]:
-            return segment
+        if segment["t0"] <= elapsed_seconds <= segment["t1"]:
+            selected = segment
+            break
 
-    return last_segment
+    duration = max(0.001, selected["t1"] - selected["t0"])
+    raw_t = _clamp((elapsed_seconds - selected["t0"]) / duration, 0, 1)
+    eased = _ease(selected.get("easing", "ease_in_out_sine"), raw_t)
 
+    x = _lerp(selected["x0"], selected["x1"], eased)
+    y = _lerp(selected["y0"], selected["y1"], eased)
 
-def get_position_from_segments(segments, elapsed_ms):
-    if not segments:
-        return {"x": ARENA_WIDTH / 2, "y": ARENA_HEIGHT / 2}
+    dx = selected["x1"] - selected["x0"]
+    dy = selected["y1"] - selected["y0"]
+    length = max(0.001, math.hypot(dx, dy))
 
-    segment = get_segment_for_time(segments, elapsed_ms)
-    duration = max(1, segment["t1"] - segment["t0"])
-    raw_t = (elapsed_ms - segment["t0"]) / duration
-    raw_t = clamp(raw_t, 0.0, 1.0)
+    nx = -dy / length
+    ny = dx / length
 
-    eased = ease_value(segment.get("easing", "easeInOutSine"), raw_t)
-
-    x = lerp(segment["x0"], segment["x1"], eased)
-    y = lerp(segment["y0"], segment["y1"], eased)
-
-    dx = segment["x1"] - segment["x0"]
-    dy = segment["y1"] - segment["y0"]
-    length = max(1.0, math.hypot(dx, dy))
-
-    normal_x = -dy / length
-    normal_y = dx / length
+    wobble = selected.get("wobble", 0)
+    wave = selected.get("wave", 1)
+    phase = selected.get("phase", 0)
 
     flutter_base = math.sin(raw_t * math.pi)
-    flutter_wave = math.sin((raw_t * math.pi * 2 * segment.get("flutter_freq", 1.0)) + segment.get("flutter_phase", 0.0))
-    flutter = flutter_base * flutter_wave * segment.get("flutter_amp", 0.0)
+    flutter = math.sin((raw_t * math.pi * 2 * wave) + phase) * wobble * flutter_base
 
-    if segment.get("kind") == "snitch":
-        flutter += math.sin((raw_t * math.pi * 4) + segment.get("flutter_phase", 0.0) * 0.65) * segment.get("flutter_amp", 0.0) * 0.18 * flutter_base
+    x += nx * flutter
+    y += ny * flutter
 
-    x += normal_x * flutter
-    y += normal_y * flutter
-
-    x = clamp(x, VISIBLE_MARGIN_X * 0.6, ARENA_WIDTH - VISIBLE_MARGIN_X * 0.6)
-    y = clamp(y, VISIBLE_MARGIN_Y * 0.6, ARENA_HEIGHT - VISIBLE_MARGIN_Y * 0.6)
+    if selected.get("kind") == "snitch":
+        x = _clamp(x, 7, 93)
+        y = _clamp(y, 12, 86)
+    else:
+        x = _clamp(x, 14, 86)
+        y = _clamp(y, 18, 82)
 
     return {
-        "x": x,
-        "y": y,
-        "segment": segment,
-        "segment_progress": raw_t,
+        "x": round(x, 4),
+        "y": round(y, 4),
+        "segment_id": selected.get("id"),
+        "speed_label": selected.get("speed_label"),
     }
 
 
-def compute_precision(distance_px):
-    max_distance = 128
-    if distance_px >= max_distance:
-        return 0
+def _elapsed_seconds(state, client_elapsed_ms=None):
+    started_at = _safe_float(state.get("started_at"), _now())
+    server_elapsed = max(0, _now() - started_at)
 
-    return int(round(100 * (1 - (distance_px / max_distance))))
+    if client_elapsed_ms is None:
+        return server_elapsed
+
+    try:
+        client_elapsed = max(0, int(client_elapsed_ms) / 1000)
+    except Exception:
+        return server_elapsed
+
+    # Si el cliente está razonablemente sincronizado, lo usamos por precisión.
+    if abs(client_elapsed - server_elapsed) <= 1.8:
+        return client_elapsed
+
+    return server_elapsed
 
 
-def evaluate_catch(distance_px):
-    for grade, label, points, threshold in GRADE_TABLE:
-        if distance_px <= threshold:
-            return {
-                "grade": grade,
-                "label": label,
-                "points": points,
-                "caught": True,
-            }
+def _judge_distance(distance_units):
+    if distance_units <= 3.2:
+        return {
+            "grade": "legendary",
+            "label": random.choice(LEGENDARY_LINES),
+            "points_preview": POINTS_LEGENDARY,
+            "caught": True,
+            "precision": 100,
+        }
+
+    if distance_units <= 5.2:
+        precision = int(max(92, 100 - distance_units * 1.1))
+        return {
+            "grade": "perfect",
+            "label": random.choice(PERFECT_LINES),
+            "points_preview": POINTS_PERFECT,
+            "caught": True,
+            "precision": precision,
+        }
+
+    if distance_units <= 8.8:
+        precision = int(max(74, 95 - distance_units * 2.2))
+        return {
+            "grade": "great",
+            "label": random.choice(GREAT_LINES),
+            "points_preview": POINTS_GREAT,
+            "caught": True,
+            "precision": precision,
+        }
+
+    if distance_units <= 13.5:
+        precision = int(max(48, 84 - distance_units * 2.4))
+        return {
+            "grade": "close",
+            "label": random.choice(CLOSE_LINES),
+            "points_preview": POINTS_CLOSE,
+            "caught": True,
+            "precision": precision,
+        }
+
+    precision = int(max(0, 60 - distance_units * 2.2))
 
     return {
         "grade": "miss",
-        "label": "¡FALLASTE!",
-        "points": 0,
+        "label": random.choice(MISS_LINES),
+        "points_preview": POINTS_MISS,
         "caught": False,
+        "precision": precision,
     }
 
 
-def get_elapsed_ms(state: dict, client_elapsed_ms=None):
-    duration_ms = int(state.get("duration_seconds", ROUND_DURATION_SECONDS) * 1000)
-    started_at = parse_iso(state.get("started_at"))
-
-    if client_elapsed_ms is None:
-        elapsed_ms = int((utc_now() - started_at).total_seconds() * 1000)
-    else:
-        elapsed_ms = int(client_elapsed_ms)
-
-    return clamp(elapsed_ms, -INTRO_DELAY_MS, duration_ms + 2000)
-
-
-def build_state(room_code: str, previous_state=None):
+def build_state(room_code=None, previous_state=None):
     previous_state = previous_state or {}
-    previous_round = int(previous_state.get("round_id") or 0)
-
     rng = random.Random()
-    duration_ms = ROUND_DURATION_SECONDS * 1000
 
-    started_at = utc_now() + timedelta(milliseconds=INTRO_DELAY_MS)
-
-    snitch_segments = generate_motion_segments(rng, duration_ms, kind="snitch")
-    zone_segments = generate_motion_segments(rng, duration_ms, kind="zone")
+    snitch_motion = _build_motion_segments(rng, ROUND_DURATION_SECONDS, "snitch")
+    zone_motion = _build_motion_segments(rng, ROUND_DURATION_SECONDS, "zone")
 
     return {
-        "game_id": GAME_ID,
         "phase": "atrapa_snitch",
-        "room_code": room_code,
-        "round_id": previous_round + 1,
+        "game_id": GAME_ID,
+        "round_id": str(uuid.uuid4()),
+        "title": "Atrapa la Snitch",
+        "subtitle": "La Snitch cambia de dirección y velocidad. El aro también se mueve. No pestañees.",
+        "question": "Presiona ¡ATRAPAR! justo cuando la Snitch entre al aro encantado.",
+        "narrator": random.choice(NARRATOR_LINES),
+        "started_at": _now(),
         "duration_seconds": ROUND_DURATION_SECONDS,
-        "intro_delay_ms": INTRO_DELAY_MS,
-        "started_at": isoformat_z(started_at),
         "attempts_total": ATTEMPTS_TOTAL,
-        "attempts_by_player": {},
-        "snitch_submitted_players": [],
         "arena": {
             "width": ARENA_WIDTH,
             "height": ARENA_HEIGHT,
-            "visible_margin_x": VISIBLE_MARGIN_X,
-            "visible_margin_y": VISIBLE_MARGIN_Y,
-            "zone_radius": ZONE_RADIUS,
             "snitch_radius": SNITCH_RADIUS,
+            "zone_radius": ZONE_RADIUS,
         },
-        "snitch_segments": snitch_segments,
-        "zone_segments": zone_segments,
+        "snitch_motion": snitch_motion,
+        "zone_motion": zone_motion,
+        "fake_objects": _build_fake_objects(rng, ROUND_DURATION_SECONDS),
+        "attempts_by_player": {},
+        "snitch_submitted_players": [],
+        "snitch_feed": [],
         "snitch_result": None,
         "point_events": [],
-        "title": "Atrapa la Snitch Dorada",
-        "subtitle": "Calcula el momento exacto y atrápala dentro del aro encantado.",
+        "scored": False,
+        "host": previous_state.get("host"),
+        "difficulty": {
+            "name": "Party Game Caótico",
+            "description": "Snitch rápida, aro móvil, cambios repentinos y señuelos visuales.",
+        },
+        "points": {
+            "legendary": POINTS_LEGENDARY,
+            "perfect": POINTS_PERFECT,
+            "great": POINTS_GREAT,
+            "close": POINTS_CLOSE,
+            "miss": POINTS_MISS,
+            "best_seeker_bonus": BONUS_BEST_SEEKER,
+        },
     }
 
 
-def submit_catch(state: dict, player_name: str, client_elapsed_ms=None):
+def submit_catch(state, player_name, client_elapsed_ms=None):
     state = deepcopy(state or {})
+    player_name = str(player_name or "").strip()
+
+    if not player_name:
+        return {
+            "state": state,
+            "accepted": False,
+            "message": "No se detectó jugador.",
+            "points_preview": 0,
+            "attempts_used": 0,
+            "attempts_total": ATTEMPTS_TOTAL,
+            "grade": "miss",
+            "caught": False,
+            "precision": 0,
+            "delta_ms": 0,
+        }
 
     if state.get("phase") != "atrapa_snitch":
         return {
@@ -338,250 +470,267 @@ def submit_catch(state: dict, player_name: str, client_elapsed_ms=None):
             "attempts_used": 0,
             "attempts_total": state.get("attempts_total", ATTEMPTS_TOTAL),
             "grade": "miss",
-            "label": "No disponible",
             "caught": False,
             "precision": 0,
             "delta_ms": 0,
         }
 
-    player_name = str(player_name or "").strip()
+    attempts_total = _safe_int(state.get("attempts_total"), ATTEMPTS_TOTAL)
+    attempts_by_player = state.get("attempts_by_player", {})
 
-    if not player_name:
-        return {
-            "state": state,
-            "accepted": False,
-            "message": "Falta el nombre del jugador.",
-            "points_preview": 0,
-            "attempts_used": 0,
-            "attempts_total": state.get("attempts_total", ATTEMPTS_TOTAL),
-            "grade": "miss",
-            "label": "Sin nombre",
-            "caught": False,
-            "precision": 0,
-            "delta_ms": 0,
-        }
+    if not isinstance(attempts_by_player, dict):
+        attempts_by_player = {}
 
-    duration_ms = int(state.get("duration_seconds", ROUND_DURATION_SECONDS) * 1000)
-    attempts_total = int(state.get("attempts_total", ATTEMPTS_TOTAL))
-
-    elapsed_ms = get_elapsed_ms(state, client_elapsed_ms)
-
-    if elapsed_ms < 0:
-        attempts_by_player = state.get("attempts_by_player", {})
-        current_attempts = attempts_by_player.get(player_name, [])
-        return {
-            "state": state,
-            "accepted": False,
-            "message": "Todavía no inicia la ronda.",
-            "points_preview": 0,
-            "attempts_used": len(current_attempts),
-            "attempts_total": attempts_total,
-            "grade": "miss",
-            "label": "Muy pronto",
-            "caught": False,
-            "precision": 0,
-            "delta_ms": 0,
-        }
-
-    if elapsed_ms > duration_ms:
-        attempts_by_player = state.get("attempts_by_player", {})
-        current_attempts = attempts_by_player.get(player_name, [])
-        return {
-            "state": state,
-            "accepted": False,
-            "message": "La ronda ya terminó.",
-            "points_preview": 0,
-            "attempts_used": len(current_attempts),
-            "attempts_total": attempts_total,
-            "grade": "miss",
-            "label": "Tarde",
-            "caught": False,
-            "precision": 0,
-            "delta_ms": 0,
-        }
-
-    attempts_by_player = state.setdefault("attempts_by_player", {})
     player_attempts = attempts_by_player.get(player_name, [])
+
+    if not isinstance(player_attempts, list):
+        player_attempts = []
 
     if len(player_attempts) >= attempts_total:
         return {
             "state": state,
             "accepted": False,
-            "message": "Ya agotaste tus intentos.",
+            "message": f"Ya usaste tus {attempts_total} intentos.",
             "points_preview": 0,
             "attempts_used": len(player_attempts),
             "attempts_total": attempts_total,
-            "grade": "miss",
-            "label": "Sin intentos",
+            "grade": "done",
             "caught": False,
             "precision": 0,
             "delta_ms": 0,
         }
 
-    snitch_pos = get_position_from_segments(state.get("snitch_segments", []), elapsed_ms)
-    zone_pos = get_position_from_segments(state.get("zone_segments", []), elapsed_ms)
+    elapsed = _elapsed_seconds(state, client_elapsed_ms)
+    duration = _safe_float(state.get("duration_seconds"), ROUND_DURATION_SECONDS)
 
-    dist = distance(snitch_pos["x"], snitch_pos["y"], zone_pos["x"], zone_pos["y"])
-    judged = evaluate_catch(dist)
-    precision = compute_precision(dist)
+    if elapsed > duration + 1.5:
+        return {
+            "state": state,
+            "accepted": False,
+            "message": "La ronda ya terminó.",
+            "points_preview": 0,
+            "attempts_used": len(player_attempts),
+            "attempts_total": attempts_total,
+            "grade": "late",
+            "caught": False,
+            "precision": 0,
+            "delta_ms": 0,
+        }
+
+    snitch_pos = _position_at(state.get("snitch_motion", []), elapsed)
+    zone_pos = _position_at(state.get("zone_motion", []), elapsed)
+
+    distance_units = _distance(snitch_pos, zone_pos)
+    grade = _judge_distance(distance_units)
 
     attempt = {
+        "id": str(uuid.uuid4()),
         "attempt_number": len(player_attempts) + 1,
-        "elapsed_ms": elapsed_ms,
-        "distance_px": round(dist, 2),
-        "grade": judged["grade"],
-        "label": judged["label"],
-        "points": judged["points"],
-        "caught": judged["caught"],
-        "precision": precision,
-        "snitch": {
-            "x": round(snitch_pos["x"], 2),
-            "y": round(snitch_pos["y"], 2),
-        },
-        "zone": {
-            "x": round(zone_pos["x"], 2),
-            "y": round(zone_pos["y"], 2),
-        },
+        "player_name": player_name,
+        "elapsed_seconds": round(elapsed, 3),
+        "distance_units": round(distance_units, 3),
+        "grade": grade["grade"],
+        "label": grade["label"],
+        "points_preview": grade["points_preview"],
+        "caught": grade["caught"],
+        "precision": grade["precision"],
+        "snitch_position": snitch_pos,
+        "zone_position": zone_pos,
+        "server_time": _now(),
     }
 
     player_attempts.append(attempt)
     attempts_by_player[player_name] = player_attempts
+    state["attempts_by_player"] = attempts_by_player
 
-    submitted = set(state.get("snitch_submitted_players", []))
-    submitted.add(player_name)
-    state["snitch_submitted_players"] = sorted(list(submitted))
+    state["snitch_submitted_players"] = [
+        name
+        for name, attempts in attempts_by_player.items()
+        if isinstance(attempts, list) and len(attempts) >= attempts_total
+    ]
+
+    feed = state.get("snitch_feed", [])
+
+    if not isinstance(feed, list):
+        feed = []
+
+    if grade["grade"] == "legendary":
+        emoji = "🏆"
+    elif grade["grade"] == "perfect":
+        emoji = "⚡"
+    elif grade["grade"] == "great":
+        emoji = "✨"
+    elif grade["grade"] == "close":
+        emoji = "😮"
+    else:
+        emoji = "💨"
+
+    feed.append({
+        "id": attempt["id"],
+        "player_name": player_name,
+        "grade": grade["grade"],
+        "label": grade["label"],
+        "points_preview": grade["points_preview"],
+        "precision": grade["precision"],
+        "distance_units": round(distance_units, 2),
+        "emoji": emoji,
+        "elapsed_seconds": round(elapsed, 2),
+    })
+
+    state["snitch_feed"] = feed[-8:]
 
     return {
         "state": state,
         "accepted": True,
-        "message": judged["label"],
-        "points_preview": judged["points"],
+        "message": grade["label"],
         "attempts_used": len(player_attempts),
         "attempts_total": attempts_total,
-        "grade": judged["grade"],
-        "label": judged["label"],
-        "caught": judged["caught"],
-        "precision": precision,
-        "delta_ms": 0,
+        "points_preview": grade["points_preview"],
+        "grade": grade["grade"],
+        "label": grade["label"],
+        "delta_ms": int(distance_units * 100),
+        "caught": grade["caught"],
+        "precision": grade["precision"],
     }
 
 
-def best_attempt_for_player(attempts: list):
+def _best_attempt(attempts):
     if not attempts:
         return None
 
     return max(
         attempts,
-        key=lambda item: (
-            int(item.get("points", 0)),
-            -float(item.get("distance_px", 99999)),
-            int(item.get("precision", 0)),
-            -int(item.get("attempt_number", 0)),
+        key=lambda attempt: (
+            int(attempt.get("points_preview", 0)),
+            int(attempt.get("precision", 0)),
+            -float(attempt.get("distance_units", 999)),
         )
     )
 
 
-def resolve_for_reveal(state: dict, players: list):
+def _add_event(events, player_name, house, points, label):
+    events.append({
+        "player_name": player_name,
+        "house": house,
+        "points": points,
+        "label": label,
+    })
+
+
+def resolve_for_reveal(state, players=None):
     state = deepcopy(state or {})
-    attempts_by_player = state.get("attempts_by_player", {}) or {}
+    players = players or []
 
-    leaderboard = []
-    point_events = []
+    if state.get("scored"):
+        return state, state.get("point_events", []), True
 
-    overall_best = None
+    attempts_by_player = state.get("attempts_by_player", {})
+
+    if not isinstance(attempts_by_player, dict):
+        attempts_by_player = {}
+
+    events = []
+    player_results = []
+    best_overall = None
 
     for player in players:
-        player_name = player.get("name")
+        name = player.get("name")
         house = player.get("house")
-        attempts = attempts_by_player.get(player_name, [])
-        best = best_attempt_for_player(attempts)
+        attempts = attempts_by_player.get(name, [])
 
-        base_points = int(best.get("points", 0)) if best else 0
+        if not isinstance(attempts, list):
+            attempts = []
 
-        entry = {
-            "player_name": player_name,
-            "house": house,
-            "attempts_used": len(attempts),
-            "best_attempt": best,
-            "points_awarded": base_points,
-        }
-
-        leaderboard.append(entry)
-
-        if base_points > 0:
-            point_events.append({
-                "player_name": player_name,
-                "points": base_points,
-            })
+        best = _best_attempt(attempts)
+        total_points = int(best.get("points_preview", 0)) if best else 0
 
         if best:
-            if overall_best is None:
-                overall_best = {
-                    "player_name": player_name,
+            _add_event(
+                events,
+                name,
+                house,
+                total_points,
+                f"Mejor intento: {best.get('label')} · {best.get('precision', 0)}% precisión"
+            )
+
+            if best_overall is None:
+                best_overall = {
+                    "player_name": name,
                     "house": house,
-                    "best_attempt": best,
+                    "attempt": best,
                 }
             else:
-                current = best
-                champion = overall_best["best_attempt"]
-
                 current_key = (
-                    int(current.get("points", 0)),
-                    -float(current.get("distance_px", 99999)),
-                    int(current.get("precision", 0)),
+                    int(best.get("points_preview", 0)),
+                    int(best.get("precision", 0)),
+                    -float(best.get("distance_units", 999)),
                 )
-                champion_key = (
-                    int(champion.get("points", 0)),
-                    -float(champion.get("distance_px", 99999)),
-                    int(champion.get("precision", 0)),
+                previous = best_overall["attempt"]
+                previous_key = (
+                    int(previous.get("points_preview", 0)),
+                    int(previous.get("precision", 0)),
+                    -float(previous.get("distance_units", 999)),
                 )
 
-                if current_key > champion_key:
-                    overall_best = {
-                        "player_name": player_name,
+                if current_key > previous_key:
+                    best_overall = {
+                        "player_name": name,
                         "house": house,
-                        "best_attempt": best,
+                        "attempt": best,
                     }
 
-    leaderboard.sort(
-        key=lambda row: (
-            int((row.get("best_attempt") or {}).get("points", 0)),
-            -float((row.get("best_attempt") or {}).get("distance_px", 99999)),
-            int((row.get("best_attempt") or {}).get("precision", 0)),
+        player_results.append({
+            "player_name": name,
+            "house": house,
+            "attempts": attempts,
+            "best_attempt": best,
+            "total_points": total_points,
+            "attempts_used": len(attempts),
+        })
+
+    if best_overall:
+        _add_event(
+            events,
+            best_overall["player_name"],
+            best_overall["house"],
+            BONUS_BEST_SEEKER,
+            f"Bonus: Mejor buscador de la ronda"
+        )
+
+        for result in player_results:
+            if result["player_name"] == best_overall["player_name"]:
+                result["best_seeker_bonus"] = BONUS_BEST_SEEKER
+                result["total_points"] += BONUS_BEST_SEEKER
+            else:
+                result["best_seeker_bonus"] = 0
+    else:
+        for result in player_results:
+            result["best_seeker_bonus"] = 0
+
+    player_results.sort(
+        key=lambda item: (
+            int(item.get("total_points", 0)),
+            int((item.get("best_attempt") or {}).get("precision", 0)),
+            -float((item.get("best_attempt") or {}).get("distance_units", 999)),
         ),
         reverse=True,
     )
 
-    winner_bonus = 0
-    winner_name = None
-
-    if overall_best and overall_best.get("best_attempt"):
-        winner_name = overall_best["player_name"]
-        winner_bonus = 90
-        point_events.append({
-            "player_name": winner_name,
-            "points": winner_bonus,
-        })
-
-        for row in leaderboard:
-            if row["player_name"] == winner_name:
-                row["winner_bonus"] = winner_bonus
-                row["points_awarded"] = int(row.get("points_awarded", 0)) + winner_bonus
-            else:
-                row["winner_bonus"] = 0
-
-    for row in leaderboard:
-        if "winner_bonus" not in row:
-            row["winner_bonus"] = 0
-
     state["phase"] = "results_atrapa_snitch"
-    state["point_events"] = point_events
+    state["correct"] = "La Snitch fue perseguida con distintos niveles de dignidad."
     state["snitch_result"] = {
-        "leaderboard": leaderboard,
-        "winner_name": winner_name,
-        "winner_bonus": winner_bonus,
-        "attempts_by_player": attempts_by_player,
-        "summary": "La Snitch cambia de dirección y velocidad. Gana quien mejor calcule el momento exacto.",
+        "summary": "Ronda caótica: velocidad, cambios de dirección, aro móvil y varios toques al vacío.",
+        "narrator": random.choice([
+            "La Snitch sobrevivió, pero algunas reputaciones no.",
+            "Hubo magia, reflejos y varios dedos llegando tarde.",
+            "La Snitch fue perseguida con pasión y con poquito control emocional.",
+            "Algunos vieron el futuro. Otros vieron puro aire.",
+        ]),
+        "player_results": player_results,
+        "best_overall": best_overall,
+        "snitch_feed": state.get("snitch_feed", []),
     }
+    state["point_events"] = events
+    state["scored"] = True
 
-    return state, point_events, True
+    return state, events, True

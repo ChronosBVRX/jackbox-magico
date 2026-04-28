@@ -1,863 +1,754 @@
-(() => {
-  const ROOM_CODE =
-    new URLSearchParams(window.location.search).get("room") ||
-    localStorage.getItem("room_code") ||
-    localStorage.getItem("jackbox_room_code") ||
-    "";
-
-  if (!ROOM_CODE) {
-    console.warn("Snitch TV: no se encontró room code");
-    return;
-  }
-
-  const POLL_MS = 650;
-
-  let roomState = null;
-  let players = [];
-  let activeRoundId = null;
+(function () {
+  let snitchLastKey = "";
+  let snitchLastTick = null;
+  let snitchAutoRevealLock = false;
+  let activeState = null;
+  let activePlayers = [];
   let rafId = null;
-  let lastFrameTime = 0;
-  let mounted = false;
-  let currentPhase = null;
-  let starField = [];
+  let revealCallback = null;
   let trail = [];
-  let lastSnitchSegmentKey = null;
-  let ambientStarted = false;
+  let burstParticles = [];
+  let lastSegmentId = "";
+  let screenShakeUntil = 0;
+  let flashUntil = 0;
+  let lastFeedIds = new Set();
   let audioCtx = null;
 
-  function injectStyles() {
-    if (document.getElementById("snitch-tv-styles")) return;
+  const houseIcons = {
+    Gryffindor: "🦁",
+    Slytherin: "🐍",
+    Ravenclaw: "🦅",
+    Hufflepuff: "🦡",
+  };
 
-    const style = document.createElement("style");
-    style.id = "snitch-tv-styles";
-    style.textContent = `
-      #snitch-tv-root {
-        position: relative;
-        width: 100%;
-        height: 100vh;
-        min-height: 100vh;
-        overflow: hidden;
-        background:
-          radial-gradient(circle at 20% 20%, rgba(54, 88, 178, 0.26), transparent 28%),
-          radial-gradient(circle at 78% 24%, rgba(85, 150, 240, 0.16), transparent 24%),
-          radial-gradient(circle at 50% 80%, rgba(255, 215, 110, 0.08), transparent 28%),
-          linear-gradient(180deg, #06101f 0%, #07172b 52%, #06111d 100%);
-        color: #fff;
-        font-family: Inter, Arial, sans-serif;
-      }
+  const feedGradeLabel = {
+    legendary: "legendario",
+    perfect: "perfecto",
+    great: "genial",
+    close: "casi",
+    miss: "falló",
+  };
 
-      #snitch-tv-root .snitch-bg-grid {
-        position: absolute;
-        inset: 0;
-        background:
-          linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
-        background-size: 48px 48px;
-        mask-image: linear-gradient(to bottom, rgba(255,255,255,0.8), rgba(255,255,255,0.2));
-        opacity: 0.22;
-        pointer-events: none;
+  function playSound(name) {
+    try {
+      if (typeof MagicSound !== "undefined" && MagicSound.play) {
+        MagicSound.play(name);
       }
-
-      #snitch-tv-root .snitch-header {
-        position: absolute;
-        top: 22px;
-        left: 28px;
-        right: 28px;
-        display: flex;
-        justify-content: space-between;
-        align-items: flex-start;
-        z-index: 4;
-        pointer-events: none;
-      }
-
-      #snitch-tv-root .snitch-title-wrap {
-        background: rgba(10, 18, 34, 0.62);
-        border: 1px solid rgba(255,255,255,0.08);
-        backdrop-filter: blur(14px);
-        border-radius: 18px;
-        padding: 16px 18px;
-        box-shadow: 0 14px 40px rgba(0,0,0,0.25);
-      }
-
-      #snitch-tv-root .snitch-title {
-        font-size: 34px;
-        font-weight: 900;
-        letter-spacing: 0.5px;
-        color: #ffe7a0;
-        margin: 0 0 6px;
-      }
-
-      #snitch-tv-root .snitch-subtitle {
-        font-size: 15px;
-        color: rgba(255,255,255,0.88);
-        margin: 0;
-      }
-
-      #snitch-tv-root .snitch-hud-right {
-        display: flex;
-        gap: 14px;
-        align-items: stretch;
-      }
-
-      #snitch-tv-root .hud-pill {
-        min-width: 120px;
-        background: rgba(10, 18, 34, 0.62);
-        border: 1px solid rgba(255,255,255,0.08);
-        backdrop-filter: blur(14px);
-        border-radius: 18px;
-        padding: 14px 18px;
-        box-shadow: 0 14px 40px rgba(0,0,0,0.25);
-      }
-
-      #snitch-tv-root .hud-label {
-        font-size: 12px;
-        text-transform: uppercase;
-        letter-spacing: 1.3px;
-        color: rgba(255,255,255,0.65);
-        margin-bottom: 6px;
-      }
-
-      #snitch-tv-root .hud-value {
-        font-size: 34px;
-        font-weight: 900;
-        color: #ffffff;
-        line-height: 1;
-      }
-
-      #snitch-tv-root .hud-value.gold {
-        color: #ffe182;
-      }
-
-      #snitch-tv-root canvas {
-        position: absolute;
-        inset: 0;
-        width: 100%;
-        height: 100%;
-        display: block;
-      }
-
-      #snitch-tv-root .snitch-bottom-banner {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
-        bottom: 28px;
-        z-index: 4;
-        background: rgba(10, 18, 34, 0.68);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 18px;
-        padding: 14px 18px;
-        min-width: 420px;
-        text-align: center;
-        box-shadow: 0 14px 40px rgba(0,0,0,0.25);
-        backdrop-filter: blur(14px);
-        pointer-events: none;
-      }
-
-      #snitch-tv-root .snitch-bottom-banner .main {
-        font-size: 20px;
-        font-weight: 900;
-        color: #fff;
-      }
-
-      #snitch-tv-root .snitch-bottom-banner .sub {
-        margin-top: 5px;
-        font-size: 13px;
-        color: rgba(255,255,255,0.72);
-      }
-
-      #snitch-tv-root .snitch-countdown-overlay {
-        position: absolute;
-        inset: 0;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        z-index: 5;
-        pointer-events: none;
-      }
-
-      #snitch-tv-root .countdown-card {
-        width: 260px;
-        height: 260px;
-        border-radius: 999px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background:
-          radial-gradient(circle at center, rgba(255, 220, 120, 0.14), rgba(255,255,255,0.02)),
-          rgba(8, 18, 35, 0.64);
-        border: 1px solid rgba(255,255,255,0.1);
-        box-shadow:
-          0 0 0 10px rgba(255, 215, 120, 0.06),
-          0 0 0 26px rgba(255, 215, 120, 0.03),
-          0 20px 60px rgba(0,0,0,0.35);
-        backdrop-filter: blur(16px);
-        flex-direction: column;
-      }
-
-      #snitch-tv-root .countdown-number {
-        font-size: 92px;
-        font-weight: 1000;
-        line-height: 1;
-        color: #ffe497;
-      }
-
-      #snitch-tv-root .countdown-text {
-        margin-top: 12px;
-        font-size: 14px;
-        letter-spacing: 1.4px;
-        text-transform: uppercase;
-        color: rgba(255,255,255,0.82);
-      }
-
-      #snitch-tv-root .results-overlay {
-        position: absolute;
-        inset: 0;
-        z-index: 6;
-        display: none;
-        background:
-          linear-gradient(180deg, rgba(6,12,24,0.55), rgba(6,12,24,0.84)),
-          radial-gradient(circle at 50% 10%, rgba(255, 220, 120, 0.12), transparent 28%);
-        backdrop-filter: blur(10px);
-        padding: 34px;
-        box-sizing: border-box;
-      }
-
-      #snitch-tv-root .results-overlay.active {
-        display: block;
-      }
-
-      #snitch-tv-root .results-title {
-        font-size: 42px;
-        font-weight: 1000;
-        color: #ffe8a4;
-        margin: 0 0 10px;
-      }
-
-      #snitch-tv-root .results-subtitle {
-        margin: 0 0 22px;
-        color: rgba(255,255,255,0.78);
-        font-size: 15px;
-      }
-
-      #snitch-tv-root .results-grid {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(260px, 1fr));
-        gap: 16px;
-      }
-
-      #snitch-tv-root .result-card {
-        background: rgba(10, 18, 34, 0.72);
-        border: 1px solid rgba(255,255,255,0.08);
-        border-radius: 20px;
-        padding: 18px 18px 16px;
-        box-shadow: 0 14px 40px rgba(0,0,0,0.22);
-      }
-
-      #snitch-tv-root .result-top {
-        display: flex;
-        justify-content: space-between;
-        gap: 14px;
-        align-items: center;
-      }
-
-      #snitch-tv-root .result-name {
-        font-size: 21px;
-        font-weight: 900;
-        color: #fff;
-      }
-
-      #snitch-tv-root .result-house {
-        font-size: 12px;
-        color: rgba(255,255,255,0.68);
-        margin-top: 3px;
-        text-transform: uppercase;
-        letter-spacing: 1.2px;
-      }
-
-      #snitch-tv-root .result-score {
-        font-size: 32px;
-        font-weight: 1000;
-        color: #ffe497;
-      }
-
-      #snitch-tv-root .result-meta {
-        margin-top: 12px;
-        display: flex;
-        flex-wrap: wrap;
-        gap: 10px;
-      }
-
-      #snitch-tv-root .meta-chip {
-        padding: 8px 10px;
-        border-radius: 999px;
-        font-size: 12px;
-        font-weight: 700;
-        background: rgba(255,255,255,0.06);
-        color: rgba(255,255,255,0.88);
-      }
-
-      #snitch-tv-root .winner-banner {
-        margin-bottom: 18px;
-        display: inline-flex;
-        gap: 10px;
-        align-items: center;
-        padding: 12px 16px;
-        border-radius: 999px;
-        background: rgba(255, 221, 130, 0.12);
-        border: 1px solid rgba(255, 221, 130, 0.28);
-        color: #ffe7a4;
-        font-weight: 900;
-        font-size: 15px;
-      }
-    `;
-    document.head.appendChild(style);
+    } catch (error) {}
   }
 
-  function ensureRoot() {
-    let root = document.getElementById("snitch-tv-root");
-    if (root) return root;
+  function ensureAudio() {
+    try {
+      if (!audioCtx) {
+        audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      }
 
-    root = document.createElement("div");
-    root.id = "snitch-tv-root";
-    root.innerHTML = `
-      <div class="snitch-bg-grid"></div>
-
-      <div class="snitch-header">
-        <div class="snitch-title-wrap">
-          <h1 class="snitch-title">Atrapa la Snitch Dorada</h1>
-          <p class="snitch-subtitle">Atrápala dentro del aro encantado antes que se te escape.</p>
-        </div>
-
-        <div class="snitch-hud-right">
-          <div class="hud-pill">
-            <div class="hud-label">Tiempo</div>
-            <div class="hud-value" id="snitch-timer">18.0</div>
-          </div>
-          <div class="hud-pill">
-            <div class="hud-label">Ronda</div>
-            <div class="hud-value gold" id="snitch-round">1</div>
-          </div>
-        </div>
-      </div>
-
-      <canvas id="snitch-tv-canvas"></canvas>
-
-      <div class="snitch-countdown-overlay" id="snitch-countdown-overlay" style="display:none;">
-        <div class="countdown-card">
-          <div class="countdown-number" id="snitch-countdown-number">3</div>
-          <div class="countdown-text">La snitch aparecerá…</div>
-        </div>
-      </div>
-
-      <div class="snitch-bottom-banner" id="snitch-bottom-banner">
-        <div class="main" id="snitch-banner-main">Observa la Snitch y el aro encantado.</div>
-        <div class="sub" id="snitch-banner-sub">Cuando coincidan, los jugadores deben presionar “ATRAPAR” en su celular.</div>
-      </div>
-
-      <div class="results-overlay" id="snitch-results"></div>
-    `;
-    document.body.innerHTML = "";
-    document.body.appendChild(root);
-    return root;
+      return audioCtx;
+    } catch (error) {
+      return null;
+    }
   }
 
-  function easeValue(name, t) {
-    t = Math.max(0, Math.min(1, t));
+  function beep(type = "whoosh") {
+    const ctx = ensureAudio();
 
-    if (name === "easeOutQuad") return 1 - (1 - t) * (1 - t);
-    if (name === "easeInOutQuad") return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
-    if (name === "easeOutCubic") return 1 - Math.pow(1 - t, 3);
-    if (name === "easeInOutCubic") return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    if (!ctx) return;
+
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+
+    if (type === "hit") {
+      osc.type = "sine";
+      osc.frequency.setValueAtTime(620, now);
+      osc.frequency.exponentialRampToValueAtTime(1180, now + 0.12);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.045, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.22);
+    } else if (type === "miss") {
+      osc.type = "sawtooth";
+      osc.frequency.setValueAtTime(220, now);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.18);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.028, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.20);
+    } else {
+      osc.type = "triangle";
+      osc.frequency.setValueAtTime(480, now);
+      osc.frequency.exponentialRampToValueAtTime(150, now + 0.16);
+      gain.gain.setValueAtTime(0.0001, now);
+      gain.gain.exponentialRampToValueAtTime(0.022, now + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+    }
+
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start(now);
+    osc.stop(now + 0.24);
+  }
+
+  function h(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function clamp(value, min, max) {
+    return Math.max(min, Math.min(max, value));
+  }
+
+  function ease(name, t) {
+    t = clamp(t, 0, 1);
+
+    if (name === "linear") return t;
+    if (name === "ease_out_quad") return 1 - (1 - t) * (1 - t);
+    if (name === "ease_in_quad") return t * t;
+    if (name === "ease_in_out_quad") return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+    if (name === "ease_out_cubic") return 1 - Math.pow(1 - t, 3);
+    if (name === "ease_in_out_cubic") return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
 
     return -(Math.cos(Math.PI * t) - 1) / 2;
   }
 
-  function getSegmentForTime(segments, elapsedMs) {
-    if (!segments || !segments.length) return null;
-    if (elapsedMs <= 0) return segments[0];
-
-    const last = segments[segments.length - 1];
-    if (elapsedMs >= last.t1) return last;
-
-    for (const segment of segments) {
-      if (elapsedMs >= segment.t0 && elapsedMs <= segment.t1) {
-        return segment;
-      }
-    }
-
-    return last;
+  function getSnitchKey(state) {
+    return `${state.phase}-${state.round_id || state.question || "snitch"}`;
   }
 
-  function getPositionFromSegments(segments, elapsedMs, arena) {
-    if (!segments || !segments.length) {
-      return { x: arena.width / 2, y: arena.height / 2, segment: null, segmentProgress: 0 };
+  function getElapsed(state) {
+    const startedAt = Number(state.started_at || Date.now() / 1000);
+    return Math.max(0, Date.now() / 1000 - startedAt);
+  }
+
+  function getTimeInfo(state) {
+    const duration = Number(state.duration_seconds || 24);
+    const elapsed = getElapsed(state);
+    const left = Math.max(0, duration - elapsed);
+
+    return {
+      duration,
+      elapsed,
+      left,
+      pct: duration > 0 ? clamp(left / duration, 0, 1) : 0,
+    };
+  }
+
+  function getSegment(segments, elapsed) {
+    if (!Array.isArray(segments) || !segments.length) return null;
+
+    if (elapsed <= segments[0].t0) return segments[0];
+
+    const last = segments[segments.length - 1];
+
+    if (elapsed >= last.t1) return last;
+
+    return segments.find((segment) => elapsed >= segment.t0 && elapsed <= segment.t1) || last;
+  }
+
+  function positionAt(segments, elapsed) {
+    const segment = getSegment(segments, elapsed);
+
+    if (!segment) {
+      return {
+        x: 50,
+        y: 50,
+        segment_id: "",
+        speed_label: "",
+      };
     }
 
-    const seg = getSegmentForTime(segments, elapsedMs);
-    const duration = Math.max(1, seg.t1 - seg.t0);
-    const rawT = Math.max(0, Math.min(1, (elapsedMs - seg.t0) / duration));
-    const eased = easeValue(seg.easing || "easeInOutSine", rawT);
+    const duration = Math.max(0.001, Number(segment.t1) - Number(segment.t0));
+    const raw = clamp((elapsed - Number(segment.t0)) / duration, 0, 1);
+    const t = ease(segment.easing || "ease_in_out_sine", raw);
 
-    let x = seg.x0 + (seg.x1 - seg.x0) * eased;
-    let y = seg.y0 + (seg.y1 - seg.y0) * eased;
+    let x = Number(segment.x0) + (Number(segment.x1) - Number(segment.x0)) * t;
+    let y = Number(segment.y0) + (Number(segment.y1) - Number(segment.y0)) * t;
 
-    const dx = seg.x1 - seg.x0;
-    const dy = seg.y1 - seg.y0;
-    const len = Math.max(1, Math.hypot(dx, dy));
+    const dx = Number(segment.x1) - Number(segment.x0);
+    const dy = Number(segment.y1) - Number(segment.y0);
+    const len = Math.max(0.001, Math.hypot(dx, dy));
 
     const nx = -dy / len;
     const ny = dx / len;
 
-    const flutterBase = Math.sin(rawT * Math.PI);
-    const flutterWave = Math.sin((rawT * Math.PI * 2 * (seg.flutter_freq || 1)) + (seg.flutter_phase || 0));
-    let flutter = flutterBase * flutterWave * (seg.flutter_amp || 0);
-
-    if (seg.kind === "snitch") {
-      flutter += Math.sin((rawT * Math.PI * 4) + (seg.flutter_phase || 0) * 0.65) * (seg.flutter_amp || 0) * 0.18 * flutterBase;
-    }
+    const wobble = Number(segment.wobble || 0);
+    const wave = Number(segment.wave || 1);
+    const phase = Number(segment.phase || 0);
+    const flutterBase = Math.sin(raw * Math.PI);
+    const flutter = Math.sin((raw * Math.PI * 2 * wave) + phase) * wobble * flutterBase;
 
     x += nx * flutter;
     y += ny * flutter;
 
-    return { x, y, segment: seg, segmentProgress: rawT };
-  }
-
-  function buildStarField() {
-    starField = [];
-    for (let i = 0; i < 120; i++) {
-      starField.push({
-        x: Math.random(),
-        y: Math.random(),
-        size: Math.random() * 2.2 + 0.5,
-        speed: Math.random() * 0.12 + 0.03,
-        alpha: Math.random() * 0.7 + 0.15,
-      });
-    }
-  }
-
-  function startAmbientAudio() {
-    if (ambientStarted) return;
-    ambientStarted = true;
-
-    const start = () => {
-      try {
-        if (!audioCtx) {
-          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-        }
-      } catch (err) {
-        return;
-      }
+    return {
+      x,
+      y,
+      segment_id: segment.id || "",
+      speed_label: segment.speed_label || "",
+      raw,
     };
-
-    window.addEventListener("pointerdown", start, { once: true });
-    window.addEventListener("keydown", start, { once: true });
   }
 
-  function playDashWhoosh() {
-    if (!audioCtx) return;
+  function percentToCanvas(point, canvas) {
+    const width = canvas.clientWidth || canvas.width || 1000;
+    const height = canvas.clientHeight || canvas.height || 600;
 
-    const now = audioCtx.currentTime;
-    const osc = audioCtx.createOscillator();
-    const gain = audioCtx.createGain();
-    const filter = audioCtx.createBiquadFilter();
-
-    osc.type = "triangle";
-    osc.frequency.setValueAtTime(420, now);
-    osc.frequency.exponentialRampToValueAtTime(120, now + 0.18);
-
-    filter.type = "lowpass";
-    filter.frequency.setValueAtTime(1800, now);
-
-    gain.gain.setValueAtTime(0.0001, now);
-    gain.gain.exponentialRampToValueAtTime(0.045, now + 0.01);
-    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.20);
-
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(audioCtx.destination);
-
-    osc.start(now);
-    osc.stop(now + 0.22);
+    return {
+      x: (point.x / 100) * width,
+      y: (point.y / 100) * height,
+    };
   }
 
-  function resizeCanvas() {
-    const canvas = document.getElementById("snitch-tv-canvas");
-    if (!canvas) return;
-
+  function setupCanvas(canvas) {
     const dpr = window.devicePixelRatio || 1;
-    const width = canvas.clientWidth || window.innerWidth;
-    const height = canvas.clientHeight || window.innerHeight;
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width || window.innerWidth;
+    const height = rect.height || 520;
 
-    canvas.width = Math.floor(width * dpr);
-    canvas.height = Math.floor(height * dpr);
+    if (canvas.width !== Math.round(width * dpr) || canvas.height !== Math.round(height * dpr)) {
+      canvas.width = Math.round(width * dpr);
+      canvas.height = Math.round(height * dpr);
+    }
 
     const ctx = canvas.getContext("2d");
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    return {
+      ctx,
+      width,
+      height,
+    };
   }
 
-  function drawBackground(ctx, width, height, elapsedMs) {
+  function spawnBurst(x, y, grade = "miss") {
+    const amount = grade === "legendary" ? 48 : grade === "perfect" ? 36 : grade === "great" ? 26 : 16;
+
+    for (let i = 0; i < amount; i++) {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 1.5 + Math.random() * 5.8;
+
+      burstParticles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * speed,
+        vy: Math.sin(angle) * speed,
+        life: 1,
+        size: 2 + Math.random() * 5,
+        grade,
+      });
+    }
+
+    flashUntil = performance.now() + 220;
+    screenShakeUntil = performance.now() + 280;
+  }
+
+  function processFeedEvents(state, canvas) {
+    const feed = Array.isArray(state.snitch_feed) ? state.snitch_feed : [];
+
+    feed.forEach((event) => {
+      if (lastFeedIds.has(event.id)) return;
+
+      lastFeedIds.add(event.id);
+
+      if (lastFeedIds.size > 20) {
+        lastFeedIds = new Set(feed.map((item) => item.id));
+      }
+
+      const elapsed = Number(event.elapsed_seconds || 0);
+      const pos = positionAt(state.snitch_motion || [], elapsed);
+      const canvasPos = percentToCanvas(pos, canvas);
+
+      spawnBurst(canvasPos.x, canvasPos.y, event.grade);
+
+      if (event.grade === "miss") {
+        beep("miss");
+      } else {
+        beep("hit");
+      }
+    });
+  }
+
+  function drawBackground(ctx, width, height, elapsed) {
     const gradient = ctx.createLinearGradient(0, 0, 0, height);
-    gradient.addColorStop(0, "#071223");
-    gradient.addColorStop(0.55, "#0a1730");
-    gradient.addColorStop(1, "#07111f");
+
+    gradient.addColorStop(0, "#07111f");
+    gradient.addColorStop(0.5, "#0b1c34");
+    gradient.addColorStop(1, "#040810");
+
     ctx.fillStyle = gradient;
     ctx.fillRect(0, 0, width, height);
 
-    for (const star of starField) {
-      const x = star.x * width;
-      const y = ((star.y + (elapsedMs * 0.00003 * star.speed)) % 1) * height;
-      const twinkle = (Math.sin(elapsedMs * 0.002 + x * 0.01) + 1) / 2;
-      const alpha = star.alpha * (0.5 + twinkle * 0.8);
+    ctx.save();
+    ctx.globalAlpha = 0.28;
 
+    for (let i = 0; i < 80; i++) {
+      const x = ((i * 157 + elapsed * 18) % (width + 80)) - 40;
+      const y = ((i * 83) % height);
+      const s = 1 + ((i * 17) % 4);
+
+      ctx.fillStyle = i % 5 === 0 ? "rgba(255,216,121,.85)" : "rgba(255,255,255,.55)";
       ctx.beginPath();
-      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
-      ctx.arc(x, y, star.size, 0, Math.PI * 2);
+      ctx.arc(x, y, s * 0.5, 0, Math.PI * 2);
       ctx.fill();
     }
+
+    ctx.restore();
+
+    ctx.save();
+    ctx.strokeStyle = "rgba(255,255,255,.045)";
+    ctx.lineWidth = 1;
+
+    const grid = 58;
+    const offset = (elapsed * 20) % grid;
+
+    for (let x = -grid + offset; x < width + grid; x += grid) {
+      ctx.beginPath();
+      ctx.moveTo(x, 0);
+      ctx.lineTo(x, height);
+      ctx.stroke();
+    }
+
+    for (let y = -grid + offset; y < height + grid; y += grid) {
+      ctx.beginPath();
+      ctx.moveTo(0, y);
+      ctx.lineTo(width, y);
+      ctx.stroke();
+    }
+
+    ctx.restore();
   }
 
-  function fitArenaToCanvas(canvasWidth, canvasHeight, arenaWidth, arenaHeight) {
-    const scale = Math.min(canvasWidth / arenaWidth, canvasHeight / arenaHeight);
-    const drawWidth = arenaWidth * scale;
-    const drawHeight = arenaHeight * scale;
-    const offsetX = (canvasWidth - drawWidth) / 2;
-    const offsetY = (canvasHeight - drawHeight) / 2;
+  function drawFakeObjects(ctx, canvas, state, elapsed) {
+    const fakes = Array.isArray(state.fake_objects) ? state.fake_objects : [];
 
-    return { scale, offsetX, offsetY };
+    fakes.forEach((fake) => {
+      if (elapsed < fake.t0 || elapsed > fake.t1) return;
+
+      const raw = clamp((elapsed - fake.t0) / Math.max(0.001, fake.t1 - fake.t0), 0, 1);
+      const t = ease("ease_in_out_quad", raw);
+
+      const p = {
+        x: Number(fake.x0) + (Number(fake.x1) - Number(fake.x0)) * t,
+        y: Number(fake.y0) + (Number(fake.y1) - Number(fake.y0)) * t,
+      };
+
+      const pos = percentToCanvas(p, canvas);
+      const alpha = Math.sin(raw * Math.PI);
+      const size = Number(fake.size || 4) * 7;
+
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.76;
+      ctx.translate(pos.x, pos.y);
+      ctx.rotate((performance.now() * 0.003) * Number(fake.spin || 1));
+      ctx.font = `${size}px serif`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.shadowColor = "rgba(255,255,255,.55)";
+      ctx.shadowBlur = 18;
+      ctx.fillText(fake.emoji || "✨", 0, 0);
+      ctx.restore();
+    });
   }
 
-  function mapPoint(point, fit) {
-    return {
-      x: fit.offsetX + point.x * fit.scale,
-      y: fit.offsetY + point.y * fit.scale,
-    };
+  function drawParticles(ctx) {
+    burstParticles = burstParticles.filter((p) => p.life > 0);
+
+    burstParticles.forEach((p) => {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.96;
+      p.vy *= 0.96;
+      p.life -= 0.025;
+
+      let color = "255,255,255";
+
+      if (p.grade === "legendary") color = "255,216,121";
+      else if (p.grade === "perfect") color = "255,240,180";
+      else if (p.grade === "great") color = "130,220,255";
+      else if (p.grade === "close") color = "255,160,90";
+      else color = "255,70,70";
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, p.life);
+      ctx.fillStyle = `rgba(${color},${p.life})`;
+      ctx.shadowColor = `rgba(${color},.8)`;
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    });
   }
 
-  function drawArenaFrame(ctx, canvasWidth, canvasHeight, state, elapsedMs) {
-    const arena = state.arena || {
-      width: 1280,
-      height: 720,
-      zone_radius: 92,
-      snitch_radius: 24,
-    };
+  function drawZone(ctx, pos, elapsed) {
+    const pulse = 1 + Math.sin(elapsed * 7.4) * 0.05;
+    const radius = 78 * pulse;
 
-    const fit = fitArenaToCanvas(canvasWidth, canvasHeight, arena.width, arena.height);
+    ctx.save();
+    ctx.translate(pos.x, pos.y);
 
-    const zone = getPositionFromSegments(state.zone_segments || [], elapsedMs, arena);
-    const snitch = getPositionFromSegments(state.snitch_segments || [], elapsedMs, arena);
+    const glow = ctx.createRadialGradient(0, 0, 10, 0, 0, radius * 2.4);
+    glow.addColorStop(0, "rgba(120,220,255,.24)");
+    glow.addColorStop(0.45, "rgba(120,220,255,.10)");
+    glow.addColorStop(1, "rgba(120,220,255,0)");
 
-    const zoneScreen = mapPoint(zone, fit);
-    const snitchScreen = mapPoint(snitch, fit);
+    ctx.fillStyle = glow;
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 2.4, 0, Math.PI * 2);
+    ctx.fill();
 
-    const zoneRadius = (arena.zone_radius || 92) * fit.scale;
-    const snitchRadius = (arena.snitch_radius || 24) * fit.scale;
+    ctx.rotate(elapsed * 1.7);
+
+    ctx.lineWidth = 9;
+    ctx.strokeStyle = "rgba(140,230,255,.22)";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 1.18, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.lineWidth = 4;
+    ctx.setLineDash([22, 14]);
+    ctx.strokeStyle = "rgba(180,245,255,.95)";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.setLineDash([]);
+    ctx.rotate(-elapsed * 3.1);
+
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "rgba(255,255,255,.55)";
+    ctx.beginPath();
+    ctx.arc(0, 0, radius * 0.66, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.restore();
+  }
+
+  function drawSnitch(ctx, pos, elapsed, speedLabel) {
+    const wing = Math.sin(elapsed * 40) * 10;
+    const rotation = Math.sin(elapsed * 9) * 0.4;
 
     trail.unshift({
-      x: snitchScreen.x,
-      y: snitchScreen.y,
-      time: performance.now(),
+      x: pos.x,
+      y: pos.y,
     });
 
-    if (trail.length > 18) trail.length = 18;
+    if (trail.length > 24) {
+      trail.length = 24;
+    }
 
-    ctx.save();
+    trail.forEach((p, index) => {
+      const alpha = (1 - index / trail.length) * 0.42;
+      const size = 26 * (1 - index / trail.length);
 
-    const arenaGlow = ctx.createRadialGradient(
-      zoneScreen.x,
-      zoneScreen.y,
-      zoneRadius * 0.4,
-      zoneScreen.x,
-      zoneScreen.y,
-      zoneRadius * 5.5
-    );
-    arenaGlow.addColorStop(0, "rgba(255, 215, 120, 0.10)");
-    arenaGlow.addColorStop(1, "rgba(255, 215, 120, 0)");
-    ctx.fillStyle = arenaGlow;
-    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-    ctx.strokeStyle = "rgba(130, 180, 255, 0.16)";
-    ctx.lineWidth = 3;
-    ctx.strokeRect(fit.offsetX, fit.offsetY, arena.width * fit.scale, arena.height * fit.scale);
-
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(fit.offsetX, fit.offsetY, arena.width * fit.scale, arena.height * fit.scale);
-    ctx.clip();
-
-    for (let i = trail.length - 1; i >= 0; i--) {
-      const p = trail[i];
-      const alpha = (1 - i / trail.length) * 0.32;
-      const radius = snitchRadius * (0.35 + (i / trail.length) * 0.8);
+      ctx.save();
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = "rgba(255,216,121,.85)";
+      ctx.shadowColor = "rgba(255,216,121,.9)";
+      ctx.shadowBlur = 22;
       ctx.beginPath();
-      ctx.fillStyle = `rgba(255, 210, 90, ${alpha})`;
-      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, size * 0.42, 0, Math.PI * 2);
       ctx.fill();
-    }
-
-    const pulse = 1 + Math.sin(elapsedMs * 0.008) * 0.05;
-
-    ctx.beginPath();
-    ctx.lineWidth = 8;
-    ctx.strokeStyle = "rgba(144, 219, 255, 0.22)";
-    ctx.arc(zoneScreen.x, zoneScreen.y, zoneRadius * 1.18 * pulse, 0, Math.PI * 2);
-    ctx.stroke();
-
-    ctx.beginPath();
-    ctx.lineWidth = 4;
-    ctx.setLineDash([16, 10]);
-    ctx.strokeStyle = "rgba(181, 241, 255, 0.9)";
-    ctx.arc(zoneScreen.x, zoneScreen.y, zoneRadius * pulse, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.setLineDash([]);
-
-    const zoneGlow = ctx.createRadialGradient(
-      zoneScreen.x,
-      zoneScreen.y,
-      zoneRadius * 0.3,
-      zoneScreen.x,
-      zoneScreen.y,
-      zoneRadius * 2.4
-    );
-    zoneGlow.addColorStop(0, "rgba(156, 235, 255, 0.24)");
-    zoneGlow.addColorStop(1, "rgba(156, 235, 255, 0)");
-    ctx.beginPath();
-    ctx.fillStyle = zoneGlow;
-    ctx.arc(zoneScreen.x, zoneScreen.y, zoneRadius * 2.1, 0, Math.PI * 2);
-    ctx.fill();
-
-    const wingPhase = elapsedMs * 0.018;
-    const wingSpread = snitchRadius * (1.65 + Math.sin(wingPhase) * 0.22);
+      ctx.restore();
+    });
 
     ctx.save();
-    ctx.translate(snitchScreen.x, snitchScreen.y);
+    ctx.translate(pos.x, pos.y);
+    ctx.rotate(rotation);
 
-    const snitchGlow = ctx.createRadialGradient(0, 0, snitchRadius * 0.3, 0, 0, snitchRadius * 3.5);
-    snitchGlow.addColorStop(0, "rgba(255, 245, 180, 0.98)");
-    snitchGlow.addColorStop(0.25, "rgba(255, 212, 90, 0.92)");
-    snitchGlow.addColorStop(1, "rgba(255, 212, 90, 0)");
-    ctx.fillStyle = snitchGlow;
+    const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, 90);
+    glow.addColorStop(0, "rgba(255,255,255,1)");
+    glow.addColorStop(0.22, "rgba(255,216,121,.92)");
+    glow.addColorStop(1, "rgba(255,216,121,0)");
+
+    ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(0, 0, snitchRadius * 3.2, 0, Math.PI * 2);
+    ctx.arc(0, 0, 90, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.fillStyle = "rgba(240,245,255,0.92)";
+    ctx.fillStyle = "rgba(245,250,255,.95)";
     ctx.beginPath();
-    ctx.ellipse(-wingSpread, -snitchRadius * 0.18, snitchRadius * 1.1, snitchRadius * 0.45, -0.45, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.ellipse(wingSpread, -snitchRadius * 0.18, snitchRadius * 1.1, snitchRadius * 0.45, 0.45, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.fillStyle = "#ffe089";
-    ctx.arc(0, 0, snitchRadius, 0, Math.PI * 2);
+    ctx.ellipse(-38, -5, 48, 12 + wing * 0.18, -0.38, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.beginPath();
-    ctx.fillStyle = "rgba(255,255,255,0.38)";
-    ctx.arc(-snitchRadius * 0.28, -snitchRadius * 0.28, snitchRadius * 0.35, 0, Math.PI * 2);
+    ctx.ellipse(38, -5, 48, 12 - wing * 0.18, 0.38, 0, Math.PI * 2);
+    ctx.fill();
+
+    const core = ctx.createRadialGradient(-6, -6, 4, 0, 0, 25);
+    core.addColorStop(0, "#fffbe8");
+    core.addColorStop(0.35, "#ffe089");
+    core.addColorStop(1, "#c87400");
+
+    ctx.fillStyle = core;
+    ctx.shadowColor = "rgba(255,216,121,.9)";
+    ctx.shadowBlur = 28;
+    ctx.beginPath();
+    ctx.arc(0, 0, 23, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = "rgba(255,255,255,.55)";
+    ctx.beginPath();
+    ctx.arc(-7, -8, 6, 0, Math.PI * 2);
     ctx.fill();
 
     ctx.restore();
 
-    ctx.restore();
-    ctx.restore();
-
-    const segment = snitch.segment;
-    if (segment) {
-      const segmentKey = `${segment.t0}-${segment.t1}-${segment.x1}-${segment.y1}`;
-      if (segmentKey !== lastSnitchSegmentKey) {
-        lastSnitchSegmentKey = segmentKey;
-        playDashWhoosh();
-      }
+    if (speedLabel === "dash" || speedLabel === "quiebre") {
+      ctx.save();
+      ctx.globalAlpha = 0.72;
+      ctx.fillStyle = speedLabel === "dash" ? "rgba(255,216,121,.92)" : "rgba(130,220,255,.92)";
+      ctx.font = "900 22px Arial";
+      ctx.textAlign = "center";
+      ctx.shadowColor = "rgba(0,0,0,.65)";
+      ctx.shadowBlur = 8;
+      ctx.fillText(speedLabel === "dash" ? "¡FLASH!" : "¡CAMBIO!", pos.x, pos.y - 56);
+      ctx.restore();
     }
   }
 
-  function renderResults(state) {
-    const resultsWrap = document.getElementById("snitch-results");
-    if (!resultsWrap) return;
+  function drawScene(state) {
+    const canvas = document.getElementById("snitch-canvas");
 
-    const result = state.snitch_result || {};
-    const leaderboard = result.leaderboard || [];
-    const winnerName = result.winner_name;
-
-    const cards = leaderboard.map((row, index) => {
-      const best = row.best_attempt || {};
-      const score = row.points_awarded || 0;
-      const grade = best.label || "Sin intento";
-      const precision = typeof best.precision === "number" ? `${best.precision}% precisión` : "Sin precisión";
-      const distance = typeof best.distance_px === "number" ? `${best.distance_px.toFixed(1)} px` : "Sin registro";
-      const tries = `${row.attempts_used || 0} intento(s)`;
-
-      return `
-        <div class="result-card">
-          <div class="result-top">
-            <div>
-              <div class="result-name">${index + 1}. ${row.player_name || "Jugador"}</div>
-              <div class="result-house">${row.house || "Sin casa"}</div>
-            </div>
-            <div class="result-score">${score}</div>
-          </div>
-
-          <div class="result-meta">
-            <div class="meta-chip">${grade}</div>
-            <div class="meta-chip">${precision}</div>
-            <div class="meta-chip">${distance}</div>
-            <div class="meta-chip">${tries}</div>
-            ${row.winner_bonus ? `<div class="meta-chip">+${row.winner_bonus} bonus</div>` : ""}
-          </div>
-        </div>
-      `;
-    }).join("");
-
-    resultsWrap.innerHTML = `
-      <div class="results-title">Resultados de la Snitch</div>
-      <p class="results-subtitle">${result.summary || "La snitch cambió de velocidad y dirección constantemente."}</p>
-      ${winnerName ? `<div class="winner-banner">🏆 Mejor buscador de la ronda: ${winnerName}</div>` : ""}
-      <div class="results-grid">${cards || "<div class='result-card'>Nadie hizo intentos.</div>"}</div>
-    `;
-    resultsWrap.classList.add("active");
-  }
-
-  function hideResults() {
-    const resultsWrap = document.getElementById("snitch-results");
-    if (!resultsWrap) return;
-    resultsWrap.classList.remove("active");
-    resultsWrap.innerHTML = "";
-  }
-
-  function renderCountdown(remainingMs) {
-    const overlay = document.getElementById("snitch-countdown-overlay");
-    const number = document.getElementById("snitch-countdown-number");
-    if (!overlay || !number) return;
-
-    if (remainingMs > 0) {
-      overlay.style.display = "flex";
-      number.textContent = Math.max(1, Math.ceil(remainingMs / 1000));
-    } else {
-      overlay.style.display = "none";
-    }
-  }
-
-  function setBanner(main, sub) {
-    const mainEl = document.getElementById("snitch-banner-main");
-    const subEl = document.getElementById("snitch-banner-sub");
-    if (mainEl) mainEl.textContent = main || "";
-    if (subEl) subEl.textContent = sub || "";
-  }
-
-  function updateHud(state, elapsedMs) {
-    const timerEl = document.getElementById("snitch-timer");
-    const roundEl = document.getElementById("snitch-round");
-
-    if (roundEl) {
-      roundEl.textContent = String(state.round_id || 1);
-    }
-
-    if (timerEl) {
-      const durationMs = (state.duration_seconds || 18) * 1000;
-      const remaining = Math.max(0, durationMs - Math.max(0, elapsedMs));
-      timerEl.textContent = (remaining / 1000).toFixed(1);
-    }
-  }
-
-  function renderFrame(timestamp) {
-    rafId = requestAnimationFrame(renderFrame);
-
-    if (!roomState || !mounted) return;
-
-    const phase = roomState.phase;
-    if (phase !== "atrapa_snitch") return;
-
-    const canvas = document.getElementById("snitch-tv-canvas");
     if (!canvas) return;
 
-    const ctx = canvas.getContext("2d");
-    const width = canvas.clientWidth || window.innerWidth;
-    const height = canvas.clientHeight || window.innerHeight;
+    const { ctx, width, height } = setupCanvas(canvas);
+    const info = getTimeInfo(state);
+    const elapsed = info.elapsed;
 
-    if (timestamp - lastFrameTime > 1000 || !lastFrameTime) {
-      lastFrameTime = timestamp;
-    }
-    lastFrameTime = timestamp;
+    processFeedEvents(state, canvas);
 
-    const startedAt = Date.parse(roomState.started_at || new Date().toISOString());
-    const elapsedMs = Date.now() - startedAt;
+    const now = performance.now();
+    const shake = now < screenShakeUntil ? (Math.random() - 0.5) * 12 : 0;
 
-    drawBackground(ctx, width, height, Math.max(0, elapsedMs));
-    updateHud(roomState, elapsedMs);
+    ctx.save();
+    ctx.translate(shake, -shake * 0.55);
 
-    if (elapsedMs < 0) {
-      renderCountdown(-elapsedMs);
-      setBanner(
-        "Prepárense…",
-        "La snitch aparecerá en cualquier instante."
-      );
-      return;
-    }
+    drawBackground(ctx, width, height, elapsed);
+    drawFakeObjects(ctx, canvas, state, elapsed);
 
-    renderCountdown(0);
+    const snitchPoint = positionAt(state.snitch_motion || [], elapsed);
+    const zonePoint = positionAt(state.zone_motion || [], elapsed);
 
-    drawArenaFrame(ctx, width, height, roomState, Math.max(0, elapsedMs));
+    const snitchPos = percentToCanvas(snitchPoint, canvas);
+    const zonePos = percentToCanvas(zonePoint, canvas);
 
-    setBanner(
-      "La Snitch cambia de velocidad y dirección.",
-      "El objetivo es atraparla cuando quede dentro del aro azul encantado."
-    );
-  }
+    if (snitchPoint.segment_id && snitchPoint.segment_id !== lastSegmentId) {
+      lastSegmentId = snitchPoint.segment_id;
+      beep("whoosh");
 
-  async function fetchRoomStatus() {
-    try {
-      const response = await fetch(`/api/room/${encodeURIComponent(ROOM_CODE)}/status`, { cache: "no-store" });
-      const data = await response.json();
-
-      roomState = data.game_state || null;
-      players = data.players || [];
-      currentPhase = roomState?.phase || null;
-
-      if (!roomState) return;
-
-      if (roomState.round_id !== activeRoundId) {
-        activeRoundId = roomState.round_id;
-        trail = [];
-        lastSnitchSegmentKey = null;
-        hideResults();
+      if (snitchPoint.speed_label === "dash" || snitchPoint.speed_label === "quiebre") {
+        screenShakeUntil = performance.now() + 120;
       }
+    }
 
-      if (roomState.phase === "results_atrapa_snitch") {
-        renderResults(roomState);
-      } else {
-        hideResults();
-      }
-    } catch (error) {
-      console.error("Error obteniendo estado de la sala:", error);
+    drawZone(ctx, zonePos, elapsed);
+    drawSnitch(ctx, snitchPos, elapsed, snitchPoint.speed_label);
+    drawParticles(ctx);
+
+    ctx.restore();
+
+    if (now < flashUntil) {
+      const alpha = clamp((flashUntil - now) / 220, 0, 1) * 0.32;
+      ctx.fillStyle = `rgba(255,255,255,${alpha})`;
+      ctx.fillRect(0, 0, width, height);
     }
   }
 
-  function startPolling() {
-    fetchRoomStatus();
-    setInterval(fetchRoomStatus, POLL_MS);
-  }
+  function updateHud(state, players) {
+    const info = getTimeInfo(state);
 
-  function init() {
-    injectStyles();
-    ensureRoot();
-    resizeCanvas();
-    buildStarField();
-    startAmbientAudio();
+    const timer = document.getElementById("snitch-time");
+    const bar = document.getElementById("snitch-bar");
+    const attempts = document.getElementById("snitch-attempts");
+    const feed = document.getElementById("snitch-feed");
 
-    mounted = true;
-
-    if (!rafId) {
-      rafId = requestAnimationFrame(renderFrame);
+    if (timer) {
+      timer.textContent = `${info.left.toFixed(1)}s`;
     }
 
-    startPolling();
+    if (bar) {
+      bar.style.transform = `scaleX(${info.pct})`;
+    }
 
-    window.addEventListener("resize", resizeCanvas);
-    window.addEventListener("resize", buildStarField);
+    if (attempts) {
+      const total = Number(state.attempts_total || 5);
+      const map = state.attempts_by_player || {};
+
+      attempts.innerHTML = (players || []).map((player) => {
+        const used = Number(map[player.name] || 0);
+
+        return `
+          <div class="snitch-tv-player ${used >= total ? "done" : ""}">
+            <span>${houseIcons[player.house] || "✨"} ${h(player.name)}</span>
+            <strong>${used}/${total}</strong>
+          </div>
+        `;
+      }).join("");
+    }
+
+    if (feed) {
+      const items = Array.isArray(state.snitch_feed) ? [...state.snitch_feed].reverse() : [];
+
+      feed.innerHTML = items.slice(0, 5).map((item) => `
+        <div class="snitch-feed-item ${h(item.grade)}">
+          <span>${h(item.emoji || "✨")} ${h(item.player_name)} — ${h(item.label)}</span>
+          <strong>${item.points_preview > 0 ? "+" : ""}${h(item.points_preview)} pts</strong>
+        </div>
+      `).join("");
+    }
+
+    const rounded = Math.ceil(info.left);
+
+    if (rounded <= 3 && rounded > 0 && rounded !== snitchLastTick) {
+      snitchLastTick = rounded;
+      playSound("timer-danger");
+      beep("whoosh");
+    }
+
+    if (info.left <= 0 && !snitchAutoRevealLock) {
+      snitchAutoRevealLock = true;
+
+      setTimeout(() => {
+        if (typeof revealCallback === "function") {
+          revealCallback();
+        }
+      }, 700);
+    }
   }
 
-  init();
+  function renderBoard(state, players) {
+    const container = document.getElementById("game-container");
+
+    if (!container) return;
+
+    container.innerHTML = `
+      <section class="snitch-party-board">
+        <div class="snitch-party-bg"></div>
+
+        <header class="snitch-party-header">
+          <div>
+            <div class="snitch-party-badge">🏆 Minijuego party</div>
+            <h1>${h(state.title || "Atrapa la Snitch")}</h1>
+            <p>${h(state.subtitle || "No pestañees.")}</p>
+          </div>
+
+          <div class="snitch-party-timer">
+            <span>Tiempo</span>
+            <strong id="snitch-time">--</strong>
+          </div>
+        </header>
+
+        <div class="snitch-canvas-wrap">
+          <canvas id="snitch-canvas"></canvas>
+          <div class="snitch-party-callout">
+            <strong>¡Atrápala dentro del aro!</strong>
+            <span>La Snitch cambia de dirección y velocidad sin avisar.</span>
+          </div>
+        </div>
+
+        <div class="snitch-party-progress">
+          <div id="snitch-bar"></div>
+        </div>
+
+        <div class="snitch-party-bottom">
+          <div>
+            <h3>Jugadores</h3>
+            <div id="snitch-attempts" class="snitch-tv-players"></div>
+          </div>
+
+          <div>
+            <h3>Momentos de la ronda</h3>
+            <div id="snitch-feed" class="snitch-feed"></div>
+          </div>
+        </div>
+      </section>
+    `;
+
+    window.addEventListener("pointerdown", ensureAudio, { once: true });
+    updateHud(state, players);
+  }
+
+  function animate() {
+    if (activeState && activeState.phase === "atrapa_snitch") {
+      drawScene(activeState);
+    }
+
+    rafId = requestAnimationFrame(animate);
+  }
+
+  window.renderSnitchTv = function renderSnitchTv(state, players, options = {}) {
+    const key = getSnitchKey(state);
+    revealCallback = options.reveal || revealCallback;
+
+    activeState = state;
+    activePlayers = players || [];
+
+    if (snitchLastKey !== key) {
+      snitchLastKey = key;
+      snitchLastTick = null;
+      snitchAutoRevealLock = false;
+      trail = [];
+      burstParticles = [];
+      lastSegmentId = "";
+      lastFeedIds = new Set();
+
+      playSound("start");
+      renderBoard(state, activePlayers);
+
+      if (rafId) cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(animate);
+    }
+
+    updateHud(state, activePlayers);
+  };
+
+  window.destroySnitchTv = function destroySnitchTv() {
+    activeState = null;
+    activePlayers = [];
+
+    if (rafId) {
+      cancelAnimationFrame(rafId);
+      rafId = null;
+    }
+  };
+
+  window.renderSnitchTvResults = function renderSnitchTvResults(state, container) {
+    const result = state.snitch_result || {};
+    const playerResults = result.player_results || [];
+
+    if (!container) return;
+
+    const panel = document.createElement("div");
+    panel.className = "snitch-result-panel party";
+
+    const best = result.best_overall;
+    const title = best
+      ? `🏆 ${best.player_name} fue el buscador legendario`
+      : "🏆 La Snitch sobrevivió al caos";
+
+    panel.innerHTML = `
+      <div class="snitch-result-title">${h(title)}</div>
+      <div class="snitch-result-line">“${h(result.narrator || result.summary || "La Snitch se divirtió más que ustedes.")}”</div>
+    `;
+
+    container.appendChild(panel);
+
+    playerResults.forEach((row, index) => {
+      const bestAttempt = row.best_attempt || {};
+      const line = document.createElement("div");
+
+      line.className = `result-row ${Number(row.total_points || 0) > 0 ? "good" : "bad"}`;
+      line.innerHTML = `
+        <span>
+          ${index + 1}. ${h(row.player_name)} — ${h(bestAttempt.label || "Sin intento")} · ${h(bestAttempt.precision || 0)}%
+        </span>
+        <span>${Number(row.total_points || 0) > 0 ? "+" : ""}${h(row.total_points || 0)} pts</span>
+      `;
+
+      container.appendChild(line);
+    });
+  };
 })();
