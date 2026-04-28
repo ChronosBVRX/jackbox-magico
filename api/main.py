@@ -207,10 +207,15 @@ def record_snitch_catch(room_code: str, player_name: str, client_elapsed_ms=None
 
 
 def get_room_by_code(room_code: str):
+    clean_code = str(room_code or "").upper().strip()
+
+    if not clean_code:
+        raise HTTPException(status_code=400, detail="Código de sala vacío")
+
     room = (
         supabase.table("rooms")
         .select("id, status, game_state")
-        .eq("room_code", room_code.upper())
+        .eq("room_code", clean_code)
         .execute()
     )
 
@@ -539,6 +544,12 @@ async def get_room_status(room_code: str):
     if not supabase:
         raise HTTPException(status_code=500, detail="Faltan credenciales")
 
+    if not room_code or len(str(room_code).strip()) < 4:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Código de sala inválido: {room_code}",
+        )
+
     room = get_room_by_code(room_code)
     players = get_players(room["id"])
 
@@ -712,14 +723,76 @@ async def snitch_catch(request: Request):
 
 
 @app.post("/api/player/submit_answer")
-async def submit_answer(info: AnswerInfo):
+async def submit_answer(request: Request):
     if not supabase:
         raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    payload = await read_json_body_flexible(request)
+
+    room_code = (
+        payload.get("room_code")
+        or payload.get("roomCode")
+        or payload.get("room")
+        or payload.get("codigo")
+    )
+
+    player_name = (
+        payload.get("player_name")
+        or payload.get("playerName")
+        or payload.get("player")
+        or payload.get("name")
+        or payload.get("nombre")
+    )
+
+    answer = (
+        payload.get("answer")
+        or payload.get("respuesta")
+        or payload.get("value")
+        or payload.get("option")
+    )
+
+    client_elapsed_ms = (
+        payload.get("client_elapsed_ms")
+        or payload.get("clientElapsedMs")
+        or payload.get("elapsed_ms")
+        or payload.get("elapsed")
+    )
+
+    client_elapsed_ms = parse_int_or_none(client_elapsed_ms)
+
+    if not room_code:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Falta room_code",
+                "payload_recibido": payload,
+            },
+        )
+
+    if not player_name:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Falta player_name",
+                "payload_recibido": payload,
+            },
+        )
+
+    if answer is None:
+        raise HTTPException(
+            status_code=400,
+            detail={
+                "error": "Falta answer",
+                "payload_recibido": payload,
+            },
+        )
+
+    room_code = str(room_code).upper().strip()
 
     room = (
         supabase.table("rooms")
         .select("id, game_state")
-        .eq("room_code", info.room_code.upper())
+        .eq("room_code", room_code)
         .execute()
     )
 
@@ -733,14 +806,14 @@ async def submit_answer(info: AnswerInfo):
     if phase == "trivia":
         result = trivia.score_answer(
             state=state,
-            player_name=info.player_name,
-            answer=info.answer,
-            client_elapsed_ms=info.client_elapsed_ms,
+            player_name=player_name,
+            answer=answer,
+            client_elapsed_ms=client_elapsed_ms,
         )
 
         supabase.table("rooms").update({
             "game_state": result["state"],
-        }).eq("room_code", info.room_code.upper()).execute()
+        }).eq("room_code", room_code).execute()
 
         return {
             "message": result.get("message", "Respuesta guardada."),
@@ -754,14 +827,14 @@ async def submit_answer(info: AnswerInfo):
     elif phase == "duelo":
         result = duelo.submit_spell_answer(
             state=state,
-            player_name=info.player_name,
-            answer=info.answer,
-            client_elapsed_ms=info.client_elapsed_ms,
+            player_name=player_name,
+            answer=answer,
+            client_elapsed_ms=client_elapsed_ms,
         )
 
         supabase.table("rooms").update({
             "game_state": result["state"],
-        }).eq("room_code", info.room_code.upper()).execute()
+        }).eq("room_code", room_code).execute()
 
         return {
             "message": result.get("message", "Hechizo guardado."),
@@ -777,13 +850,13 @@ async def submit_answer(info: AnswerInfo):
     elif phase in {"sombrero", "sombrero_tiebreak"}:
         result = sombrero.submit_vote(
             state=state,
-            voter_name=info.player_name,
-            target_name=info.answer,
+            voter_name=player_name,
+            target_name=answer,
         )
 
         supabase.table("rooms").update({
             "game_state": result["state"],
-        }).eq("room_code", info.room_code.upper()).execute()
+        }).eq("room_code", room_code).execute()
 
         return {
             "message": result.get("message", "Voto registrado."),
@@ -793,14 +866,14 @@ async def submit_answer(info: AnswerInfo):
     elif phase == "clase_pociones":
         result = clase_pociones.submit_recipe_answer(
             state=state,
-            player_name=info.player_name,
-            answer=info.answer,
-            client_elapsed_ms=info.client_elapsed_ms,
+            player_name=player_name,
+            answer=answer,
+            client_elapsed_ms=client_elapsed_ms,
         )
 
         supabase.table("rooms").update({
             "game_state": result["state"],
-        }).eq("room_code", info.room_code.upper()).execute()
+        }).eq("room_code", room_code).execute()
 
         return {
             "message": result.get("message", "Poción entregada."),
@@ -813,39 +886,44 @@ async def submit_answer(info: AnswerInfo):
 
     elif phase == "atrapa_snitch":
         result = record_snitch_catch(
-            room_code=info.room_code,
-            player_name=info.player_name,
-            client_elapsed_ms=info.client_elapsed_ms,
+            room_code=room_code,
+            player_name=player_name,
+            client_elapsed_ms=client_elapsed_ms,
         )
 
         return format_snitch_response(result)
 
     elif phase in {"patronus_personalizado"}:
         votes = state.get("votes", {})
-        votes[info.answer] = votes.get(info.answer, 0) + 1
+        votes[answer] = votes.get(answer, 0) + 1
         state["votes"] = votes
 
         supabase.table("rooms").update({
             "game_state": state,
-        }).eq("room_code", info.room_code.upper()).execute()
+        }).eq("room_code", room_code).execute()
+
+        return {
+            "message": "Voto registrado",
+            "accepted": True,
+        }
 
     elif phase == "retratos_chismosos":
         player_house = get_player_house(
             room_id=room_id,
-            player_name=info.player_name,
+            player_name=player_name,
         )
 
         result = retratos_chismosos.score_answer(
             state=state,
-            player_name=info.player_name,
-            answer=info.answer,
+            player_name=player_name,
+            answer=answer,
             player_house=player_house,
-            client_elapsed_ms=info.client_elapsed_ms,
+            client_elapsed_ms=client_elapsed_ms,
         )
 
         supabase.table("rooms").update({
             "game_state": result["state"],
-        }).eq("room_code", info.room_code.upper()).execute()
+        }).eq("room_code", room_code).execute()
 
         return {
             "message": result.get("message", "Respuesta guardada"),
@@ -858,23 +936,23 @@ async def submit_answer(info: AnswerInfo):
     elif phase == "mapa_travieso":
         player_house = get_player_house(
             room_id=room_id,
-            player_name=info.player_name,
+            player_name=player_name,
         )
 
         result = mapa_travieso.score_answer(
             state=state,
-            player_name=info.player_name,
-            answer=info.answer,
+            player_name=player_name,
+            answer=answer,
             player_house=player_house,
-            client_elapsed_ms=info.client_elapsed_ms,
+            client_elapsed_ms=client_elapsed_ms,
         )
 
         if result.get("accepted"):
-            add_points(room_id, info.player_name, result.get("points", 0))
+            add_points(room_id, player_name, result.get("points", 0))
 
         supabase.table("rooms").update({
             "game_state": result["state"],
-        }).eq("room_code", info.room_code.upper()).execute()
+        }).eq("room_code", room_code).execute()
 
         return {
             "message": result.get("message", "Respuesta guardada"),
@@ -886,16 +964,16 @@ async def submit_answer(info: AnswerInfo):
     elif phase == "artes_ridiculas":
         result = artes_ridiculas.score_answer(
             state=state,
-            player_name=info.player_name,
-            answer=info.answer,
-            client_elapsed_ms=info.client_elapsed_ms,
+            player_name=player_name,
+            answer=answer,
+            client_elapsed_ms=client_elapsed_ms,
         )
 
-        add_points(room_id, info.player_name, result.get("points", 0))
+        add_points(room_id, player_name, result.get("points", 0))
 
         supabase.table("rooms").update({
             "game_state": result["state"],
-        }).eq("room_code", info.room_code.upper()).execute()
+        }).eq("room_code", room_code).execute()
 
         return {
             "message": result.get("message", "Respuesta guardada"),
@@ -907,13 +985,14 @@ async def submit_answer(info: AnswerInfo):
         }
 
     else:
-        if info.answer == state.get("correct"):
-            add_points(room_id, info.player_name, state.get("points_correct", 100))
+        if answer == state.get("correct"):
+            add_points(room_id, player_name, state.get("points_correct", 100))
         else:
-            add_points(room_id, info.player_name, state.get("points_wrong", 0))
+            add_points(room_id, player_name, state.get("points_wrong", 0))
 
     return {
         "message": "Respuesta guardada",
+        "accepted": True,
     }
 
 
