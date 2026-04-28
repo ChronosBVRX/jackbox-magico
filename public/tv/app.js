@@ -262,7 +262,9 @@ function renderPlaying(data) {
     autoRevealLock = false;
     MagicSound.play("start");
 
-    if (state.phase === "duelo") {
+    if (state.phase === "sombrero" || state.phase === "sombrero_tiebreak") {
+      renderSombrero(state);
+    } else if (state.phase === "duelo") {
       renderDuel(state);
     } else if (state.phase === "duelo_clash") {
       renderDuelClash(state);
@@ -271,6 +273,10 @@ function renderPlaying(data) {
     } else {
       renderGenericGame(state);
     }
+  }
+
+  if (state.phase === "sombrero" || state.phase === "sombrero_tiebreak") {
+    updateSombreroVotes(state);
   }
 
   if (state.phase === "duelo") {
@@ -308,6 +314,76 @@ function renderGenericGame(state) {
     box.className = "option-box";
     box.textContent = option;
     grid.appendChild(box);
+  });
+}
+
+function renderSombrero(state) {
+  const container = document.getElementById("game-container");
+
+  container.innerHTML = `
+    <section class="sombrero-board">
+      <header class="sombrero-header">
+        <div class="badge">${state.phase === "sombrero_tiebreak" ? "⚡ Desempate" : "🎩 Sombrero Burlón"}</div>
+        <h1 class="sombrero-title">${escapeHTML(state.title || "Sombrero Burlón")}</h1>
+        <p class="sombrero-subtitle">${escapeHTML(state.subtitle || "Votación social con cero responsabilidad emocional.")}</p>
+      </header>
+
+      <div class="sombrero-stage">
+        <div class="magic-hat">
+          <div class="hat-tip"></div>
+          <div class="hat-body"></div>
+          <div class="hat-eye left"></div>
+          <div class="hat-eye right"></div>
+          <div class="hat-mouth"></div>
+          <div class="hat-brim"></div>
+        </div>
+
+        <div class="sombrero-question-box">
+          <div class="sombrero-question">${escapeHTML(state.question)}</div>
+          <div class="sombrero-narrator">“${escapeHTML(state.narrator || "El sombrero está pensando cosas que no debería decir en voz alta.")}”</div>
+        </div>
+      </div>
+
+      <div class="sombrero-progress">
+        <div class="sombrero-progress-track">
+          <div id="sombrero-progress-bar" class="sombrero-progress-bar"></div>
+        </div>
+        <div id="sombrero-progress-text" class="sombrero-progress-text">Votos: 0 / 0</div>
+      </div>
+
+      <div id="sombrero-voters" class="sombrero-voters"></div>
+
+      <div class="host-help">El host puede revelar resultados desde su celular cuando todos voten.</div>
+    </section>
+  `;
+
+  updateSombreroVotes(state);
+}
+
+function updateSombreroVotes(state) {
+  const bar = document.getElementById("sombrero-progress-bar");
+  const text = document.getElementById("sombrero-progress-text");
+  const votersBox = document.getElementById("sombrero-voters");
+
+  if (!bar || !text || !votersBox) return;
+
+  const total = Number(state.total_voters || 0);
+  const voted = Number(state.voted_count || 0);
+  const pct = total > 0 ? Math.max(0, Math.min(1, voted / total)) : 0;
+
+  bar.style.transform = `scaleX(${pct})`;
+  text.textContent = `Votos: ${voted} / ${total}`;
+
+  const votedPlayers = state.voted_players || [];
+  const players = state.players || [];
+
+  votersBox.innerHTML = "";
+
+  players.forEach((player) => {
+    const item = document.createElement("div");
+    item.className = `sombrero-voter ${votedPlayers.includes(player.name) ? "ready" : ""}`;
+    item.textContent = `${houseIcons[player.house] || "✨"} ${player.name} — ${votedPlayers.includes(player.name) ? "Votó" : "Esperando"}`;
+    votersBox.appendChild(item);
   });
 }
 
@@ -613,16 +689,20 @@ function renderResults(data) {
   extra.innerHTML = "";
   explanation.textContent = "";
 
-  if (phase === "results_duelo") {
+  if (phase === "results_sombrero") {
+    title.innerText = "El Sombrero Burlón eligió:";
+    explanation.textContent = state.sombrero_result?.summary || "";
+    renderSombreroResults(state, extra);
+  } else if (phase === "results_duelo") {
     title.innerText = "Resultado del duelo:";
     explanation.textContent = state.duel_result?.summary || "";
     renderDuelResults(state, extra);
-  } else if (phase === "results_sombrero" || phase === "results_patronus_personalizado") {
-    title.innerText = "¡El más votado es!";
   } else if (phase === "results_artes_ridiculas") {
     title.innerText = "La defensa correcta era:";
     explanation.textContent = state.explanation || "";
     renderArtesResults(state, extra);
+  } else if (phase === "results_patronus_personalizado") {
+    title.innerText = "¡El más votado es!";
   } else {
     title.innerText = "Resultado de la ronda:";
   }
@@ -635,6 +715,43 @@ function renderResults(data) {
     lastPlayKey = resultSoundKey;
     MagicSound.play("reveal");
   }
+}
+
+function renderSombreroResults(state, container) {
+  const result = state.sombrero_result || {};
+  const events = state.point_events || [];
+
+  const panel = document.createElement("div");
+  panel.className = "sombrero-result";
+
+  const winner = document.createElement("div");
+  winner.className = "sombrero-winner";
+  winner.textContent = result.winner
+    ? `🎩 ${result.winner}`
+    : "🎩 Nadie fue elegido";
+
+  const line = document.createElement("div");
+  line.className = "sombrero-hat-line";
+  line.textContent = `“${result.hat_line || "El sombrero se reserva sus comentarios… por ahora."}”`;
+
+  panel.appendChild(winner);
+  panel.appendChild(line);
+  container.appendChild(panel);
+
+  events.forEach((event) => {
+    const row = document.createElement("div");
+    row.className = `result-row ${event.points >= 0 ? "good" : "bad"}`;
+
+    const left = document.createElement("span");
+    left.textContent = `${event.player_name} — ${event.label}`;
+
+    const right = document.createElement("span");
+    right.textContent = `${event.points > 0 ? "+" : ""}${event.points} pts`;
+
+    row.appendChild(left);
+    row.appendChild(right);
+    container.appendChild(row);
+  });
 }
 
 function renderDuelResults(state, container) {
