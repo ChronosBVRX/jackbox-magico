@@ -32,38 +32,10 @@ MAGIC_OBJECTS = [
 ]
 
 VARIANTS = [
-    {
-        "id": "normal",
-        "name": "Mapa clásico",
-        "observation_seconds": 8,
-        "wrong_penalty": 0,
-        "reorder_zones": False,
-        "flavor": "Juro solemnemente que mis intenciones no son buenas.",
-    },
-    {
-        "id": "escaleras_moviles",
-        "name": "Escaleras móviles",
-        "observation_seconds": 8,
-        "wrong_penalty": 0,
-        "reorder_zones": True,
-        "flavor": "Las escaleras cambiaron de lugar. Nada personal, solo Hogwarts siendo Hogwarts.",
-    },
-    {
-        "id": "modo_filch",
-        "name": "Modo Filch",
-        "observation_seconds": 5,
-        "wrong_penalty": -20,
-        "reorder_zones": False,
-        "flavor": "Filch anda rondando con cara de que no le pagaron horas extra.",
-    },
-    {
-        "id": "filch_escaleras",
-        "name": "Filch + escaleras móviles",
-        "observation_seconds": 5,
-        "wrong_penalty": -20,
-        "reorder_zones": True,
-        "flavor": "Filch viene cerca y las escaleras decidieron traicionarte.",
-    },
+    {"id": "normal", "name": "Mapa clásico", "observation_seconds": 8, "wrong_penalty": 0, "reorder_zones": False, "flavor": "Juro solemnemente que mis intenciones no son buenas."},
+    {"id": "escaleras_moviles", "name": "Escaleras móviles", "observation_seconds": 8, "wrong_penalty": 0, "reorder_zones": True, "flavor": "Las escaleras cambiaron de lugar. Nada personal, solo Hogwarts siendo Hogwarts."},
+    {"id": "modo_filch", "name": "Modo Filch", "observation_seconds": 5, "wrong_penalty": -20, "reorder_zones": False, "flavor": "Filch anda rondando con cara de que no le pagaron horas extra."},
+    {"id": "filch_escaleras", "name": "Filch + escaleras móviles", "observation_seconds": 5, "wrong_penalty": -20, "reorder_zones": True, "flavor": "Filch viene cerca y las escaleras decidieron traicionarte."},
 ]
 
 NARRATOR_LINES = [
@@ -81,9 +53,10 @@ def _shuffled_options(correct_zone_name: str):
     return options
 
 
-def _build_object_layout():
+def _build_object_layout(zones=None):
+    available_zones = deepcopy(zones or ZONES)
     selected_objects = random.sample(MAGIC_OBJECTS, k=random.randint(5, 7))
-    selected_zones = random.sample(ZONES, k=len(selected_objects))
+    selected_zones = random.sample(available_zones, k=len(selected_objects))
     layout = []
 
     for magic_object, zone in zip(selected_objects, selected_zones):
@@ -114,7 +87,7 @@ def build_state():
             zone["x"] = x
             zone["y"] = y
 
-    objects = _build_object_layout()
+    objects = _build_object_layout(zones)
     target = random.choice(objects)
     correct_zone = target["zone"]
 
@@ -129,11 +102,7 @@ def build_state():
         "variant": variant,
         "zones": zones,
         "objects": objects,
-        "target_object": {
-            "id": target["id"],
-            "name": target["name"],
-            "emoji": target["emoji"],
-        },
+        "target_object": {"id": target["id"], "name": target["name"], "emoji": target["emoji"]},
         "question": f"¿Dónde estaba la {target['name']}?" if target["name"].endswith("a") else f"¿Dónde estaba el {target['name']}?",
         "options": _shuffled_options(correct_zone),
         "correct": correct_zone,
@@ -144,15 +113,7 @@ def build_state():
         "points_house_combo": 80,
         "answers": {},
         "narrator_line": random.choice(NARRATOR_LINES),
-        "socket_ready": {
-            "namespace": "/mapa-travieso",
-            "events": [
-                "mapa:round_started",
-                "mapa:observation_finished",
-                "mapa:answer_submitted",
-                "mapa:round_revealed",
-            ],
-        },
+        "socket_ready": {"namespace": "/mapa-travieso", "events": ["mapa:round_started", "mapa:observation_finished", "mapa:answer_submitted", "mapa:round_revealed"]},
     }
 
 
@@ -168,13 +129,7 @@ def score_answer(state: dict, player_name: str, answer: str, player_house: str =
     answers = next_state.setdefault("answers", {})
 
     if player_name in answers:
-        return {
-            "state": next_state,
-            "accepted": False,
-            "message": "Ya habías respondido, travieso.",
-            "points": 0,
-            "correct": answers[player_name].get("correct", False),
-        }
+        return {"state": next_state, "accepted": False, "message": "Ya habías respondido, travieso.", "points": 0, "correct": answers[player_name].get("correct", False)}
 
     correct = answer == next_state.get("correct")
     elapsed_ms = client_elapsed_ms
@@ -192,40 +147,23 @@ def score_answer(state: dict, player_name: str, answer: str, player_house: str =
         "base_points": next_state.get("points_correct", 100) if correct else next_state.get("points_wrong", 0),
     }
 
-    return {
-        "state": next_state,
-        "accepted": True,
-        "message": "Respuesta marcada en tinta mágica.",
-        "points": answers[player_name]["base_points"],
-        "correct": correct,
-    }
+    return {"state": next_state, "accepted": True, "message": "Respuesta marcada en tinta mágica.", "points": answers[player_name]["base_points"], "correct": correct}
 
 
 def resolve_for_reveal(state: dict, players=None):
-    """Calcula bonus finales para una futura integración backend completa."""
+    """Calcula bonus finales para una integración backend completa."""
 
     next_state = deepcopy(state or {})
     answers = next_state.get("answers", {}) or {}
     players = players or []
     point_events = []
 
-    correct_answers = [
-        (name, data)
-        for name, data in answers.items()
-        if data.get("correct")
-    ]
+    correct_answers = [(name, data) for name, data in answers.items() if data.get("correct")]
 
     fastest_name = None
     if correct_answers:
-        fastest_name, fastest_data = min(
-            correct_answers,
-            key=lambda item: int(item[1].get("elapsed_ms") or 999999),
-        )
-        point_events.append({
-            "player_name": fastest_name,
-            "points": int(next_state.get("points_fastest") or 30),
-            "reason": "Respuesta correcta más rápida",
-        })
+        fastest_name, fastest_data = min(correct_answers, key=lambda item: int(item[1].get("elapsed_ms") or 999999))
+        point_events.append({"player_name": fastest_name, "points": int(next_state.get("points_fastest") or 30), "reason": "Respuesta correcta más rápida"})
 
     house_to_correct = {}
     for player in players:
@@ -241,18 +179,10 @@ def resolve_for_reveal(state: dict, players=None):
         if len(names) >= 2:
             house_bonuses.append({"house": house, "players": names})
             for name in names:
-                point_events.append({
-                    "player_name": name,
-                    "points": int(next_state.get("points_house_combo") or 80),
-                    "reason": "Los dos jugadores de la casa acertaron",
-                })
+                point_events.append({"player_name": name, "points": int(next_state.get("points_house_combo") or 80), "reason": "Los dos jugadores de la casa acertaron"})
 
     next_state["phase"] = "results_mapa_travieso"
-    next_state["mapa_result"] = {
-        "fastest": fastest_name,
-        "house_bonuses": house_bonuses,
-        "answers": answers,
-    }
+    next_state["mapa_result"] = {"fastest": fastest_name, "house_bonuses": house_bonuses, "answers": answers}
     next_state["point_events"] = point_events
 
     return next_state, point_events, True
