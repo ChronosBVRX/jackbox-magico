@@ -39,12 +39,13 @@ GAME_CATALOG = {
     "atrapa_snitch": {
         "name": "Atrapa la Snitch",
         "status": "implemented",
-        "mode": "reaction",
+        "mode": "precision_reaction",
         "points": {
-            "first": 150,
-            "second": 100,
-            "third": 60,
-            "false_tap": -30,
+            "perfect_window": 120,
+            "close_window": 70,
+            "miss": -30,
+            "best_reflex": 50,
+            "best_house_average": 100,
         },
     },
     "trivia_magica": {

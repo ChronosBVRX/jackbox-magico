@@ -126,6 +126,7 @@ def sanitize_game_state(state: dict):
         public_state.pop("point_events", None)
         public_state.pop("sombrero_result", None)
         public_state.pop("pociones_result", None)
+        public_state.pop("snitch_result", None)
         public_state.pop("votes_by_voter", None)
         public_state.pop("votes_by_target", None)
 
@@ -139,6 +140,13 @@ def sanitize_game_state(state: dict):
         if isinstance(answers, dict):
             public_state["answers"] = {
                 name: True for name in answers.keys()
+            }
+
+        attempts_by_player = public_state.get("attempts_by_player")
+        if isinstance(attempts_by_player, dict):
+            public_state["attempts_by_player"] = {
+                name: len(attempts or [])
+                for name, attempts in attempts_by_player.items()
             }
 
     return public_state
@@ -193,7 +201,10 @@ def build_game_state(room_code: str, game_id: str, previous_state: dict):
         )
 
     if game_id == "atrapa_snitch":
-        return atrapa_snitch.build_state()
+        return atrapa_snitch.build_state(
+            room_code=room_code,
+            previous_state=previous_state,
+        )
 
     if game_id == "retratos_chismosos":
         return retratos_chismosos.build_state()
@@ -514,6 +525,29 @@ async def submit_answer(info: AnswerInfo):
             "exploded": result.get("exploded", False),
         }
 
+    elif phase == "atrapa_snitch":
+        result = atrapa_snitch.submit_catch(
+            state=state,
+            player_name=info.player_name,
+            client_elapsed_ms=info.client_elapsed_ms,
+        )
+
+        supabase.table("rooms").update({
+            "game_state": result["state"],
+        }).eq("room_code", info.room_code.upper()).execute()
+
+        return {
+            "message": result.get("message", "Intento registrado."),
+            "accepted": result.get("accepted", False),
+            "points": result.get("points_preview", 0),
+            "grade": result.get("grade"),
+            "label": result.get("label"),
+            "delta_ms": result.get("delta_ms"),
+            "caught": result.get("caught", False),
+            "attempts_used": result.get("attempts_used", 0),
+            "attempts_total": result.get("attempts_total", 5),
+        }
+
     elif phase in {"patronus_personalizado"}:
         votes = state.get("votes", {})
         votes[info.answer] = votes.get(info.answer, 0) + 1
@@ -654,6 +688,24 @@ async def reveal_results(room_code: str):
 
         return {
             "message": "Clase de Pociones revelada",
+            "is_final": is_final,
+        }
+
+    if state.get("phase") == "atrapa_snitch":
+        state, point_events, is_final = atrapa_snitch.resolve_for_reveal(
+            state=state,
+            players=players,
+        )
+
+        if is_final:
+            apply_point_events(room_id, point_events)
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "Atrapa la Snitch revelado",
             "is_final": is_final,
         }
 
