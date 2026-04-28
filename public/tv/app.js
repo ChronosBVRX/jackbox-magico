@@ -1,3 +1,4 @@
+let bgMusicStarted = false;
 let currentRoom = "";
 let radarInterval = null;
 let lastPlayKey = "";
@@ -17,6 +18,80 @@ const houseColors = {
   Ravenclaw: "#2980b9",
   Hufflepuff: "#f1c40f",
 };
+
+function getBgMusic() {
+  const audio = document.getElementById("tv-bg-music");
+
+  if (!audio) return null;
+
+  audio.volume = 0.28;
+  audio.loop = true;
+
+  return audio;
+}
+
+async function startBackgroundMusic() {
+  const audio = getBgMusic();
+
+  if (!audio) return;
+
+  try {
+    await audio.play();
+
+    bgMusicStarted = true;
+
+    const btn = document.getElementById("music-toggle");
+
+    if (btn) {
+      btn.innerText = "🔊 Música";
+      btn.classList.add("playing");
+    }
+  } catch (error) {
+    bgMusicStarted = false;
+
+    const btn = document.getElementById("music-toggle");
+
+    if (btn) {
+      btn.innerText = "▶️ Activar música";
+      btn.classList.remove("playing");
+    }
+  }
+}
+
+function pauseBackgroundMusic() {
+  const audio = getBgMusic();
+
+  if (!audio) return;
+
+  audio.pause();
+
+  bgMusicStarted = false;
+
+  const btn = document.getElementById("music-toggle");
+
+  if (btn) {
+    btn.innerText = "🔇 Música";
+    btn.classList.remove("playing");
+  }
+}
+
+function toggleBackgroundMusic() {
+  const audio = getBgMusic();
+
+  if (!audio) return;
+
+  if (audio.paused) {
+    startBackgroundMusic();
+  } else {
+    pauseBackgroundMusic();
+  }
+}
+
+document.addEventListener("click", () => {
+  if (!bgMusicStarted) {
+    startBackgroundMusic();
+  }
+}, { once: true });
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((screen) => {
@@ -50,6 +125,7 @@ function getRoundKey(state) {
 async function crearSala() {
   MagicSound.unlock();
   MagicSound.play("start");
+  startBackgroundMusic();
 
   const res = await fetch("/api/host/create_room", {
     method: "POST",
@@ -263,6 +339,7 @@ function updateArtesTimer(state) {
 
   if (left <= 0 && !autoRevealLock) {
     autoRevealLock = true;
+
     setTimeout(() => {
       revelarResultados();
     }, 650);
@@ -393,6 +470,7 @@ async function lanzarJuegoSeleccionado() {
   autoRevealLock = false;
 
   MagicSound.play("click");
+  startBackgroundMusic();
 
   await fetch(`/api/host/${currentRoom}/start_game/${gameId}`, {
     method: "POST",
