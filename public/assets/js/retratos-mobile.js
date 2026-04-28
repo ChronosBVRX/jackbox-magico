@@ -14,8 +14,28 @@
       .replaceAll("'", "&#039;");
   }
 
-  function escapeAttribute(value) {
-    return escapeHTML(value).replaceAll("`", "&#096;");
+  function getRoomCodeSafe() {
+    if (window.MobileRoomGuard) {
+      return window.MobileRoomGuard.getSafeRoomCode();
+    }
+
+    const inputRoom = document.getElementById("m-room")?.value?.trim().toUpperCase() || "";
+    const params = new URLSearchParams(window.location.search);
+    const urlRoom = params.get("room")?.trim().toUpperCase() || "";
+    const savedRoom = localStorage.getItem("jackbox_magico_room") || "";
+
+    return inputRoom || urlRoom || savedRoom;
+  }
+
+  function getPlayerNameSafe() {
+    if (window.MobileRoomGuard) {
+      return window.MobileRoomGuard.getSafePlayerName();
+    }
+
+    const inputName = document.getElementById("m-name")?.value?.trim() || "";
+    const savedName = localStorage.getItem("jackbox_magico_name") || "";
+
+    return inputName || savedName;
   }
 
   function getClueInfo(state) {
@@ -34,20 +54,6 @@
     };
   }
 
-  function setRoundRuntime(key, startedMs) {
-    try { currentRoundKey = key; } catch (error) { window.currentRoundKey = key; }
-    try { currentRoundStartedMs = startedMs; } catch (error) { window.currentRoundStartedMs = startedMs; }
-    try { hasAnsweredCurrentRound = false; } catch (error) { window.hasAnsweredCurrentRound = false; }
-  }
-
-  function getHasAnsweredFlag() {
-    try {
-      return Boolean(hasAnsweredCurrentRound);
-    } catch (error) {
-      return Boolean(window.hasAnsweredCurrentRound);
-    }
-  }
-
   function ensureRetratosPanel() {
     let panel = document.getElementById("retratos-mobile-panel");
 
@@ -57,6 +63,7 @@
       panel.className = "retratos-mobile-panel";
 
       const buttons = document.getElementById("m-botones");
+
       if (buttons && buttons.parentElement) {
         buttons.parentElement.insertBefore(panel, buttons.nextSibling);
       } else {
@@ -77,6 +84,7 @@
       "snitch-mobile-panel",
     ].forEach((id) => {
       const panel = document.getElementById(id);
+
       if (panel) {
         panel.classList.remove("visible");
         panel.innerHTML = "";
@@ -84,10 +92,122 @@
     });
   }
 
+  async function sendRetratosAnswer(answer, clickedButton) {
+    const roomCode = getRoomCodeSafe();
+    const playerName = getPlayerNameSafe();
+
+    if (!roomCode) {
+      alert("No hay código de sala. Vuelve a entrar escaneando el QR de la TV.");
+      return;
+    }
+
+    if (!playerName) {
+      alert("Falta tu nombre. Regresa y entra otra vez a la sala.");
+      return;
+    }
+
+    const elapsed =
+      typeof currentRoundStartedMs !== "undefined"
+        ? Math.max(0, Date.now() - currentRoundStartedMs)
+        : 0;
+
+    document.querySelectorAll(".retratos-answer-btn").forEach((btn) => {
+      btn.disabled = true;
+      btn.classList.add("locked");
+    });
+
+    if (clickedButton) {
+      clickedButton.innerText = "Respuesta enviada...";
+    }
+
+    try {
+      const response = await fetch("/api/player/submit_answer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        cache: "no-store",
+        body: JSON.stringify({
+          room_code: roomCode,
+          player_name: playerName,
+          answer: answer,
+          client_elapsed_ms: elapsed,
+        }),
+      });
+
+      const data = await response.json().catch(() => ({}));
+
+      if (!response.ok) {
+        console.error("Error submit_answer:", response.status, data);
+        alert("No se pudo enviar la respuesta. Revisa consola.");
+        return;
+      }
+
+      try {
+        hasAnsweredCurrentRound = true;
+      } catch (error) {
+        window.hasAnsweredCurrentRound = true;
+      }
+
+      const status = document.getElementById("mobile-status");
+      if (status) {
+        if (data.correct) {
+          status.innerText = `¡Correcto! +${data.points || 0} puntos`;
+        } else {
+          status.innerText = "Respuesta enviada. Mira la TV.";
+        }
+      }
+
+      if (typeof renderAnsweredWait === "function") {
+        setTimeout(() => {
+          renderAnsweredWait({});
+        }, 450);
+      }
+    } catch (error) {
+      console.error("Error enviando respuesta Retratos:", error);
+      alert("Error de conexión al enviar respuesta.");
+    }
+  }
+
+  function getHasAnsweredFlag() {
+    try {
+      return Boolean(hasAnsweredCurrentRound);
+    } catch (error) {
+      return Boolean(window.hasAnsweredCurrentRound);
+    }
+  }
+
+  function setRoundRuntime(key, startedMs) {
+    try {
+      currentRoundKey = key;
+    } catch (error) {
+      window.currentRoundKey = key;
+    }
+
+    try {
+      currentRoundStartedMs = startedMs;
+    } catch (error) {
+      window.currentRoundStartedMs = startedMs;
+    }
+
+    try {
+      hasAnsweredCurrentRound = false;
+    } catch (error) {
+      window.hasAnsweredCurrentRound = false;
+    }
+  }
+
   function renderRetratosMobile(state) {
-    if (typeof showScreen === "function") showScreen("view-game");
+    if (typeof showScreen === "function") {
+      showScreen("view-game");
+    }
+
     if (typeof showHostPanels === "function") {
-      const hostFlag = typeof myIsHost !== "undefined" ? myIsHost : Boolean(window.myIsHost);
+      const hostFlag =
+        typeof myIsHost !== "undefined"
+          ? myIsHost
+          : Boolean(window.myIsHost);
+
       showHostPanels(hostFlag);
     }
 
@@ -97,26 +217,52 @@
     if (buttons) buttons.innerHTML = "";
 
     const answered = state.answered || {};
-    const myNameValue = typeof myName !== "undefined" ? myName : (window.myName || "");
+    const playerName = getPlayerNameSafe();
 
-    if (answered[myNameValue] || getHasAnsweredFlag()) {
-      if (typeof renderAnsweredWait === "function") renderAnsweredWait(state);
+    if (answered[playerName] || getHasAnsweredFlag()) {
+      if (typeof renderAnsweredWait === "function") {
+        renderAnsweredWait(state);
+      }
+
       return;
     }
 
     const key = `${state.phase}-${state.round_id || state.question || "retratos"}`;
-    const currentKeyValue = typeof currentRoundKey !== "undefined" ? currentRoundKey : window.currentRoundKey;
+    const currentKeyValue =
+      typeof currentRoundKey !== "undefined"
+        ? currentRoundKey
+        : window.currentRoundKey;
+
     if (key !== currentKeyValue) {
-      const startedMs = state.started_at ? Number(state.started_at) * 1000 : Date.now();
+      const startedMs = state.started_at
+        ? Number(state.started_at) * 1000
+        : Date.now();
+
       setRoundRuntime(key, startedMs);
-      if (typeof safeSound === "function") safeSound("start");
-      if (typeof vibrate === "function") vibrate([25, 40, 25]);
+
+      if (typeof safeSound === "function") {
+        safeSound("start");
+      }
+
+      if (typeof vibrate === "function") {
+        vibrate([25, 40, 25]);
+      }
     }
 
     const info = getClueInfo(state);
     const pistas = state.pistas || [state.question || "El retrato está pensando..."];
-    const activeClue = pistas[info.clueIndex] || pistas[pistas.length - 1] || state.question || "";
-    const pointsByClue = state.points_by_clue || { 1: 150, 2: 100, 3: 60 };
+    const activeClue =
+      pistas[info.clueIndex] ||
+      pistas[pistas.length - 1] ||
+      state.question ||
+      "";
+
+    const pointsByClue = state.points_by_clue || {
+      1: 150,
+      2: 100,
+      3: 60,
+    };
+
     const options = state.options || [];
 
     const gamePill = document.getElementById("game-pill");
@@ -128,30 +274,59 @@
 
     if (gamePill) gamePill.innerText = "🖼️ Retratos";
     if (aviso) aviso.innerText = "¡El retrato está chismeando!";
-    if (small) small.innerText = `Pista ${info.clueNumber}/3 · ${state.categoria || "Misterio"}`;
+    if (small) {
+      small.innerText = `Pista ${info.clueNumber}/3 · ${state.categoria || "Misterio"}`;
+    }
+
     if (timer) timer.style.display = "block";
-    if (status) status.innerText = `Pista ${info.clueNumber}: +${Number(pointsByClue[info.clueNumber] || 60)} · rápido correcto +30`;
-    if (bar) bar.style.transform = `scaleX(${info.progress})`;
+
+    if (status) {
+      status.innerText = `Pista ${info.clueNumber}: +${Number(pointsByClue[info.clueNumber] || 60)} · rápido correcto +30`;
+    }
+
+    if (bar) {
+      bar.style.transform = `scaleX(${info.progress})`;
+    }
 
     const panel = ensureRetratosPanel();
     panel.classList.add("visible");
 
     panel.innerHTML = `
       <div class="retratos-mobile-card">
-        <div class="retratos-pill" style="width:max-content;margin-bottom:10px;">🖼️ ${escapeHTML(state.categoria || "Misterio")}</div>
-        <h2 class="retratos-mobile-title">${escapeHTML(state.title || "Retratos Chismosos")}</h2>
-        <p class="retratos-mobile-clue">“${escapeHTML(activeClue)}”</p>
-
-        <div class="retratos-mobile-options">
-          ${options.map((option, index) => `
-            <button class="retratos-answer-btn option-btn" onclick="enviarRespuesta('${escapeAttribute(option)}', this)">
-              <span class="retratos-answer-letter">${answerLetters[index] || "?"}</span>
-              <span style="font-weight:950;line-height:1.12;">${escapeHTML(option)}</span>
-            </button>
-          `).join("")}
+        <div class="retratos-pill" style="width:max-content;margin-bottom:10px;">
+          🖼️ ${escapeHTML(state.categoria || "Misterio")}
         </div>
+
+        <h2 class="retratos-mobile-title">
+          ${escapeHTML(state.title || "Retratos Chismosos")}
+        </h2>
+
+        <p class="retratos-mobile-clue">
+          “${escapeHTML(activeClue)}”
+        </p>
+
+        <div class="retratos-mobile-options" id="retratos-mobile-options"></div>
       </div>
     `;
+
+    const optionsBox = document.getElementById("retratos-mobile-options");
+
+    options.forEach((option, index) => {
+      const btn = document.createElement("button");
+      btn.className = "retratos-answer-btn option-btn";
+      btn.type = "button";
+
+      btn.innerHTML = `
+        <span class="retratos-answer-letter">${answerLetters[index] || "?"}</span>
+        <span style="font-weight:950;line-height:1.12;">${escapeHTML(option)}</span>
+      `;
+
+      btn.addEventListener("click", () => {
+        sendRetratosAnswer(option, btn);
+      });
+
+      optionsBox.appendChild(btn);
+    });
   }
 
   function installRetratosMobilePatch() {
@@ -169,6 +344,7 @@
     }
 
     window.renderRetratosMobile = renderRetratosMobile;
+    window.sendRetratosAnswer = sendRetratosAnswer;
   }
 
   if (document.readyState === "loading") {
