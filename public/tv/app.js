@@ -4,6 +4,7 @@ let radarInterval = null;
 let lastPlayKey = "";
 let lastTickSecond = null;
 let autoRevealLock = false;
+let roomCreating = false;
 
 const houseIcons = {
   Gryffindor: "🦁",
@@ -63,7 +64,7 @@ async function startBackgroundMusic() {
   } catch (error) {
     bgMusicStarted = false;
     updateMusicButton(false, "▶️ Activar música");
-    console.warn("No se pudo reproducir la música:", error);
+    console.warn("El navegador bloqueó autoplay. Usa Chrome con --autoplay-policy=no-user-gesture-required");
   }
 }
 
@@ -96,28 +97,25 @@ function toggleBackgroundMusic() {
 document.addEventListener("DOMContentLoaded", () => {
   const audio = getBgMusic();
 
-  if (!audio) {
-    updateMusicButton(false, "⚠️ Sin audio");
-    return;
-  }
+  if (audio) {
+    audio.addEventListener("canplaythrough", () => {
+      if (!bgMusicStarted) {
+        updateMusicButton(false, "▶️ Activar música");
+      }
+    });
 
-  audio.addEventListener("canplaythrough", () => {
-    if (!bgMusicStarted) {
-      updateMusicButton(false, "▶️ Activar música");
-    }
-  });
+    audio.addEventListener("error", () => {
+      updateMusicButton(false, "⚠️ Audio no encontrado");
+      console.error("No se pudo cargar /assets/audio/fondo-tv.mp3");
+    });
 
-  audio.addEventListener("error", () => {
-    updateMusicButton(false, "⚠️ Audio no encontrado");
-    console.error("No se pudo cargar /assets/audio/fondo-tv.mp3");
-  });
-});
-
-document.addEventListener("click", () => {
-  if (!bgMusicStarted) {
     startBackgroundMusic();
   }
-}, { once: true });
+
+  setTimeout(() => {
+    crearSala();
+  }, 450);
+});
 
 function showScreen(id) {
   document.querySelectorAll(".screen").forEach((screen) => {
@@ -149,6 +147,10 @@ function getRoundKey(state) {
 }
 
 async function crearSala() {
+  if (currentRoom || roomCreating) return;
+
+  roomCreating = true;
+
   MagicSound.unlock();
   MagicSound.play("start");
   startBackgroundMusic();
@@ -160,6 +162,7 @@ async function crearSala() {
   const data = await res.json();
 
   currentRoom = data.room_code;
+  roomCreating = false;
 
   showScreen("view-lobby");
 
@@ -171,23 +174,7 @@ async function crearSala() {
   document.getElementById("tv-qr").src =
     `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
 
-  await cargarCatalogoJuegos();
   iniciarRadar();
-}
-
-async function cargarCatalogoJuegos() {
-  const res = await fetch("/api/games");
-  const data = await res.json();
-
-  const select = document.getElementById("game-select");
-  select.innerHTML = "";
-
-  Object.entries(data.games).forEach(([gameId, game]) => {
-    const option = document.createElement("option");
-    option.value = gameId;
-    option.textContent = game.name;
-    select.appendChild(option);
-  });
 }
 
 function iniciarRadar() {
@@ -230,6 +217,18 @@ function iniciarRadar() {
 function renderLobby(data) {
   autoRevealLock = false;
   showScreen("view-lobby");
+
+  const hostBox = document.getElementById("host-status");
+
+  if (hostBox) {
+    if (data.host && data.host.claimed && data.host.name) {
+      hostBox.textContent = `Host de la partida: ${data.host.name}. Él/ella puede iniciar desde su celular.`;
+      hostBox.classList.add("claimed");
+    } else {
+      hostBox.textContent = "El primer celular que entre será el host de la partida.";
+      hostBox.classList.remove("claimed");
+    }
+  }
 
   const lista = document.getElementById("lista-jugadores");
   lista.innerHTML = "";
@@ -278,9 +277,7 @@ function renderGenericGame(state) {
       <div class="badge">✨ Minijuego activo</div>
       <h2 class="question-title">${escapeHTML(getQuestion(state))}</h2>
       <div class="options-grid" id="tv-opciones"></div>
-      <button class="primary-btn reveal-btn" onclick="revelarResultados()">
-        Revelar Resultados
-      </button>
+      <div class="host-help">El host puede revelar resultados desde su celular.</div>
     </section>
   `;
 
@@ -324,14 +321,7 @@ function renderArtesRidiculas(state, players) {
         <span>Correcta +100 · Rápida +30 · Racha +80 · Error -20 · Humor +20</span>
       </div>
 
-      <div class="artes-actions">
-        <button class="primary-btn reveal-btn" onclick="revelarResultados()">
-          Revelar Resultados
-        </button>
-        <button class="secondary-btn" onclick="volverAlLobby()">
-          Volver al Lobby
-        </button>
-      </div>
+      <div class="host-help">El host puede revelar o continuar desde su celular.</div>
 
       <div id="artes-player-grid" class="artes-player-grid"></div>
     </section>
@@ -488,41 +478,12 @@ function renderHouseScores(players) {
   });
 }
 
-async function lanzarJuegoSeleccionado() {
-  const gameId = document.getElementById("game-select").value;
-
-  lastPlayKey = "";
-  lastTickSecond = null;
-  autoRevealLock = false;
-
-  MagicSound.play("click");
-  startBackgroundMusic();
-
-  await fetch(`/api/host/${currentRoom}/start_game/${gameId}`, {
-    method: "POST",
-  });
-}
-
 async function revelarResultados() {
   if (!currentRoom) return;
 
   MagicSound.play("click");
 
   await fetch(`/api/host/${currentRoom}/reveal`, {
-    method: "POST",
-  });
-}
-
-async function volverAlLobby() {
-  if (!currentRoom) return;
-
-  lastPlayKey = "";
-  lastTickSecond = null;
-  autoRevealLock = false;
-
-  MagicSound.play("click");
-
-  await fetch(`/api/host/${currentRoom}/return_lobby`, {
     method: "POST",
   });
 }
