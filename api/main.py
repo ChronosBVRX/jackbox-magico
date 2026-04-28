@@ -279,6 +279,7 @@ def sanitize_game_state(state: dict):
         public_state.pop("snitch_result", None)
         public_state.pop("trivia_result", None)
         public_state.pop("retratos_result", None)
+        public_state.pop("mapa_result", None)
         public_state.pop("votes_by_voter", None)
         public_state.pop("votes_by_target", None)
 
@@ -854,6 +855,34 @@ async def submit_answer(info: AnswerInfo):
             "clue_number": result.get("clue_number"),
         }
 
+    elif phase == "mapa_travieso":
+        player_house = get_player_house(
+            room_id=room_id,
+            player_name=info.player_name,
+        )
+
+        result = mapa_travieso.score_answer(
+            state=state,
+            player_name=info.player_name,
+            answer=info.answer,
+            player_house=player_house,
+            client_elapsed_ms=info.client_elapsed_ms,
+        )
+
+        if result.get("accepted"):
+            add_points(room_id, info.player_name, result.get("points", 0))
+
+        supabase.table("rooms").update({
+            "game_state": result["state"],
+        }).eq("room_code", info.room_code.upper()).execute()
+
+        return {
+            "message": result.get("message", "Respuesta guardada"),
+            "accepted": result.get("accepted", False),
+            "points": result.get("points", 0),
+            "correct": result.get("correct", False),
+        }
+
     elif phase == "artes_ridiculas":
         result = artes_ridiculas.score_answer(
             state=state,
@@ -1042,6 +1071,24 @@ async def reveal_results(room_code: str):
             "is_final": is_final,
         }
 
+    if state.get("phase") == "mapa_travieso":
+        state, point_events, is_final = mapa_travieso.resolve_for_reveal(
+            state=state,
+            players=players,
+        )
+
+        if is_final:
+            apply_point_events(room_id, point_events)
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "El Mapa Travieso revelado",
+            "is_final": is_final,
+        }
+
     if state.get("phase") in {"patronus_personalizado"}:
         votes = state.get("votes", {})
 
@@ -1220,6 +1267,47 @@ async def debug_trivia(room_code: str):
         "fastest_correct": state.get("fastest_correct"),
         "trivia_session": state.get("trivia_session"),
         "trivia_result": state.get("trivia_result"),
+        "players": players,
+        "raw_game_state": state,
+    }
+
+
+@app.get("/api/debug/mapa/{room_code}")
+async def debug_mapa(room_code: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    room = (
+        supabase.table("rooms")
+        .select("id, status, game_state")
+        .eq("room_code", room_code.upper())
+        .execute()
+    )
+
+    if not room.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    room_data = room.data[0]
+    state = room_data.get("game_state") or {}
+    players = get_players(room_data["id"])
+
+    return {
+        "room_code": room_code.upper(),
+        "room_status": room_data.get("status"),
+        "phase": state.get("phase"),
+        "game_id": state.get("game_id"),
+        "round_id": state.get("round_id"),
+        "started_at": state.get("started_at"),
+        "observation_seconds": state.get("observation_seconds"),
+        "answer_seconds": state.get("answer_seconds"),
+        "variant": state.get("variant"),
+        "question": state.get("question"),
+        "options": state.get("options"),
+        "correct": state.get("correct"),
+        "correct_label": state.get("correct_label"),
+        "target_object": state.get("target_object"),
+        "answers": state.get("answers"),
+        "mapa_result": state.get("mapa_result"),
         "players": players,
         "raw_game_state": state,
     }
