@@ -1,0 +1,382 @@
+.pociones-board {
+  position: relative;
+  overflow: hidden;
+  width: min(1180px, 94vw);
+  padding: 30px;
+  border: 1px solid rgba(74, 222, 128, .28);
+  border-radius: 34px;
+  color: #ecfff3;
+  background:
+    radial-gradient(circle at 22% 22%, rgba(74, 222, 128, .18), transparent 34%),
+    radial-gradient(circle at 82% 70%, rgba(20, 184, 166, .20), transparent 38%),
+    linear-gradient(180deg, rgba(10, 31, 24, .97), rgba(4, 8, 10, .98));
+  box-shadow:
+    0 35px 110px rgba(0,0,0,.58),
+    inset 0 0 0 1px rgba(255,255,255,.05);
+}
+
+.pociones-board::before {
+  content: "";
+  position: absolute;
+  inset: -20%;
+  background:
+    radial-gradient(circle, rgba(74,222,128,.16) 0 2px, transparent 3px),
+    radial-gradient(circle, rgba(255,255,255,.08) 0 1px, transparent 2px);
+  background-size: 120px 120px, 80px 80px;
+  opacity: .45;
+  animation: potionMist 18s linear infinite;
+  pointer-events: none;
+}
+
+@keyframes potionMist {
+  from {
+    transform: translate3d(0, 0, 0);
+  }
+
+  to {
+    transform: translate3d(-70px, 50px, 0);
+  }
+}
+
+.pociones-board.explosion {
+  animation: potionExplosionShake .55s ease-in-out 2;
+}
+
+@keyframes potionExplosionShake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-10px) rotate(-.5deg); }
+  40% { transform: translateX(10px) rotate(.5deg); }
+  60% { transform: translateX(-7px) rotate(-.3deg); }
+  80% { transform: translateX(7px) rotate(.3deg); }
+}
+
+.pociones-header,
+.pociones-stage,
+.pociones-progress,
+.pociones-players,
+.pociones-result-panel {
+  position: relative;
+  z-index: 2;
+}
+
+.pociones-title {
+  margin: 12px 0 6px;
+  color: white;
+  font-size: clamp(3rem, 6vw, 6.4rem);
+  line-height: .88;
+  letter-spacing: -.075em;
+  text-align: center;
+}
+
+.pociones-subtitle {
+  max-width: 880px;
+  margin: 0 auto;
+  color: rgba(236,255,243,.72);
+  text-align: center;
+  font-size: 1.12rem;
+}
+
+.pociones-stage {
+  display: grid;
+  grid-template-columns: 320px 1fr;
+  gap: 28px;
+  align-items: center;
+  margin-top: 28px;
+}
+
+.cauldron-wrap {
+  position: relative;
+  width: 300px;
+  height: 260px;
+  margin: 0 auto;
+}
+
+.cauldron-smoke {
+  position: absolute;
+  left: 50%;
+  top: 0;
+  width: 170px;
+  height: 150px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 35% 55%, rgba(74,222,128,.28), transparent 32%),
+    radial-gradient(circle at 65% 35%, rgba(20,184,166,.22), transparent 34%),
+    radial-gradient(circle at 50% 70%, rgba(187,247,208,.18), transparent 34%);
+  filter: blur(10px);
+  animation: potionSmoke 2.8s ease-in-out infinite alternate;
+}
+
+@keyframes potionSmoke {
+  from {
+    opacity: .45;
+    transform: translateX(-50%) translateY(20px) scale(.9);
+  }
+
+  to {
+    opacity: .85;
+    transform: translateX(-50%) translateY(-8px) scale(1.1);
+  }
+}
+
+.cauldron {
+  position: absolute;
+  left: 32px;
+  top: 110px;
+  width: 235px;
+  height: 125px;
+  border-radius: 40% 40% 50% 50%;
+  background:
+    radial-gradient(circle at 50% 25%, rgba(74,222,128,.35), transparent 24%),
+    linear-gradient(180deg, #293a35, #090e0c 75%);
+  border: 1px solid rgba(187,247,208,.25);
+  box-shadow:
+    inset 0 18px 25px rgba(74,222,128,.08),
+    0 28px 60px rgba(0,0,0,.55);
+}
+
+.cauldron::before {
+  content: "";
+  position: absolute;
+  left: 20px;
+  top: -18px;
+  width: 195px;
+  height: 38px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 50%, rgba(74,222,128,.70), rgba(20,184,166,.25) 55%, rgba(0,0,0,.70) 56%);
+  border: 1px solid rgba(187,247,208,.28);
+}
+
+.cauldron::after {
+  content: "";
+  position: absolute;
+  left: 42px;
+  bottom: -22px;
+  width: 150px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0,0,0,.38);
+  filter: blur(5px);
+}
+
+.potion-recipe-card {
+  min-height: 300px;
+  padding: 26px;
+  border: 1px solid rgba(74,222,128,.26);
+  border-radius: 28px;
+  background:
+    radial-gradient(circle at top right, rgba(74,222,128,.14), transparent 38%),
+    rgba(255,255,255,.075);
+  box-shadow: inset 0 0 45px rgba(74,222,128,.05);
+}
+
+.potion-name {
+  color: #86efac;
+  font-size: 1rem;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.potion-question {
+  margin-top: 10px;
+  color: white;
+  font-size: clamp(2rem, 4.2vw, 4.4rem);
+  line-height: .95;
+  font-weight: 1000;
+  letter-spacing: -.06em;
+  text-wrap: balance;
+}
+
+.potion-recipe-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.potion-step {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 13px 15px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.08);
+  border: 1px solid rgba(255,255,255,.09);
+  color: rgba(236,255,243,.92);
+  font-weight: 900;
+  font-size: 1.08rem;
+}
+
+.potion-hidden {
+  display: grid;
+  place-items: center;
+  min-height: 170px;
+  margin-top: 18px;
+  border: 1px dashed rgba(74,222,128,.35);
+  border-radius: 22px;
+  color: rgba(236,255,243,.72);
+  background: rgba(0,0,0,.18);
+  font-size: 1.35rem;
+  font-weight: 1000;
+  text-align: center;
+}
+
+.pociones-narrator {
+  margin-top: 16px;
+  padding: 16px 18px;
+  border-left: 4px solid #4ade80;
+  border-radius: 16px;
+  color: rgba(236,255,243,.86);
+  background: rgba(255,255,255,.065);
+  font-size: 1.08rem;
+  font-style: italic;
+}
+
+.pociones-progress {
+  margin-top: 24px;
+}
+
+.pociones-progress-track {
+  height: 16px;
+  overflow: hidden;
+  border-radius: 999px;
+  border: 1px solid rgba(255,255,255,.10);
+  background: rgba(255,255,255,.10);
+}
+
+.pociones-progress-bar {
+  height: 100%;
+  width: 100%;
+  transform-origin: left;
+  background: linear-gradient(90deg, #86efac, #14b8a6, #22c55e);
+  transition: transform .18s linear;
+}
+
+.pociones-progress-text {
+  margin-top: 10px;
+  color: rgba(236,255,243,.78);
+  font-weight: 900;
+  text-align: center;
+}
+
+.pociones-players {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 12px;
+  margin-top: 20px;
+}
+
+.pociones-player {
+  padding: 12px 14px;
+  border: 1px solid rgba(255,255,255,.10);
+  border-radius: 18px;
+  background: rgba(255,255,255,.07);
+  color: rgba(236,255,243,.82);
+  font-weight: 900;
+}
+
+.pociones-player.ready {
+  color: white;
+  border-color: rgba(74,222,128,.58);
+  box-shadow: 0 0 28px rgba(74,222,128,.14);
+}
+
+.pociones-result-panel {
+  margin-top: 24px;
+  padding: 24px;
+  border-radius: 28px;
+  border: 1px solid rgba(74,222,128,.28);
+  background:
+    radial-gradient(circle at top, rgba(74,222,128,.13), transparent 38%),
+    rgba(255,255,255,.075);
+  text-align: center;
+}
+
+.pociones-result-title {
+  color: white;
+  font-size: clamp(2.3rem, 5vw, 5rem);
+  line-height: .92;
+  font-weight: 1000;
+  letter-spacing: -.07em;
+}
+
+.pociones-result-line {
+  max-width: 850px;
+  margin: 18px auto 0;
+  color: rgba(236,255,243,.82);
+  font-size: 1.18rem;
+  font-style: italic;
+}
+
+.pociones-mobile-panel {
+  display: none;
+  margin-top: 18px;
+}
+
+.pociones-mobile-panel.visible {
+  display: block;
+}
+
+.pociones-selected {
+  min-height: 72px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(74,222,128,.28);
+  background: rgba(255,255,255,.07);
+  color: rgba(236,255,243,.88);
+  font-weight: 900;
+}
+
+.pociones-ingredient-grid {
+  display: grid;
+  gap: 11px;
+  margin-top: 16px;
+}
+
+.pociones-ingredient-btn {
+  min-height: 74px;
+  padding: 14px;
+  border-radius: 20px;
+  border: 1px solid rgba(255,255,255,.20);
+  color: #06120d;
+  background:
+    radial-gradient(circle at top right, rgba(255,255,255,.42), transparent 34%),
+    linear-gradient(135deg, #86efac, #14b8a6);
+  font-size: 1rem;
+  font-weight: 1000;
+}
+
+.pociones-ingredient-btn.used {
+  opacity: .38;
+}
+
+.pociones-submit-btn {
+  color: white;
+  background: linear-gradient(135deg, #16a34a, #047857);
+}
+
+.pociones-clear-btn {
+  color: white;
+  background: rgba(255,255,255,.10);
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+@media (max-width: 760px) {
+  .pociones-board {
+    padding: 20px;
+  }
+
+  .pociones-stage {
+    grid-template-columns: 1fr;
+  }
+
+  .cauldron-wrap {
+    transform: scale(.86);
+    height: 220px;
+  }
+
+  .potion-question {
+    font-size: clamp(2rem, 10vw, 3.4rem);
+  }
+}

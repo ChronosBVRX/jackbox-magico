@@ -26,11 +26,14 @@ GAME_CATALOG = {
     "clase_pociones": {
         "name": "Clase de Pociones",
         "status": "implemented",
-        "mode": "memory",
+        "mode": "memory_recipe",
         "points": {
-            "perfect": 100,
-            "minor_error": 40,
-            "fastest_perfect_bonus": 50,
+            "perfect": 150,
+            "one_error": 80,
+            "two_errors": 40,
+            "three_or_more": 0,
+            "fastest_perfect": 50,
+            "house_most_perfect": 100,
         },
     },
     "atrapa_snitch": {
