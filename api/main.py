@@ -1,10 +1,12 @@
 import random
 import string
+import uuid
+from copy import deepcopy
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.database import supabase, PlayerJoinInfo, AnswerInfo
+from api.database import supabase, PlayerJoinInfo, AnswerInfo, HostControlInfo
 from api import trivia, duelo, sombrero
 from api import clase_pociones, atrapa_snitch, retratos_chismosos, mapa_travieso
 from api import hechizo_incompleto, artes_ridiculas, caldero_mentiroso, patronus_personalizado, copa_final
@@ -30,6 +32,10 @@ def generate_room_code():
     return "".join(random.choices(string.ascii_uppercase, k=4))
 
 
+def generate_host_token():
+    return str(uuid.uuid4())
+
+
 def add_points(room_id: int, player_name: str, points: int):
     if points == 0:
         return
@@ -48,6 +54,162 @@ def add_points(room_id: int, player_name: str, points: int):
         supabase.table("players").update({
             "score": current_score + points
         }).eq("id", player.data[0]["id"]).execute()
+
+
+def get_room_by_code(room_code: str):
+    room = (
+        supabase.table("rooms")
+        .select("id, status, game_state")
+        .eq("room_code", room_code.upper())
+        .execute()
+    )
+
+    if not room.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    return room.data[0]
+
+
+def get_players(room_id: int):
+    players = (
+        supabase.table("players")
+        .select("name, house, score")
+        .eq("room_id", room_id)
+        .execute()
+    )
+
+    return players.data or []
+
+
+def get_host_from_state(state: dict):
+    state = state or {}
+    host = state.get("host")
+
+    if isinstance(host, dict):
+        return host
+
+    return None
+
+
+def sanitize_game_state(state: dict):
+    public_state = deepcopy(state or {})
+    phase = public_state.get("phase", "lobby")
+
+    host = public_state.get("host")
+    if isinstance(host, dict):
+        public_state["host"] = {
+            "name": host.get("name"),
+            "claimed": bool(host.get("name")),
+        }
+
+    if not phase.startswith("results_"):
+        public_state.pop("correct", None)
+        public_state.pop("funniest", None)
+        public_state.pop("last_results", None)
+
+        answered = public_state.get("answered")
+        if isinstance(answered, dict):
+            public_state["answered"] = {
+                name: True for name in answered.keys()
+            }
+
+    return public_state
+
+
+def ensure_host_in_state(state: dict, host: dict | None):
+    state = state or {}
+
+    if host:
+        state["host"] = host
+
+    return state
+
+
+def validate_mobile_host(room_code: str, info: HostControlInfo):
+    room = get_room_by_code(room_code)
+    state = room.get("game_state") or {}
+    host = get_host_from_state(state)
+
+    if not host:
+        raise HTTPException(status_code=403, detail="Esta sala todavía no tiene host")
+
+    if host.get("name") != info.player_name:
+        raise HTTPException(status_code=403, detail="No eres el host de esta sala")
+
+    if host.get("token") != info.host_token:
+        raise HTTPException(status_code=403, detail="Token de host inválido")
+
+    return room
+
+
+def build_game_state(room_code: str, game_id: str, previous_state: dict):
+    if game_id == "trivia_magica":
+        return trivia.build_trivia_state()
+
+    if game_id == "duelo_hechizos":
+        return duelo.build_duelo_state()
+
+    if game_id == "sombrero_burlon":
+        return sombrero.build_sombrero_state(room_code)
+
+    if game_id == "clase_pociones":
+        return clase_pociones.build_state()
+
+    if game_id == "atrapa_snitch":
+        return atrapa_snitch.build_state()
+
+    if game_id == "retratos_chismosos":
+        return retratos_chismosos.build_state()
+
+    if game_id == "mapa_travieso":
+        return mapa_travieso.build_state()
+
+    if game_id == "hechizo_incompleto":
+        return hechizo_incompleto.build_state()
+
+    if game_id == "artes_ridiculas":
+        return artes_ridiculas.build_state(
+            previous_state=previous_state,
+            humor_mode=True,
+        )
+
+    if game_id == "caldero_mentiroso":
+        return caldero_mentiroso.build_state()
+
+    if game_id == "patronus_personalizado":
+        return patronus_personalizado.build_state(room_code)
+
+    if game_id == "copa_final":
+        return copa_final.build_state()
+
+    raise HTTPException(status_code=400, detail="Juego sin constructor")
+
+
+def start_game_internal(room_code: str, game_id: str):
+    if game_id not in GAME_CATALOG:
+        raise HTTPException(status_code=404, detail="Juego no existe en el catálogo")
+
+    room = get_room_by_code(room_code)
+    previous_state = room.get("game_state") or {}
+    host = get_host_from_state(previous_state)
+
+    new_state = build_game_state(
+        room_code=room_code,
+        game_id=game_id,
+        previous_state=previous_state,
+    )
+
+    new_state = ensure_host_in_state(new_state, host)
+
+    supabase.table("rooms").update({
+        "status": "playing",
+        "game_state": new_state,
+    }).eq("room_code", room_code.upper()).execute()
+
+    return {
+        "message": f"{GAME_CATALOG[game_id]['name']} iniciado",
+        "game_id": game_id,
+    }
 
 
 @app.get("/api/health")
@@ -77,6 +239,7 @@ async def create_room():
         "status": "lobby",
         "game_state": {
             "phase": "lobby",
+            "host": None,
         },
     }).execute()
 
@@ -91,31 +254,74 @@ async def join_room(info: PlayerJoinInfo):
     if not supabase:
         raise HTTPException(status_code=500, detail="Faltan credenciales")
 
-    room = (
-        supabase.table("rooms")
-        .select("id, status")
-        .eq("room_code", info.room_code.upper())
+    room = get_room_by_code(info.room_code)
+    room_id = room["id"]
+    state = room.get("game_state") or {"phase": "lobby"}
+    status = room.get("status")
+
+    existing_player = (
+        supabase.table("players")
+        .select("id, name, house, score")
+        .eq("room_id", room_id)
+        .eq("name", info.player_name)
         .execute()
     )
 
-    if not room.data:
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
+    is_reconnect = bool(existing_player.data)
 
-    if room.data[0]["status"] != "lobby":
+    if not is_reconnect and status != "lobby":
         raise HTTPException(status_code=403, detail="Partida ya en curso")
 
-    try:
+    if not is_reconnect:
         supabase.table("players").insert({
-            "room_id": room.data[0]["id"],
+            "room_id": room_id,
             "name": info.player_name,
             "house": info.house,
         }).execute()
 
-        return {
-            "message": "¡Bienvenido!",
+    host = get_host_from_state(state)
+    is_host = False
+    host_token_to_return = None
+
+    if not host:
+        host_token = info.host_token or generate_host_token()
+
+        host = {
+            "name": info.player_name,
+            "token": host_token,
         }
-    except Exception:
-        raise HTTPException(status_code=400, detail="Nombre en uso.")
+
+        state["host"] = host
+
+        supabase.table("rooms").update({
+            "game_state": state
+        }).eq("room_code", info.room_code.upper()).execute()
+
+        is_host = True
+        host_token_to_return = host_token
+
+    else:
+        if host.get("name") == info.player_name:
+            if info.host_token and info.host_token == host.get("token"):
+                is_host = True
+                host_token_to_return = host.get("token")
+            elif status == "lobby" and not info.host_token:
+                is_host = False
+            elif info.host_token == host.get("token"):
+                is_host = True
+                host_token_to_return = host.get("token")
+            else:
+                is_host = False
+        else:
+            is_host = False
+
+    return {
+        "message": "¡Bienvenido de vuelta!" if is_reconnect else "¡Bienvenido!",
+        "reconnected": is_reconnect,
+        "is_host": is_host,
+        "host_token": host_token_to_return,
+        "host_name": host.get("name") if host else None,
+    }
 
 
 @app.get("/api/room/{room_code}/status")
@@ -123,27 +329,22 @@ async def get_room_status(room_code: str):
     if not supabase:
         raise HTTPException(status_code=500, detail="Faltan credenciales")
 
-    room = (
-        supabase.table("rooms")
-        .select("id, status, game_state")
-        .eq("room_code", room_code.upper())
-        .execute()
-    )
+    room = get_room_by_code(room_code)
+    players = get_players(room["id"])
 
-    if not room.data:
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
+    state = room.get("game_state") or {"phase": "lobby"}
+    public_state = sanitize_game_state(state)
 
-    players = (
-        supabase.table("players")
-        .select("name, house, score")
-        .eq("room_id", room.data[0]["id"])
-        .execute()
-    )
+    host = get_host_from_state(state)
 
     return {
-        "status": room.data[0]["status"],
-        "game_state": room.data[0]["game_state"],
-        "players": players.data,
+        "status": room.get("status"),
+        "game_state": public_state,
+        "players": players,
+        "host": {
+            "name": host.get("name") if host else None,
+            "claimed": bool(host),
+        },
     }
 
 
@@ -152,72 +353,17 @@ async def start_game(room_code: str, game_id: str):
     if not supabase:
         raise HTTPException(status_code=500, detail="Faltan credenciales")
 
-    if game_id not in GAME_CATALOG:
-        raise HTTPException(status_code=404, detail="Juego no existe en el catálogo")
+    return start_game_internal(room_code, game_id)
 
-    current_room = (
-        supabase.table("rooms")
-        .select("id, game_state")
-        .eq("room_code", room_code.upper())
-        .execute()
-    )
 
-    if not current_room.data:
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
+@app.post("/api/mobile/host/{room_code}/start_game/{game_id}")
+async def mobile_host_start_game(room_code: str, game_id: str, info: HostControlInfo):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
 
-    previous_state = current_room.data[0].get("game_state") or {}
+    validate_mobile_host(room_code, info)
 
-    if game_id == "trivia_magica":
-        new_state = trivia.build_trivia_state()
-
-    elif game_id == "duelo_hechizos":
-        new_state = duelo.build_duelo_state()
-
-    elif game_id == "sombrero_burlon":
-        new_state = sombrero.build_sombrero_state(room_code)
-
-    elif game_id == "clase_pociones":
-        new_state = clase_pociones.build_state()
-
-    elif game_id == "atrapa_snitch":
-        new_state = atrapa_snitch.build_state()
-
-    elif game_id == "retratos_chismosos":
-        new_state = retratos_chismosos.build_state()
-
-    elif game_id == "mapa_travieso":
-        new_state = mapa_travieso.build_state()
-
-    elif game_id == "hechizo_incompleto":
-        new_state = hechizo_incompleto.build_state()
-
-    elif game_id == "artes_ridiculas":
-        new_state = artes_ridiculas.build_state(
-            previous_state=previous_state,
-            humor_mode=True,
-        )
-
-    elif game_id == "caldero_mentiroso":
-        new_state = caldero_mentiroso.build_state()
-
-    elif game_id == "patronus_personalizado":
-        new_state = patronus_personalizado.build_state(room_code)
-
-    elif game_id == "copa_final":
-        new_state = copa_final.build_state()
-
-    else:
-        raise HTTPException(status_code=400, detail="Juego sin constructor")
-
-    supabase.table("rooms").update({
-        "status": "playing",
-        "game_state": new_state,
-    }).eq("room_code", room_code.upper()).execute()
-
-    return {
-        "message": f"{GAME_CATALOG[game_id]['name']} iniciado",
-        "game_id": game_id,
-    }
+    return start_game_internal(room_code, game_id)
 
 
 @app.post("/api/player/submit_answer")
@@ -339,7 +485,8 @@ async def reveal_results(room_code: str):
                         "score": current_score + pts,
                     }).eq("id", player["id"]).execute()
 
-    state["phase"] = f"results_{state.get('phase', 'juego')}"
+    if not str(state.get("phase", "")).startswith("results_"):
+        state["phase"] = f"results_{state.get('phase', 'juego')}"
 
     supabase.table("rooms").update({
         "game_state": state,
@@ -348,6 +495,16 @@ async def reveal_results(room_code: str):
     return {
         "message": "Resultados revelados",
     }
+
+
+@app.post("/api/mobile/host/{room_code}/reveal")
+async def mobile_host_reveal(room_code: str, info: HostControlInfo):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    validate_mobile_host(room_code, info)
+
+    return await reveal_results(room_code)
 
 
 @app.post("/api/host/{room_code}/return_lobby")
@@ -368,9 +525,17 @@ async def return_lobby(room_code: str):
 
     if room.data:
         old_state = room.data[0].get("game_state") or {}
+        host = get_host_from_state(old_state)
+
+        if host:
+            lobby_state["host"] = host
+        else:
+            lobby_state["host"] = None
 
         if old_state.get("phase") == "results_artes_ridiculas":
             lobby_state["artes_streaks"] = old_state.get("streaks", {})
+    else:
+        lobby_state["host"] = None
 
     supabase.table("rooms").update({
         "status": "lobby",
@@ -380,3 +545,13 @@ async def return_lobby(room_code: str):
     return {
         "message": "De vuelta al lobby",
     }
+
+
+@app.post("/api/mobile/host/{room_code}/return_lobby")
+async def mobile_host_return_lobby(room_code: str, info: HostControlInfo):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    validate_mobile_host(room_code, info)
+
+    return await return_lobby(room_code)
