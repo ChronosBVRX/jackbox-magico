@@ -34,6 +34,20 @@
     };
   }
 
+  function setRoundRuntime(key, startedMs) {
+    try { currentRoundKey = key; } catch (error) { window.currentRoundKey = key; }
+    try { currentRoundStartedMs = startedMs; } catch (error) { window.currentRoundStartedMs = startedMs; }
+    try { hasAnsweredCurrentRound = false; } catch (error) { window.hasAnsweredCurrentRound = false; }
+  }
+
+  function getHasAnsweredFlag() {
+    try {
+      return Boolean(hasAnsweredCurrentRound);
+    } catch (error) {
+      return Boolean(window.hasAnsweredCurrentRound);
+    }
+  }
+
   function ensureRetratosPanel() {
     let panel = document.getElementById("retratos-mobile-panel");
 
@@ -72,7 +86,10 @@
 
   function renderRetratosMobile(state) {
     if (typeof showScreen === "function") showScreen("view-game");
-    if (typeof showHostPanels === "function") showHostPanels(window.myIsHost || false);
+    if (typeof showHostPanels === "function") {
+      const hostFlag = typeof myIsHost !== "undefined" ? myIsHost : Boolean(window.myIsHost);
+      showHostPanels(hostFlag);
+    }
 
     hideOtherPanels();
 
@@ -80,18 +97,18 @@
     if (buttons) buttons.innerHTML = "";
 
     const answered = state.answered || {};
-    const myNameValue = window.myName || (typeof myName !== "undefined" ? myName : "");
+    const myNameValue = typeof myName !== "undefined" ? myName : (window.myName || "");
 
-    if (answered[myNameValue] || window.hasAnsweredCurrentRound) {
+    if (answered[myNameValue] || getHasAnsweredFlag()) {
       if (typeof renderAnsweredWait === "function") renderAnsweredWait(state);
       return;
     }
 
     const key = `${state.phase}-${state.round_id || state.question || "retratos"}`;
-    if (typeof currentRoundKey !== "undefined" && key !== currentRoundKey) {
-      window.currentRoundKey = key;
-      window.currentRoundStartedMs = state.started_at ? Number(state.started_at) * 1000 : Date.now();
-      window.hasAnsweredCurrentRound = false;
+    const currentKeyValue = typeof currentRoundKey !== "undefined" ? currentRoundKey : window.currentRoundKey;
+    if (key !== currentKeyValue) {
+      const startedMs = state.started_at ? Number(state.started_at) * 1000 : Date.now();
+      setRoundRuntime(key, startedMs);
       if (typeof safeSound === "function") safeSound("start");
       if (typeof vibrate === "function") vibrate([25, 40, 25]);
     }
@@ -127,7 +144,7 @@
 
         <div class="retratos-mobile-options">
           ${options.map((option, index) => `
-            <button class="retratos-answer-btn" onclick="enviarRespuesta('${escapeAttribute(option)}', this)">
+            <button class="retratos-answer-btn option-btn" onclick="enviarRespuesta('${escapeAttribute(option)}', this)">
               <span class="retratos-answer-letter">${answerLetters[index] || "?"}</span>
               <span style="font-weight:950;line-height:1.12;">${escapeHTML(option)}</span>
             </button>
@@ -139,7 +156,6 @@
 
   function installRetratosMobilePatch() {
     const originalRenderMobileGame = window.renderMobileGame;
-    const originalRadar = window.iniciarRadarMovil;
 
     if (typeof originalRenderMobileGame === "function") {
       window.renderMobileGame = function patchedRenderMobileGame(state) {
@@ -152,8 +168,6 @@
       };
     }
 
-    // El radar existente termina llamando a renderMobileGame para fases genéricas.
-    // Esta función queda pública por si después se quiere enrutar explícitamente.
     window.renderRetratosMobile = renderRetratosMobile;
   }
 
