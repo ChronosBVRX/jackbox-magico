@@ -4,11 +4,12 @@ GAME_CATALOG = {
     "duelo_hechizos": {
         "name": "Duelo de Hechizos",
         "status": "implemented",
-        "mode": "rps",
+        "mode": "duel",
         "points": {
-            "duel_winner": 100,
-            "fastest_bonus": 25,
-            "house_bonus": 50,
+            "victory": 150,
+            "fastest_bonus": 30,
+            "clash_bonus": 80,
+            "timeout_penalty": -30,
         },
     },
     "sombrero_burlon": {
