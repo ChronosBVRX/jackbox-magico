@@ -9,16 +9,34 @@
 </head>
 
 <body>
+  <audio
+    id="tv-bg-music"
+    src="https://drive.google.com/uc?export=download&id=1e-UToTsnDvadq9jYE-cioxg9gAkD0tRH"
+    loop
+    preload="auto">
+  </audio>
+
+  <button id="music-toggle" class="music-toggle" onclick="toggleBackgroundMusic()">
+    ▶️ Activar música
+  </button>
+
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
+
   <div class="floating-candles" aria-hidden="true">
-    <span></span><span></span><span></span><span></span><span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
+    <span></span>
   </div>
 
   <div id="view-inicio" class="screen visible">
     <section class="hero-card">
       <div class="badge">⚡ Copa de las Casas</div>
+
       <h1>Jackbox Mágico</h1>
+
       <p>
         Minijuegos rápidos para celular, puntos por casa y caos mágico controlado.
       </p>
