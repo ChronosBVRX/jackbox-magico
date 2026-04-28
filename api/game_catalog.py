@@ -82,11 +82,13 @@ GAME_CATALOG = {
     "artes_ridiculas": {
         "name": "Defensa Contra las Artes Ridículas",
         "status": "implemented",
-        "mode": "pattern",
+        "mode": "quiz_humor",
         "points": {
             "correct": 100,
+            "fast_bonus": 30,
+            "streak3": 80,
             "wrong": -20,
-            "streak3": 50,
+            "funny_false": 20,
         },
     },
     "caldero_mentiroso": {
