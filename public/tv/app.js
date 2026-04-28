@@ -20,6 +20,14 @@ const houseColors = {
   Hufflepuff: "#f1c40f",
 };
 
+const spellEmoji = {
+  Expelliarmus: "🪄",
+  Protego: "🛡️",
+  Stupefy: "💥",
+  Esquivar: "💨",
+  Rictusempra: "😂",
+};
+
 function getBgMusic() {
   const audio = document.getElementById("tv-bg-music");
 
@@ -64,7 +72,6 @@ async function startBackgroundMusic() {
   } catch (error) {
     bgMusicStarted = false;
     updateMusicButton(false, "▶️ Activar música");
-    console.warn("El navegador bloqueó autoplay. Usa Chrome con --autoplay-policy=no-user-gesture-required");
   }
 }
 
@@ -106,7 +113,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
     audio.addEventListener("error", () => {
       updateMusicButton(false, "⚠️ Audio no encontrado");
-      console.error("No se pudo cargar /assets/audio/fondo-tv.mp3");
     });
 
     startBackgroundMusic();
@@ -256,11 +262,25 @@ function renderPlaying(data) {
     autoRevealLock = false;
     MagicSound.play("start");
 
-    if (state.phase === "artes_ridiculas") {
+    if (state.phase === "duelo") {
+      renderDuel(state);
+    } else if (state.phase === "duelo_clash") {
+      renderDuelClash(state);
+    } else if (state.phase === "artes_ridiculas") {
       renderArtesRidiculas(state, data.players);
     } else {
       renderGenericGame(state);
     }
+  }
+
+  if (state.phase === "duelo") {
+    updateDuelTimer(state);
+    updateDuelPlayers(state);
+  }
+
+  if (state.phase === "duelo_clash") {
+    updateDuelClashTimer(state);
+    updateDuelClashTaps(state);
   }
 
   if (state.phase === "artes_ridiculas") {
@@ -288,6 +308,199 @@ function renderGenericGame(state) {
     box.className = "option-box";
     box.textContent = option;
     grid.appendChild(box);
+  });
+}
+
+function renderDuel(state) {
+  const duelists = state.duelists || [];
+  const p1 = duelists[0] || { name: "Duelista A", house: "Casa" };
+  const p2 = duelists[1] || { name: "Duelista B", house: "Casa" };
+
+  const container = document.getElementById("game-container");
+
+  container.innerHTML = `
+    <section class="duel-board">
+      <header class="duel-header">
+        <div class="badge">⚔️ Duelo de Hechizos</div>
+        <h1 class="duel-title">${escapeHTML(state.title || "Duelo de Hechizos")}</h1>
+        <p class="duel-subtitle">${escapeHTML(state.subtitle || "Dos casas entran. Una sale con ego inflado.")}</p>
+      </header>
+
+      <div class="duel-versus">
+        <div class="duel-player left">
+          <div class="duel-house">${houseIcons[p1.house] || "✨"} ${escapeHTML(p1.house || "")}</div>
+          <div class="duel-name">${escapeHTML(p1.name || "Duelista A")}</div>
+          <div id="duel-status-${escapeHTML(p1.name)}" class="duel-answer-status">Esperando hechizo...</div>
+        </div>
+
+        <div class="duel-vs">VS</div>
+
+        <div class="duel-player right">
+          <div class="duel-house">${houseIcons[p2.house] || "✨"} ${escapeHTML(p2.house || "")}</div>
+          <div class="duel-name">${escapeHTML(p2.name || "Duelista B")}</div>
+          <div id="duel-status-${escapeHTML(p2.name)}" class="duel-answer-status">Esperando hechizo...</div>
+        </div>
+      </div>
+
+      <div class="duel-timer">
+        <div class="duel-timer-track">
+          <div id="duel-timer-bar" class="duel-timer-bar"></div>
+        </div>
+        <div id="duel-time-text" class="duel-time-text">Tiempo: 5.0s</div>
+      </div>
+
+      <div class="duel-status">
+        “${escapeHTML(state.narrator || "¡Varitas arriba!") }”
+      </div>
+
+      <div class="duel-score-preview">
+        <div class="duel-score-pill">Victoria +150</div>
+        <div class="duel-score-pill">Más rápido +30</div>
+        <div class="duel-score-pill">Desempate +80</div>
+        <div class="duel-score-pill">Sin responder -30</div>
+      </div>
+    </section>
+  `;
+
+  updateDuelTimer(state);
+  updateDuelPlayers(state);
+}
+
+function renderDuelClash(state) {
+  const duelists = state.duelists || [];
+  const p1 = duelists[0] || { name: "Duelista A", house: "Casa" };
+  const p2 = duelists[1] || { name: "Duelista B", house: "Casa" };
+
+  const container = document.getElementById("game-container");
+
+  container.innerHTML = `
+    <section class="duel-board">
+      <header class="duel-header">
+        <div class="badge">⚡ Choque de Varitas</div>
+        <h1 class="duel-title">¡Choque de Varitas!</h1>
+        <p class="duel-subtitle">Ambos eligieron el mismo hechizo. Ahora gana quien presione más rápido.</p>
+      </header>
+
+      <div class="duel-clash-counter">
+        <div class="duel-clash-box">
+          <div class="duel-clash-name">${houseIcons[p1.house] || "✨"} ${escapeHTML(p1.name)}</div>
+          <div id="clash-taps-${escapeHTML(p1.name)}" class="duel-clash-taps">0</div>
+        </div>
+
+        <div class="duel-clash-box">
+          <div class="duel-clash-name">${houseIcons[p2.house] || "✨"} ${escapeHTML(p2.name)}</div>
+          <div id="clash-taps-${escapeHTML(p2.name)}" class="duel-clash-taps">0</div>
+        </div>
+      </div>
+
+      <div class="duel-timer">
+        <div class="duel-timer-track">
+          <div id="duel-clash-timer-bar" class="duel-timer-bar"></div>
+        </div>
+        <div id="duel-clash-time-text" class="duel-time-text">Tiempo: 5.0s</div>
+      </div>
+
+      <div class="duel-status">
+        “${escapeHTML(state.narrator || "¡Choque de varitas!") }”
+      </div>
+    </section>
+  `;
+
+  updateDuelClashTimer(state);
+  updateDuelClashTaps(state);
+}
+
+function updateDuelTimer(state) {
+  const bar = document.getElementById("duel-timer-bar");
+  const label = document.getElementById("duel-time-text");
+
+  if (!bar || !label) return;
+
+  const duration = Number(state.duration_seconds || 5);
+  const startedAt = Number(state.started_at || Date.now() / 1000);
+  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
+  const left = Math.max(0, duration - elapsed);
+  const pct = Math.max(0, Math.min(1, left / duration));
+
+  bar.style.transform = `scaleX(${pct})`;
+  label.textContent = `Tiempo: ${left.toFixed(1)}s`;
+
+  const rounded = Math.ceil(left);
+
+  if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
+    lastTickSecond = rounded;
+    MagicSound.play("timer-danger");
+  }
+
+  if (left <= 0 && !autoRevealLock) {
+    autoRevealLock = true;
+
+    setTimeout(() => {
+      revelarResultados();
+    }, 650);
+  }
+}
+
+function updateDuelPlayers(state) {
+  const answers = state.answers || {};
+  const duelists = state.duelists || [];
+
+  duelists.forEach((player) => {
+    const el = document.getElementById(`duel-status-${player.name}`);
+    if (!el) return;
+
+    if (answers[player.name]) {
+      el.textContent = "Hechizo elegido";
+      el.classList.add("ready");
+    } else {
+      el.textContent = "Esperando hechizo...";
+      el.classList.remove("ready");
+    }
+  });
+}
+
+function updateDuelClashTimer(state) {
+  const bar = document.getElementById("duel-clash-timer-bar");
+  const label = document.getElementById("duel-clash-time-text");
+
+  if (!bar || !label) return;
+
+  const clash = state.clash || {};
+  const duration = Number(clash.duration_seconds || 5);
+  const startedAt = Number(clash.started_at || Date.now() / 1000);
+  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
+  const left = Math.max(0, duration - elapsed);
+  const pct = Math.max(0, Math.min(1, left / duration));
+
+  bar.style.transform = `scaleX(${pct})`;
+  label.textContent = `Tiempo: ${left.toFixed(1)}s`;
+
+  const rounded = Math.ceil(left);
+
+  if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
+    lastTickSecond = rounded;
+    MagicSound.play("timer-danger");
+  }
+
+  if (left <= 0 && !autoRevealLock) {
+    autoRevealLock = true;
+
+    setTimeout(() => {
+      revelarResultados();
+    }, 650);
+  }
+}
+
+function updateDuelClashTaps(state) {
+  const clash = state.clash || {};
+  const taps = clash.taps || {};
+  const duelists = state.duelists || [];
+
+  duelists.forEach((player) => {
+    const el = document.getElementById(`clash-taps-${player.name}`);
+    if (el) {
+      el.textContent = taps[player.name] || 0;
+    }
   });
 }
 
@@ -401,7 +614,9 @@ function renderResults(data) {
   explanation.textContent = "";
 
   if (phase === "results_duelo") {
-    title.innerText = "El enemigo usó:";
+    title.innerText = "Resultado del duelo:";
+    explanation.textContent = state.duel_result?.summary || "";
+    renderDuelResults(state, extra);
   } else if (phase === "results_sombrero" || phase === "results_patronus_personalizado") {
     title.innerText = "¡El más votado es!";
   } else if (phase === "results_artes_ridiculas") {
@@ -420,6 +635,41 @@ function renderResults(data) {
     lastPlayKey = resultSoundKey;
     MagicSound.play("reveal");
   }
+}
+
+function renderDuelResults(state, container) {
+  const result = state.duel_result || {};
+  const events = state.point_events || [];
+
+  const panel = document.createElement("div");
+  panel.className = "duel-results-panel";
+
+  const summary = document.createElement("div");
+  summary.className = "duel-result-summary";
+  summary.textContent = result.summary || "Duelo finalizado.";
+
+  const narrator = document.createElement("div");
+  narrator.className = "duel-result-narrator";
+  narrator.textContent = `“${result.narrator || "¡Varitas abajo antes de que alguien pierda una ceja!"}”`;
+
+  panel.appendChild(summary);
+  panel.appendChild(narrator);
+  container.appendChild(panel);
+
+  events.forEach((event) => {
+    const row = document.createElement("div");
+    row.className = `result-row ${event.points >= 0 ? "good" : "bad"}`;
+
+    const left = document.createElement("span");
+    left.textContent = `${event.player_name} — ${event.label}`;
+
+    const right = document.createElement("span");
+    right.textContent = `${event.points > 0 ? "+" : ""}${event.points} pts`;
+
+    row.appendChild(left);
+    row.appendChild(right);
+    container.appendChild(row);
+  });
 }
 
 function renderArtesResults(state, container) {
