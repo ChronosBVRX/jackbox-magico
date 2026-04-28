@@ -254,6 +254,7 @@ def sanitize_game_state(state: dict):
 
     if not phase.startswith("results_"):
         public_state.pop("correct", None)
+        public_state.pop("correct_label", None)
         public_state.pop("funniest", None)
         public_state.pop("last_results", None)
         public_state.pop("duel_result", None)
@@ -261,6 +262,7 @@ def sanitize_game_state(state: dict):
         public_state.pop("sombrero_result", None)
         public_state.pop("pociones_result", None)
         public_state.pop("snitch_result", None)
+        public_state.pop("trivia_result", None)
         public_state.pop("votes_by_voter", None)
         public_state.pop("votes_by_target", None)
 
@@ -314,7 +316,10 @@ def validate_mobile_host(room_code: str, info: HostControlInfo):
 
 def build_game_state(room_code: str, game_id: str, previous_state: dict):
     if game_id == "trivia_magica":
-        return trivia.build_trivia_state()
+        return trivia.build_trivia_state(
+            room_code=room_code.upper(),
+            previous_state=previous_state,
+        )
 
     if game_id == "duelo_hechizos":
         return duelo.build_duelo_state(
@@ -706,7 +711,28 @@ async def submit_answer(info: AnswerInfo):
     state = room.data[0].get("game_state") or {}
     phase = state.get("phase")
 
-    if phase == "duelo":
+    if phase == "trivia":
+        result = trivia.score_answer(
+            state=state,
+            player_name=info.player_name,
+            answer=info.answer,
+            client_elapsed_ms=info.client_elapsed_ms,
+        )
+
+        supabase.table("rooms").update({
+            "game_state": result["state"],
+        }).eq("room_code", info.room_code.upper()).execute()
+
+        return {
+            "message": result.get("message", "Respuesta guardada."),
+            "accepted": result.get("accepted", False),
+            "points": result.get("points", 0),
+            "correct": result.get("correct", False),
+            "elapsed_seconds": result.get("elapsed_seconds"),
+            "late": result.get("late", False),
+        }
+
+    elif phase == "duelo":
         result = duelo.submit_spell_answer(
             state=state,
             player_name=info.player_name,
@@ -870,6 +896,24 @@ async def reveal_results(room_code: str):
     room_id = room.data[0]["id"]
     players = get_players(room_id)
 
+    if state.get("phase") == "trivia":
+        state, point_events, is_final = trivia.resolve_for_reveal(
+            state=state,
+            players=players,
+        )
+
+        if is_final:
+            apply_point_events(room_id, point_events)
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "Trivia revelada",
+            "is_final": is_final,
+        }
+
     if state.get("phase") in {"duelo", "duelo_clash"}:
         state, point_events, is_final = duelo.resolve_for_reveal(state)
 
@@ -1012,6 +1056,10 @@ async def return_lobby(room_code: str):
 
         if old_state.get("phase") == "results_artes_ridiculas":
             lobby_state["artes_streaks"] = old_state.get("streaks", {})
+
+        if old_state.get("phase") in {"trivia", "results_trivia"}:
+            lobby_state["trivia_session"] = old_state.get("trivia_session", {})
+
     else:
         lobby_state["host"] = None
 
@@ -1065,6 +1113,51 @@ async def debug_snitch(room_code: str):
         "attempts_total": state.get("attempts_total"),
         "attempts_by_player": state.get("attempts_by_player"),
         "snitch_submitted_players": state.get("snitch_submitted_players"),
+        "players": players,
+        "raw_game_state": state,
+    }
+
+
+@app.get("/api/debug/trivia/{room_code}")
+async def debug_trivia(room_code: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    room = (
+        supabase.table("rooms")
+        .select("id, status, game_state")
+        .eq("room_code", room_code.upper())
+        .execute()
+    )
+
+    if not room.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    room_data = room.data[0]
+    state = room_data.get("game_state") or {}
+    players = get_players(room_data["id"])
+
+    return {
+        "room_code": room_code.upper(),
+        "room_status": room_data.get("status"),
+        "phase": state.get("phase"),
+        "game_id": state.get("game_id"),
+        "round_id": state.get("round_id"),
+        "round_number": state.get("round_number"),
+        "category": state.get("category"),
+        "difficulty": state.get("difficulty"),
+        "question": state.get("question"),
+        "options": state.get("options"),
+        "correct": state.get("correct"),
+        "correct_label": state.get("correct_label"),
+        "started_at": state.get("started_at"),
+        "duration_seconds": state.get("duration_seconds"),
+        "answered": state.get("answered"),
+        "answers": state.get("answers"),
+        "correct_players": state.get("correct_players"),
+        "fastest_correct": state.get("fastest_correct"),
+        "trivia_session": state.get("trivia_session"),
+        "trivia_result": state.get("trivia_result"),
         "players": players,
         "raw_game_state": state,
     }

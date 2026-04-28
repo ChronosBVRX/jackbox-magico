@@ -1,33 +1,1335 @@
 import random
-from fastapi import APIRouter
+import time
+import uuid
+from copy import deepcopy
+from fastapi import APIRouter, HTTPException
+
 from api.database import supabase
+
 
 router = APIRouter()
 
-TRIVIA_POOL = [
-    {"q": "¿Qué hechizo usarías para no pagar la cuenta?", "o": ["Obliviate", "Lumos", "Expelliarmus", "Alohomora"], "c": "Obliviate"},
-    {"q": "¿Qué criatura te robaría el aguinaldo?", "o": ["Dementor", "Escarbato", "Boggart", "Thestral"], "c": "Escarbato"},
-    {"q": "¿Qué casa sobreviviría mejor a una peda mágica?", "o": ["Gryffindor", "Slytherin", "Ravenclaw", "Hufflepuff"], "c": "Hufflepuff"},
-    {"q": "Si tu suegra fuera un Boggart, ¿qué hechizo usarías?", "o": ["Riddikulus", "Avada Kedavra", "Protego", "Desmaio"], "c": "Riddikulus"},
+GAME_ID = "trivia_magica"
+PHASE = "trivia"
+
+QUESTION_SECONDS = 10
+DEFAULT_TOTAL_QUESTIONS = 25
+
+DIFFICULTY_POINTS = {
+    "facil": 50,
+    "fácil": 50,
+    "media": 100,
+    "dificil": 150,
+    "difícil": 150,
+    "experto": 200,
+}
+
+FASTEST_CORRECT_BONUS = 40
+STREAK_3_BONUS = 100
+WRONG_POINTS = 0
+
+ANSWER_LABELS = ["A", "B", "C", "D"]
+
+NARRATOR_CORRECT_LINES = [
+    "Hermione estaría orgullosa.",
+    "Respuesta correcta. Diez puntos imaginarios para tu ego.",
+    "Eso fue más rápido que una Snitch asustada.",
+    "Muy bien. Hasta McGonagall levantó la ceja con respeto.",
+    "Correcto. Esa varita sí trae pila.",
+    "Bien jugado. Eso sí fue magia y no puro entusiasmo.",
+    "Respuesta digna del Gran Comedor.",
+    "Eso estuvo tan limpio que Filch no encontró polvo.",
+]
+
+NARRATOR_WRONG_LINES = [
+    "Incorrecto, eso dolió más que un regaño de Snape.",
+    "No. Hasta un retrato dormido lo habría sabido.",
+    "Fallaste. La lechuza llegó, pero con malas noticias.",
+    "Incorrecto. Ese hechizo se te fue chueco.",
+    "No fue esa. Respira, joven mago, respira.",
+    "Error mágico. Tu varita acaba de pedir vacaciones.",
+    "Incorrecto. Voldemort se rio poquito.",
+    "Eso no era. Pero se sintió dramático.",
+]
+
+FASTEST_LINES = [
+    "¡Respuesta correcta más rápida!",
+    "¡Reflejos de buscador!",
+    "¡Velocidad nivel Snitch!",
+    "¡Contestó antes de que el pergamino terminara de secarse!",
+]
+
+STREAK_LINES = [
+    "¡Racha de 3 correctas!",
+    "¡Modo Hermione activado!",
+    "¡Tres al hilo, esto ya parece clase particular!",
+    "¡Racha mágica! Cuidado, se está poniendo serio.",
 ]
 
 
-def build_trivia_state():
-    pregunta = random.choice(TRIVIA_POOL)
+TRIVIA_POOL = [
+    {
+        "categoria": "hechizos",
+        "dificultad": "facil",
+        "pregunta": "¿Qué hechizo se usa para encender la punta de la varita?",
+        "opciones": ["Lumos", "Accio", "Alohomora", "Expelliarmus"],
+        "respuestaCorrecta": "Lumos",
+        "comentarioNarrador": "Básico, útil y perfecto para no tropezar como muggle.",
+    },
+    {
+        "categoria": "hechizos",
+        "dificultad": "facil",
+        "pregunta": "¿Qué hechizo se usa para desarmar al oponente?",
+        "opciones": ["Expelliarmus", "Lumos", "Riddikulus", "Obliviate"],
+        "respuestaCorrecta": "Expelliarmus",
+        "comentarioNarrador": "El clásico de Harry. Simple, efectivo y muy dramático.",
+    },
+    {
+        "categoria": "hechizos",
+        "dificultad": "facil",
+        "pregunta": "¿Qué hechizo abre cerraduras?",
+        "opciones": ["Alohomora", "Expecto Patronum", "Accio", "Protego"],
+        "respuestaCorrecta": "Alohomora",
+        "comentarioNarrador": "Ideal para puertas, no para evadir responsabilidades.",
+    },
+    {
+        "categoria": "hechizos",
+        "dificultad": "media",
+        "pregunta": "¿Qué hechizo se usa contra un boggart?",
+        "opciones": ["Riddikulus", "Sectumsempra", "Petrificus Totalus", "Incendio"],
+        "respuestaCorrecta": "Riddikulus",
+        "comentarioNarrador": "La defensa más poderosa: volver ridículo lo que te asusta.",
+    },
+    {
+        "categoria": "hechizos",
+        "dificultad": "media",
+        "pregunta": "¿Qué hechizo invoca un Patronus?",
+        "opciones": ["Expecto Patronum", "Protego", "Accio", "Confundus"],
+        "respuestaCorrecta": "Expecto Patronum",
+        "comentarioNarrador": "Con recuerdos felices, no con mensajes de tu ex.",
+    },
+    {
+        "categoria": "hechizos",
+        "dificultad": "media",
+        "pregunta": "¿Qué hechizo se usa para atraer objetos?",
+        "opciones": ["Accio", "Depulso", "Obliviate", "Lumos"],
+        "respuestaCorrecta": "Accio",
+        "comentarioNarrador": "También serviría para traer las papas a la mesa.",
+    },
+    {
+        "categoria": "hechizos",
+        "dificultad": "media",
+        "pregunta": "¿Qué hechizo borra o modifica recuerdos?",
+        "opciones": ["Obliviate", "Aguamenti", "Levicorpus", "Stupefy"],
+        "respuestaCorrecta": "Obliviate",
+        "comentarioNarrador": "Útil para olvidar errores, pero no para el SAT.",
+    },
+    {
+        "categoria": "hechizos",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué hechizo usa Hermione para reparar los lentes de Harry?",
+        "opciones": ["Oculus Reparo", "Reparo Totalum", "Lumos Maxima", "Accio Lentes"],
+        "respuestaCorrecta": "Oculus Reparo",
+        "comentarioNarrador": "La magia también sabe de óptica básica.",
+    },
+    {
+        "categoria": "hechizos",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué hechizo deja el cuerpo rígido como tabla?",
+        "opciones": ["Petrificus Totalus", "Riddikulus", "Protego", "Alohomora"],
+        "respuestaCorrecta": "Petrificus Totalus",
+        "comentarioNarrador": "Neville lo vivió. Y no lo recomienda.",
+    },
+    {
+        "categoria": "hechizos",
+        "dificultad": "experto",
+        "pregunta": "¿Qué hechizo oscuro crea heridas como cortes de espada?",
+        "opciones": ["Sectumsempra", "Morsmordre", "Imperio", "Crucio"],
+        "respuestaCorrecta": "Sectumsempra",
+        "comentarioNarrador": "Cuando el libro dice príncipe, pero la consecuencia dice demanda.",
+    },
+
+    {
+        "categoria": "personajes",
+        "dificultad": "facil",
+        "pregunta": "¿Quién es el mejor amigo pelirrojo de Harry?",
+        "opciones": ["Ron Weasley", "Draco Malfoy", "Neville Longbottom", "Cedric Diggory"],
+        "respuestaCorrecta": "Ron Weasley",
+        "comentarioNarrador": "Pelirrojo, leal y con hambre casi profesional.",
+    },
+    {
+        "categoria": "personajes",
+        "dificultad": "facil",
+        "pregunta": "¿Quién es la amiga brillante de Harry y Ron?",
+        "opciones": ["Hermione Granger", "Luna Lovegood", "Ginny Weasley", "Cho Chang"],
+        "respuestaCorrecta": "Hermione Granger",
+        "comentarioNarrador": "Sin Hermione, la saga duraba película y media.",
+    },
+    {
+        "categoria": "personajes",
+        "dificultad": "facil",
+        "pregunta": "¿Quién es el guardabosques de Hogwarts?",
+        "opciones": ["Rubeus Hagrid", "Remus Lupin", "Sirius Black", "Arthur Weasley"],
+        "respuestaCorrecta": "Rubeus Hagrid",
+        "comentarioNarrador": "Gigante de corazón, peligroso para permisos escolares.",
+    },
+    {
+        "categoria": "personajes",
+        "dificultad": "media",
+        "pregunta": "¿Quién es el padrino de Harry?",
+        "opciones": ["Sirius Black", "Remus Lupin", "Severus Snape", "Arthur Weasley"],
+        "respuestaCorrecta": "Sirius Black",
+        "comentarioNarrador": "Padrino, fugitivo y experto en entradas dramáticas.",
+    },
+    {
+        "categoria": "personajes",
+        "dificultad": "media",
+        "pregunta": "¿Quién es conocido como Ojoloco Moody?",
+        "opciones": ["Alastor Moody", "Horace Slughorn", "Argus Filch", "Cornelius Fudge"],
+        "respuestaCorrecta": "Alastor Moody",
+        "comentarioNarrador": "Vigilancia constante. Hasta para ir por pan.",
+    },
+    {
+        "categoria": "personajes",
+        "dificultad": "media",
+        "pregunta": "¿Quién mata a Nagini en la batalla final?",
+        "opciones": ["Neville Longbottom", "Ron Weasley", "Luna Lovegood", "Draco Malfoy"],
+        "respuestaCorrecta": "Neville Longbottom",
+        "comentarioNarrador": "De tímido a leyenda. Crecimiento de personaje nivel premium.",
+    },
+    {
+        "categoria": "personajes",
+        "dificultad": "dificil",
+        "pregunta": "¿Quién traicionó a los padres de Harry ante Voldemort?",
+        "opciones": ["Peter Pettigrew", "Sirius Black", "Remus Lupin", "Barty Crouch Jr."],
+        "respuestaCorrecta": "Peter Pettigrew",
+        "comentarioNarrador": "La rata era literal y emocional.",
+    },
+    {
+        "categoria": "personajes",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué personaje usa el diario de Tom Riddle y abre la Cámara de los Secretos?",
+        "opciones": ["Ginny Weasley", "Luna Lovegood", "Hermione Granger", "Cho Chang"],
+        "respuestaCorrecta": "Ginny Weasley",
+        "comentarioNarrador": "Moraleja: no confíes en diarios demasiado intensos.",
+    },
+    {
+        "categoria": "personajes",
+        "dificultad": "experto",
+        "pregunta": "¿Cuál es el nombre completo de Voldemort antes de convertirse en el Señor Tenebroso?",
+        "opciones": ["Tom Sorvolo Riddle", "Tom Marvolo Black", "Thomas Salazar Riddle", "Tom Gaunt Lestrange"],
+        "respuestaCorrecta": "Tom Sorvolo Riddle",
+        "comentarioNarrador": "El nombre ya venía con vibra de problema administrativo.",
+    },
+    {
+        "categoria": "personajes",
+        "dificultad": "experto",
+        "pregunta": "¿Quién fue el falso Moody en el Torneo de los Tres Magos?",
+        "opciones": ["Barty Crouch Jr.", "Lucius Malfoy", "Peter Pettigrew", "Fenrir Greyback"],
+        "respuestaCorrecta": "Barty Crouch Jr.",
+        "comentarioNarrador": "Suplantación de identidad nivel: todo el ciclo escolar.",
+    },
+
+    {
+        "categoria": "criaturas",
+        "dificultad": "facil",
+        "pregunta": "¿Qué criatura custodia la Cámara de los Secretos?",
+        "opciones": ["Basilisco", "Hipogrifo", "Dementor", "Troll"],
+        "respuestaCorrecta": "Basilisco",
+        "comentarioNarrador": "Una serpiente enorme. Nada ideal para turismo escolar.",
+    },
+    {
+        "categoria": "criaturas",
+        "dificultad": "facil",
+        "pregunta": "¿Qué criaturas absorben la felicidad?",
+        "opciones": ["Dementores", "Elfos domésticos", "Duendes", "Acromántulas"],
+        "respuestaCorrecta": "Dementores",
+        "comentarioNarrador": "Como lunes con trámite pendiente, pero con túnica.",
+    },
+    {
+        "categoria": "criaturas",
+        "dificultad": "media",
+        "pregunta": "¿Cómo se llama el hipogrifo que ayuda a Harry y Hermione?",
+        "opciones": ["Buckbeak", "Norberto", "Fawkes", "Aragog"],
+        "respuestaCorrecta": "Buckbeak",
+        "comentarioNarrador": "Con los hipogrifos se saluda con respeto, no con confianza.",
+    },
+    {
+        "categoria": "criaturas",
+        "dificultad": "media",
+        "pregunta": "¿Qué criatura es Aragog?",
+        "opciones": ["Acromántula", "Hipogrifo", "Dragón", "Thestral"],
+        "respuestaCorrecta": "Acromántula",
+        "comentarioNarrador": "Araña gigante. Porque una normal no era suficientemente traumática.",
+    },
+    {
+        "categoria": "criaturas",
+        "dificultad": "media",
+        "pregunta": "¿Qué animal es Fawkes?",
+        "opciones": ["Fénix", "Lechuza", "Cuervo", "Hipogrifo"],
+        "respuestaCorrecta": "Fénix",
+        "comentarioNarrador": "Renace de las cenizas. Muy dramático, muy útil.",
+    },
+    {
+        "categoria": "criaturas",
+        "dificultad": "dificil",
+        "pregunta": "¿Quiénes pueden ver a los thestrals?",
+        "opciones": ["Quienes han presenciado la muerte", "Quienes hablan pársel", "Quienes son animagos", "Quienes usan la capa de invisibilidad"],
+        "respuestaCorrecta": "Quienes han presenciado la muerte",
+        "comentarioNarrador": "Una respuesta intensa para una criatura intensa.",
+    },
+    {
+        "categoria": "criaturas",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué dragón enfrenta Harry en el Torneo de los Tres Magos?",
+        "opciones": ["Colacuerno Húngaro", "Galés Verde", "Bola de Fuego Chino", "Hocicorto Sueco"],
+        "respuestaCorrecta": "Colacuerno Húngaro",
+        "comentarioNarrador": "Como examen final, pero con fuego y demanda laboral.",
+    },
+    {
+        "categoria": "criaturas",
+        "dificultad": "experto",
+        "pregunta": "¿Qué criatura parece una planta bebé que grita al ser arrancada?",
+        "opciones": ["Mandrágora", "Mimbulus mimbletonia", "Tentácula venenosa", "Branquialgas"],
+        "respuestaCorrecta": "Mandrágora",
+        "comentarioNarrador": "Botánica, pero con trauma auditivo.",
+    },
+
+    {
+        "categoria": "objetos mágicos",
+        "dificultad": "facil",
+        "pregunta": "¿Qué objeto hace invisible a quien lo usa?",
+        "opciones": ["Capa de invisibilidad", "Giratiempo", "Recordadora", "Mapa del Merodeador"],
+        "respuestaCorrecta": "Capa de invisibilidad",
+        "comentarioNarrador": "Perfecta para escaparse, pésima para rendir cuentas.",
+    },
+    {
+        "categoria": "objetos mágicos",
+        "dificultad": "facil",
+        "pregunta": "¿Qué objeto dorado se atrapa en el Quidditch?",
+        "opciones": ["Snitch dorada", "Bludger", "Quaffle", "Recordadora"],
+        "respuestaCorrecta": "Snitch dorada",
+        "comentarioNarrador": "Pequeña, rápida y con ego de protagonista.",
+    },
+    {
+        "categoria": "objetos mágicos",
+        "dificultad": "media",
+        "pregunta": "¿Qué objeto permite viajar unas horas en el tiempo?",
+        "opciones": ["Giratiempo", "Pensadero", "Copa de fuego", "Guardapelo"],
+        "respuestaCorrecta": "Giratiempo",
+        "comentarioNarrador": "Ideal para estudiar, no para corregir conversaciones incómodas.",
+    },
+    {
+        "categoria": "objetos mágicos",
+        "dificultad": "media",
+        "pregunta": "¿Qué objeto muestra pasadizos y personas dentro de Hogwarts?",
+        "opciones": ["Mapa del Merodeador", "Pensadero", "Espejo de Oesed", "Recordadora"],
+        "respuestaCorrecta": "Mapa del Merodeador",
+        "comentarioNarrador": "GPS mágico con tendencias chismosas.",
+    },
+    {
+        "categoria": "objetos mágicos",
+        "dificultad": "media",
+        "pregunta": "¿Qué objeto muestra el deseo más profundo de quien lo mira?",
+        "opciones": ["Espejo de Oesed", "Pensadero", "Recordadora", "Giratiempo"],
+        "respuestaCorrecta": "Espejo de Oesed",
+        "comentarioNarrador": "Un espejo que te conoce más que tu terapeuta.",
+    },
+    {
+        "categoria": "objetos mágicos",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué objeto permite ver recuerdos almacenados?",
+        "opciones": ["Pensadero", "Copa de fuego", "Mapa del Merodeador", "Deluminador"],
+        "respuestaCorrecta": "Pensadero",
+        "comentarioNarrador": "Como ver historias ajenas, pero con permiso institucional.",
+    },
+    {
+        "categoria": "objetos mágicos",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué objeto elige a los campeones del Torneo de los Tres Magos?",
+        "opciones": ["Copa de fuego", "Snitch dorada", "Sombrero Seleccionador", "Varita de Saúco"],
+        "respuestaCorrecta": "Copa de fuego",
+        "comentarioNarrador": "Democracia mágica con filtros cuestionables.",
+    },
+    {
+        "categoria": "objetos mágicos",
+        "dificultad": "experto",
+        "pregunta": "¿Cuál de estos objetos es una Reliquia de la Muerte?",
+        "opciones": ["Piedra de la Resurrección", "Giratiempo", "Recordadora", "Copa de fuego"],
+        "respuestaCorrecta": "Piedra de la Resurrección",
+        "comentarioNarrador": "Reliquia poderosa, emocionalmente peligrosa.",
+    },
+    {
+        "categoria": "objetos mágicos",
+        "dificultad": "experto",
+        "pregunta": "¿Qué objeto de Dumbledore ayuda a Ron a regresar con Harry y Hermione?",
+        "opciones": ["Deluminador", "Pensadero", "Recordadora", "Giratiempo"],
+        "respuestaCorrecta": "Deluminador",
+        "comentarioNarrador": "Linterna mágica con GPS emocional.",
+    },
+
+    {
+        "categoria": "películas",
+        "dificultad": "facil",
+        "pregunta": "¿En qué película aparece por primera vez Hogwarts?",
+        "opciones": ["La piedra filosofal", "La cámara secreta", "El prisionero de Azkaban", "El cáliz de fuego"],
+        "respuestaCorrecta": "La piedra filosofal",
+        "comentarioNarrador": "La primera llegada al castillo nunca se olvida.",
+    },
+    {
+        "categoria": "películas",
+        "dificultad": "facil",
+        "pregunta": "¿En qué película aparece el basilisco?",
+        "opciones": ["La cámara secreta", "La orden del Fénix", "El cáliz de fuego", "El misterio del príncipe"],
+        "respuestaCorrecta": "La cámara secreta",
+        "comentarioNarrador": "Una cámara secreta con cero mantenimiento preventivo.",
+    },
+    {
+        "categoria": "películas",
+        "dificultad": "media",
+        "pregunta": "¿En qué película aparece el Torneo de los Tres Magos?",
+        "opciones": ["El cáliz de fuego", "La orden del Fénix", "El prisionero de Azkaban", "Las reliquias de la muerte parte 1"],
+        "respuestaCorrecta": "El cáliz de fuego",
+        "comentarioNarrador": "Competencia escolar con alto índice de peligro.",
+    },
+    {
+        "categoria": "películas",
+        "dificultad": "media",
+        "pregunta": "¿En qué película Harry forma el Ejército de Dumbledore?",
+        "opciones": ["La orden del Fénix", "El misterio del príncipe", "El cáliz de fuego", "La cámara secreta"],
+        "respuestaCorrecta": "La orden del Fénix",
+        "comentarioNarrador": "Cuando la escuela falla, se arma el grupo de estudio clandestino.",
+    },
+    {
+        "categoria": "películas",
+        "dificultad": "dificil",
+        "pregunta": "¿En qué película aparece el Giratiempo como elemento clave?",
+        "opciones": ["El prisionero de Azkaban", "El cáliz de fuego", "La piedra filosofal", "La orden del Fénix"],
+        "respuestaCorrecta": "El prisionero de Azkaban",
+        "comentarioNarrador": "Viaje temporal, rescate doble y estrés académico.",
+    },
+    {
+        "categoria": "películas",
+        "dificultad": "dificil",
+        "pregunta": "¿En qué película se revela el libro del Príncipe Mestizo?",
+        "opciones": ["El misterio del príncipe", "La orden del Fénix", "Las reliquias de la muerte parte 2", "El cáliz de fuego"],
+        "respuestaCorrecta": "El misterio del príncipe",
+        "comentarioNarrador": "Libro usado, apuntes peligrosos y consecuencias graves.",
+    },
+    {
+        "categoria": "películas",
+        "dificultad": "experto",
+        "pregunta": "¿En qué película se destruye la diadema de Ravenclaw?",
+        "opciones": ["Las reliquias de la muerte parte 2", "Las reliquias de la muerte parte 1", "El misterio del príncipe", "La orden del Fénix"],
+        "respuestaCorrecta": "Las reliquias de la muerte parte 2",
+        "comentarioNarrador": "Sala de los Menesteres: útil hasta que arde todo.",
+    },
+
+    {
+        "categoria": "profesores",
+        "dificultad": "facil",
+        "pregunta": "¿Quién enseña Pociones durante gran parte de la saga?",
+        "opciones": ["Severus Snape", "Remus Lupin", "Filius Flitwick", "Sybill Trelawney"],
+        "respuestaCorrecta": "Severus Snape",
+        "comentarioNarrador": "Pociones, sarcasmo y tensión permanente.",
+    },
+    {
+        "categoria": "profesores",
+        "dificultad": "facil",
+        "pregunta": "¿Quién enseña Transformaciones?",
+        "opciones": ["Minerva McGonagall", "Pomona Sprout", "Dolores Umbridge", "Sybill Trelawney"],
+        "respuestaCorrecta": "Minerva McGonagall",
+        "comentarioNarrador": "Elegancia, disciplina y cero paciencia para tonterías.",
+    },
+    {
+        "categoria": "profesores",
+        "dificultad": "media",
+        "pregunta": "¿Qué profesor enseña Defensa Contra las Artes Oscuras en el tercer año?",
+        "opciones": ["Remus Lupin", "Gilderoy Lockhart", "Quirinus Quirrell", "Dolores Umbridge"],
+        "respuestaCorrecta": "Remus Lupin",
+        "comentarioNarrador": "El mejor maestro de defensa y una persona muy loba.",
+    },
+    {
+        "categoria": "profesores",
+        "dificultad": "media",
+        "pregunta": "¿Quién enseña Herbología?",
+        "opciones": ["Pomona Sprout", "Minerva McGonagall", "Sybill Trelawney", "Madam Hooch"],
+        "respuestaCorrecta": "Pomona Sprout",
+        "comentarioNarrador": "Plantas mágicas: bonitas, útiles y a veces gritonas.",
+    },
+    {
+        "categoria": "profesores",
+        "dificultad": "media",
+        "pregunta": "¿Quién enseña Encantamientos?",
+        "opciones": ["Filius Flitwick", "Horace Slughorn", "Argus Filch", "Remus Lupin"],
+        "respuestaCorrecta": "Filius Flitwick",
+        "comentarioNarrador": "Pequeño de estatura, gigante en magia.",
+    },
+    {
+        "categoria": "profesores",
+        "dificultad": "dificil",
+        "pregunta": "¿Quién enseña Adivinación?",
+        "opciones": ["Sybill Trelawney", "Pomona Sprout", "Dolores Umbridge", "Poppy Pomfrey"],
+        "respuestaCorrecta": "Sybill Trelawney",
+        "comentarioNarrador": "Predicciones intensas, lentes enormes y mucho incienso emocional.",
+    },
+    {
+        "categoria": "profesores",
+        "dificultad": "dificil",
+        "pregunta": "¿Quién enseña Defensa Contra las Artes Oscuras en segundo año?",
+        "opciones": ["Gilderoy Lockhart", "Remus Lupin", "Alastor Moody", "Severus Snape"],
+        "respuestaCorrecta": "Gilderoy Lockhart",
+        "comentarioNarrador": "Más ego que utilidad práctica.",
+    },
+    {
+        "categoria": "profesores",
+        "dificultad": "experto",
+        "pregunta": "¿Quién reemplaza a Snape como profesor de Pociones en sexto año?",
+        "opciones": ["Horace Slughorn", "Filius Flitwick", "Remus Lupin", "Barty Crouch Jr."],
+        "respuestaCorrecta": "Horace Slughorn",
+        "comentarioNarrador": "Coleccionista de alumnos destacados y cenas convenientes.",
+    },
+
+    {
+        "categoria": "villanos",
+        "dificultad": "facil",
+        "pregunta": "¿Quién es el principal enemigo de Harry?",
+        "opciones": ["Lord Voldemort", "Lucius Malfoy", "Fenrir Greyback", "Gilderoy Lockhart"],
+        "respuestaCorrecta": "Lord Voldemort",
+        "comentarioNarrador": "El villano que ni nariz necesitaba para oler el drama.",
+    },
+    {
+        "categoria": "villanos",
+        "dificultad": "facil",
+        "pregunta": "¿A qué familia pertenece Draco?",
+        "opciones": ["Malfoy", "Black", "Weasley", "Diggory"],
+        "respuestaCorrecta": "Malfoy",
+        "comentarioNarrador": "Apellido de dinero, orgullo y peinados demasiado serios.",
+    },
+    {
+        "categoria": "villanos",
+        "dificultad": "media",
+        "pregunta": "¿Quién mata a Sirius Black en el Ministerio?",
+        "opciones": ["Bellatrix Lestrange", "Lucius Malfoy", "Dolores Umbridge", "Peter Pettigrew"],
+        "respuestaCorrecta": "Bellatrix Lestrange",
+        "comentarioNarrador": "Una escena que dolió en todos los idiomas.",
+    },
+    {
+        "categoria": "villanos",
+        "dificultad": "media",
+        "pregunta": "¿Quién es la profesora enviada por el Ministerio en La orden del Fénix?",
+        "opciones": ["Dolores Umbridge", "Bellatrix Lestrange", "Narcissa Malfoy", "Rita Skeeter"],
+        "respuestaCorrecta": "Dolores Umbridge",
+        "comentarioNarrador": "Color rosa, voz dulce y energía de pesadilla institucional.",
+    },
+    {
+        "categoria": "villanos",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué mortífago pierde una mano y luego recibe una mano plateada?",
+        "opciones": ["Peter Pettigrew", "Lucius Malfoy", "Barty Crouch Jr.", "Fenrir Greyback"],
+        "respuestaCorrecta": "Peter Pettigrew",
+        "comentarioNarrador": "La peor promoción laboral del mundo mágico.",
+    },
+    {
+        "categoria": "villanos",
+        "dificultad": "dificil",
+        "pregunta": "¿Quién es la serpiente de Voldemort?",
+        "opciones": ["Nagini", "Aragog", "Fawkes", "Norberta"],
+        "respuestaCorrecta": "Nagini",
+        "comentarioNarrador": "Mascota, horrocrux y problema de salud pública.",
+    },
+    {
+        "categoria": "villanos",
+        "dificultad": "experto",
+        "pregunta": "¿Qué familia está ligada directamente al linaje de Voldemort por parte materna?",
+        "opciones": ["Gaunt", "Black", "Malfoy", "Lestrange"],
+        "respuestaCorrecta": "Gaunt",
+        "comentarioNarrador": "Árbol genealógico con más sombras que ramas.",
+    },
+
+    {
+        "categoria": "frases en español latino",
+        "dificultad": "facil",
+        "pregunta": "¿Qué frase se usa para activar el Mapa del Merodeador?",
+        "opciones": ["Juro solemnemente que mis intenciones no son buenas", "Lumos Máxima", "Mischief completo", "Abierto hasta el amanecer"],
+        "respuestaCorrecta": "Juro solemnemente que mis intenciones no son buenas",
+        "comentarioNarrador": "Una frase elegante para declarar que vas a hacer travesuras.",
+    },
+    {
+        "categoria": "frases en español latino",
+        "dificultad": "facil",
+        "pregunta": "¿Qué frase se usa para cerrar el Mapa del Merodeador?",
+        "opciones": ["Travesura realizada", "Mapa cerrado", "Fin de la magia", "Mischief terminado"],
+        "respuestaCorrecta": "Travesura realizada",
+        "comentarioNarrador": "Corto, efectivo y perfecto para ocultar evidencia.",
+    },
+    {
+        "categoria": "frases en español latino",
+        "dificultad": "media",
+        "pregunta": "¿Qué corrige Hermione al enseñar Wingardium Leviosa?",
+        "opciones": ["La pronunciación", "El color de la varita", "La postura de Quidditch", "La casa de Ron"],
+        "respuestaCorrecta": "La pronunciación",
+        "comentarioNarrador": "No es solo decirlo, es decirlo con superioridad académica.",
+    },
+    {
+        "categoria": "frases en español latino",
+        "dificultad": "media",
+        "pregunta": "¿Qué palabra dice Snape que resume gran parte de su historia?",
+        "opciones": ["Siempre", "Nunca", "Lumos", "Adiós"],
+        "respuestaCorrecta": "Siempre",
+        "comentarioNarrador": "Una palabra, demasiada carga emocional.",
+    },
+    {
+        "categoria": "frases en español latino",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué frase acompaña comúnmente el uso del encantamiento Patronus?",
+        "opciones": ["Expecto Patronum", "Avada Kedavra", "Wingardium Leviosa", "Petrificus Totalus"],
+        "respuestaCorrecta": "Expecto Patronum",
+        "comentarioNarrador": "La frase que convierte recuerdos felices en defensa mágica.",
+    },
+    {
+        "categoria": "frases en español latino",
+        "dificultad": "experto",
+        "pregunta": "¿Qué frase breve se asocia con la lealtad emocional de Snape?",
+        "opciones": ["Siempre", "Por Hogwarts", "Soy el elegido", "Travesura realizada"],
+        "respuestaCorrecta": "Siempre",
+        "comentarioNarrador": "Si sabes, duele. Si no sabes, pronto dolerá.",
+    },
+
+    {
+        "categoria": "escenas icónicas",
+        "dificultad": "facil",
+        "pregunta": "¿Dónde compra Harry su primera varita?",
+        "opciones": ["Ollivanders", "Gringotts", "Las Tres Escobas", "Borgin y Burkes"],
+        "respuestaCorrecta": "Ollivanders",
+        "comentarioNarrador": "La varita elige al mago. El ticket no elige al bolsillo.",
+    },
+    {
+        "categoria": "escenas icónicas",
+        "dificultad": "facil",
+        "pregunta": "¿Qué deporte mágico se juega con escobas?",
+        "opciones": ["Quidditch", "Ajedrez mágico", "Gobstones", "Exploding Snap"],
+        "respuestaCorrecta": "Quidditch",
+        "comentarioNarrador": "Deporte escolar con altura, golpes y cero sentido de seguridad.",
+    },
+    {
+        "categoria": "escenas icónicas",
+        "dificultad": "media",
+        "pregunta": "¿Qué pieza de ajedrez monta Ron en la primera película?",
+        "opciones": ["Caballo", "Torre", "Alfil", "Rey"],
+        "respuestaCorrecta": "Caballo",
+        "comentarioNarrador": "Ajedrez mágico: estrategia, sacrificio y contusiones.",
+    },
+    {
+        "categoria": "escenas icónicas",
+        "dificultad": "media",
+        "pregunta": "¿Cómo llegan Harry y Ron a Hogwarts en la segunda película?",
+        "opciones": ["En el auto volador", "En un dragón", "En la moto de Sirius", "En un traslador"],
+        "respuestaCorrecta": "En el auto volador",
+        "comentarioNarrador": "Llegar tarde es malo. Llegar en auto volador es legendario.",
+    },
+    {
+        "categoria": "escenas icónicas",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué criatura salva a Harry en la Cámara de los Secretos?",
+        "opciones": ["Fawkes", "Buckbeak", "Dobby", "Hedwig"],
+        "respuestaCorrecta": "Fawkes",
+        "comentarioNarrador": "Fénix de emergencia, servicio completo.",
+    },
+    {
+        "categoria": "escenas icónicas",
+        "dificultad": "dificil",
+        "pregunta": "¿En qué lugar se destruye el diario de Tom Riddle?",
+        "opciones": ["Cámara de los Secretos", "Gran Comedor", "Bosque Prohibido", "Ministerio de Magia"],
+        "respuestaCorrecta": "Cámara de los Secretos",
+        "comentarioNarrador": "Diario destruido, trauma desbloqueado.",
+    },
+    {
+        "categoria": "escenas icónicas",
+        "dificultad": "experto",
+        "pregunta": "¿Qué objeto usa Harry para respirar bajo el agua en la segunda prueba del Torneo?",
+        "opciones": ["Branquialgas", "Giratiempo", "Poción multijugos", "Deluminador"],
+        "respuestaCorrecta": "Branquialgas",
+        "comentarioNarrador": "Sabor dudoso, utilidad indiscutible.",
+    },
+
+    {
+        "categoria": "casas de Hogwarts",
+        "dificultad": "facil",
+        "pregunta": "¿Qué casa tiene como símbolo un león?",
+        "opciones": ["Gryffindor", "Slytherin", "Ravenclaw", "Hufflepuff"],
+        "respuestaCorrecta": "Gryffindor",
+        "comentarioNarrador": "Valentía, drama y ganas de romper reglas.",
+    },
+    {
+        "categoria": "casas de Hogwarts",
+        "dificultad": "facil",
+        "pregunta": "¿Qué casa tiene como símbolo una serpiente?",
+        "opciones": ["Slytherin", "Ravenclaw", "Hufflepuff", "Gryffindor"],
+        "respuestaCorrecta": "Slytherin",
+        "comentarioNarrador": "Ambición, elegancia y reputación complicada.",
+    },
+    {
+        "categoria": "casas de Hogwarts",
+        "dificultad": "media",
+        "pregunta": "¿A qué casa pertenece Luna Lovegood?",
+        "opciones": ["Ravenclaw", "Hufflepuff", "Gryffindor", "Slytherin"],
+        "respuestaCorrecta": "Ravenclaw",
+        "comentarioNarrador": "Creativa, extraña y más sabia de lo que parece.",
+    },
+    {
+        "categoria": "casas de Hogwarts",
+        "dificultad": "media",
+        "pregunta": "¿A qué casa pertenece Cedric Diggory?",
+        "opciones": ["Hufflepuff", "Ravenclaw", "Slytherin", "Gryffindor"],
+        "respuestaCorrecta": "Hufflepuff",
+        "comentarioNarrador": "Leal, noble y demasiado bueno para ese torneo.",
+    },
+    {
+        "categoria": "casas de Hogwarts",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué casa valora especialmente la sabiduría y el aprendizaje?",
+        "opciones": ["Ravenclaw", "Slytherin", "Gryffindor", "Hufflepuff"],
+        "respuestaCorrecta": "Ravenclaw",
+        "comentarioNarrador": "La casa donde corregir a todos cuenta como cardio.",
+    },
+    {
+        "categoria": "casas de Hogwarts",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué casa valora especialmente la lealtad y el trabajo duro?",
+        "opciones": ["Hufflepuff", "Slytherin", "Ravenclaw", "Gryffindor"],
+        "respuestaCorrecta": "Hufflepuff",
+        "comentarioNarrador": "La casa buena onda hasta que le tocan los snacks.",
+    },
+
+    {
+        "categoria": "horrocruxes",
+        "dificultad": "media",
+        "pregunta": "¿Qué objeto de Tom Riddle es un horrocrux?",
+        "opciones": ["Diario", "Capa", "Giratiempo", "Recordadora"],
+        "respuestaCorrecta": "Diario",
+        "comentarioNarrador": "Un diario con más red flags que romance tóxico.",
+    },
+    {
+        "categoria": "horrocruxes",
+        "dificultad": "media",
+        "pregunta": "¿Qué serpiente es un horrocrux?",
+        "opciones": ["Nagini", "Aragog", "Fawkes", "Norberta"],
+        "respuestaCorrecta": "Nagini",
+        "comentarioNarrador": "Serpiente, compañera y pésima noticia.",
+    },
+    {
+        "categoria": "horrocruxes",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué objeto de Hufflepuff se convierte en horrocrux?",
+        "opciones": ["Copa", "Diadema", "Espada", "Guardapelo"],
+        "respuestaCorrecta": "Copa",
+        "comentarioNarrador": "Una copa elegante con contenido moralmente cuestionable.",
+    },
+    {
+        "categoria": "horrocruxes",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué objeto de Ravenclaw se convierte en horrocrux?",
+        "opciones": ["Diadema", "Copa", "Guardapelo", "Diario"],
+        "respuestaCorrecta": "Diadema",
+        "comentarioNarrador": "Sabiduría, pero poseída por el peor inquilino.",
+    },
+    {
+        "categoria": "horrocruxes",
+        "dificultad": "experto",
+        "pregunta": "¿Qué destruye Ron con la espada de Gryffindor?",
+        "opciones": ["Guardapelo", "Diario", "Diadema", "Copa"],
+        "respuestaCorrecta": "Guardapelo",
+        "comentarioNarrador": "Momento de valentía, celos y terapia pendiente.",
+    },
+    {
+        "categoria": "horrocruxes",
+        "dificultad": "experto",
+        "pregunta": "¿Qué horrocrux destruye Hermione en Gringotts?",
+        "opciones": ["Copa de Hufflepuff", "Diario de Tom Riddle", "Diadema de Ravenclaw", "Guardapelo de Slytherin"],
+        "respuestaCorrecta": "Copa de Hufflepuff",
+        "comentarioNarrador": "Atraco bancario mágico con objetivo académico.",
+    },
+
+    {
+        "categoria": "lugares",
+        "dificultad": "facil",
+        "pregunta": "¿Cómo se llama el banco de los magos?",
+        "opciones": ["Gringotts", "Ollivanders", "Honeydukes", "Azkaban"],
+        "respuestaCorrecta": "Gringotts",
+        "comentarioNarrador": "Banco mágico: más seguro que tu contraseña, casi siempre.",
+    },
+    {
+        "categoria": "lugares",
+        "dificultad": "facil",
+        "pregunta": "¿Cómo se llama la prisión mágica?",
+        "opciones": ["Azkaban", "Hogsmeade", "Gringotts", "Beauxbatons"],
+        "respuestaCorrecta": "Azkaban",
+        "comentarioNarrador": "Vacaciones no incluidas. Dementores sí.",
+    },
+    {
+        "categoria": "lugares",
+        "dificultad": "media",
+        "pregunta": "¿Dónde se encuentra la estación para abordar el Expreso de Hogwarts?",
+        "opciones": ["King's Cross", "Hogsmeade", "Gringotts", "El Ministerio"],
+        "respuestaCorrecta": "King's Cross",
+        "comentarioNarrador": "La magia empieza con una pared y mucha confianza.",
+    },
+    {
+        "categoria": "lugares",
+        "dificultad": "media",
+        "pregunta": "¿Qué pueblo mágico visitan los estudiantes de Hogwarts?",
+        "opciones": ["Hogsmeade", "Godric's Hollow", "Little Whinging", "Privet Drive"],
+        "respuestaCorrecta": "Hogsmeade",
+        "comentarioNarrador": "Dulces, cerveza de mantequilla y excursión con permiso.",
+    },
+    {
+        "categoria": "lugares",
+        "dificultad": "dificil",
+        "pregunta": "¿Dónde viven los Dursley?",
+        "opciones": ["Privet Drive", "Godric's Hollow", "Hogsmeade", "El Callejón Diagon"],
+        "respuestaCorrecta": "Privet Drive",
+        "comentarioNarrador": "Lugar donde la magia era mal vista y el drama bienvenido.",
+    },
+    {
+        "categoria": "lugares",
+        "dificultad": "experto",
+        "pregunta": "¿Qué lugar está relacionado con el origen familiar de Harry?",
+        "opciones": ["Godric's Hollow", "Hogsmeade", "Azkaban", "Beauxbatons"],
+        "respuestaCorrecta": "Godric's Hollow",
+        "comentarioNarrador": "Un lugar hermoso con una carga emocional tremenda.",
+    },
+
+    {
+        "categoria": "quidditch",
+        "dificultad": "facil",
+        "pregunta": "¿Qué jugador busca la Snitch dorada?",
+        "opciones": ["Buscador", "Guardián", "Golpeador", "Cazador"],
+        "respuestaCorrecta": "Buscador",
+        "comentarioNarrador": "El puesto con más presión y mejor foto de portada.",
+    },
+    {
+        "categoria": "quidditch",
+        "dificultad": "media",
+        "pregunta": "¿Qué pelota se usa para anotar en los aros?",
+        "opciones": ["Quaffle", "Bludger", "Snitch", "Recordadora"],
+        "respuestaCorrecta": "Quaffle",
+        "comentarioNarrador": "La pelota normal en un deporte nada normal.",
+    },
+    {
+        "categoria": "quidditch",
+        "dificultad": "media",
+        "pregunta": "¿Qué pelotas golpean a los jugadores en Quidditch?",
+        "opciones": ["Bludgers", "Quaffles", "Snitches", "Mandrágoras"],
+        "respuestaCorrecta": "Bludgers",
+        "comentarioNarrador": "Como si volar en escoba no fuera suficiente riesgo.",
+    },
+    {
+        "categoria": "quidditch",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué posición juega Harry en el equipo de Gryffindor?",
+        "opciones": ["Buscador", "Guardián", "Cazador", "Golpeador"],
+        "respuestaCorrecta": "Buscador",
+        "comentarioNarrador": "Literalmente fue contratado para perseguir una bolita con alas.",
+    },
+
+    {
+        "categoria": "doblaje latino",
+        "dificultad": "facil",
+        "pregunta": "En el doblaje latino, ¿cómo se conoce comúnmente a la escuela de Harry?",
+        "opciones": ["Hogwarts", "Beauxbatons", "Durmstrang", "Ilvermorny"],
+        "respuestaCorrecta": "Hogwarts",
+        "comentarioNarrador": "La escuela donde las excursiones casi siempre salen mal.",
+    },
+    {
+        "categoria": "doblaje latino",
+        "dificultad": "media",
+        "pregunta": "¿Cómo se conoce en español latino al juego mágico de escobas?",
+        "opciones": ["Quidditch", "Cuadribol", "Escobabol", "Vuelo mágico"],
+        "respuestaCorrecta": "Quidditch",
+        "comentarioNarrador": "En el fandom latino, todos saben que ese deporte no era seguro.",
+    },
+    {
+        "categoria": "doblaje latino",
+        "dificultad": "dificil",
+        "pregunta": "¿Qué término se usa para quienes no tienen magia?",
+        "opciones": ["Muggles", "Squibs", "Mortífagos", "Animagos"],
+        "respuestaCorrecta": "Muggles",
+        "comentarioNarrador": "Gente sin magia, pero con recibos, tráfico y responsabilidades.",
+    },
+    {
+        "categoria": "doblaje latino",
+        "dificultad": "experto",
+        "pregunta": "¿Qué nombre recibe el grupo de seguidores de Voldemort?",
+        "opciones": ["Mortífagos", "Aurores", "Merodeadores", "Inquisidores"],
+        "respuestaCorrecta": "Mortífagos",
+        "comentarioNarrador": "Club social de malas decisiones y tatuajes peligrosos.",
+    },
+]
+
+
+def _now():
+    return time.time()
+
+
+def normalize_difficulty(value: str):
+    value = str(value or "media").strip().lower()
+    value = value.replace("í", "i").replace("á", "a")
+    return value
+
+
+def difficulty_points(value: str):
+    normalized = normalize_difficulty(value)
+    return DIFFICULTY_POINTS.get(normalized, 100)
+
+
+def shuffle_options(question: dict):
+    options = list(question["opciones"])
+    random.shuffle(options)
+    return options
+
+
+def get_answer_label(options, correct):
+    try:
+        index = options.index(correct)
+        return ANSWER_LABELS[index]
+    except ValueError:
+        return ""
+
+
+def build_question_view(question: dict, options=None):
+    options = options or shuffle_options(question)
+    correct = question["respuestaCorrecta"]
+
     return {
-        "phase": "trivia",
-        "question": pregunta["q"],
-        "options": pregunta["o"],
-        "correct": pregunta["c"],
+        "categoria": question["categoria"],
+        "dificultad": question["dificultad"],
+        "pregunta": question["pregunta"],
+        "opciones": options,
+        "respuestaCorrecta": correct,
+        "respuestaLabel": get_answer_label(options, correct),
+        "comentarioNarrador": question["comentarioNarrador"],
+        "puntosBase": difficulty_points(question["dificultad"]),
     }
+
+
+def pick_question(previous_state=None):
+    previous_state = previous_state or {}
+    trivia_session = previous_state.get("trivia_session") or {}
+
+    used_ids = trivia_session.get("used_question_ids") or []
+    used_ids = set(used_ids)
+
+    indexed_pool = list(enumerate(TRIVIA_POOL))
+    available = [
+        (idx, question)
+        for idx, question in indexed_pool
+        if idx not in used_ids
+    ]
+
+    if not available:
+        available = indexed_pool
+        used_ids = set()
+
+    question_id, question = random.choice(available)
+    return question_id, deepcopy(question), list(used_ids)
+
+
+def build_trivia_state(room_code=None, previous_state=None):
+    previous_state = previous_state or {}
+    previous_session = previous_state.get("trivia_session") or {}
+
+    previous_round_number = int(previous_session.get("round_number") or 0)
+    total_questions = int(previous_session.get("total_questions") or DEFAULT_TOTAL_QUESTIONS)
+
+    question_id, question, used_ids = pick_question(previous_state)
+    options = shuffle_options(question)
+    question_view = build_question_view(question, options)
+
+    used_ids.append(question_id)
+
+    return {
+        "phase": PHASE,
+        "game_id": GAME_ID,
+        "round_id": str(uuid.uuid4()),
+        "round_number": previous_round_number + 1,
+        "title": "Trivia del Mundo Mágico",
+        "subtitle": "Modo principal de Copa de las Casas. Responde rápido, acumula rachas y defiende tu casa.",
+        "question": question_view["pregunta"],
+        "options": question_view["opciones"],
+        "correct": question_view["respuestaCorrecta"],
+        "correct_label": question_view["respuestaLabel"],
+        "category": question_view["categoria"],
+        "difficulty": question_view["dificultad"],
+        "narrator": question_view["comentarioNarrador"],
+        "duration_seconds": QUESTION_SECONDS,
+        "started_at": _now(),
+        "points_correct": question_view["puntosBase"],
+        "points_wrong": WRONG_POINTS,
+        "points_fastest": FASTEST_CORRECT_BONUS,
+        "points_streak_3": STREAK_3_BONUS,
+        "question_payload": question_view,
+        "answered": {},
+        "answers": {},
+        "answer_order": [],
+        "correct_players": [],
+        "fastest_correct": None,
+        "trivia_result": None,
+        "point_events": [],
+        "scored": False,
+        "host": previous_state.get("host"),
+        "trivia_session": {
+            "room_code": room_code,
+            "round_number": previous_round_number + 1,
+            "total_questions": total_questions,
+            "used_question_ids": used_ids,
+            "streaks": previous_session.get("streaks") or {},
+            "correct_counts": previous_session.get("correct_counts") or {},
+            "wrong_counts": previous_session.get("wrong_counts") or {},
+            "fastest_counts": previous_session.get("fastest_counts") or {},
+            "history": previous_session.get("history") or [],
+        },
+        "visual": {
+            "mode": "premium_great_hall",
+            "theme": "gran_comedor",
+            "effects": [
+                "velas_flotantes",
+                "pergaminos",
+                "escudos_de_casas",
+                "campana_magica",
+                "brillo_de_acierto",
+                "sombra_de_error",
+            ],
+            "sound_cues": {
+                "start": "campana_magica",
+                "correct": "destello_correcto",
+                "wrong": "golpe_suave_pergamino",
+                "timer": "tic_tac_magico",
+                "fastest": "whoosh_snitch",
+                "streak": "aplausos_gran_comedor",
+            },
+        },
+    }
+
+
+def score_answer(state: dict, player_name: str, answer: str, client_elapsed_ms=None):
+    state = deepcopy(state or {})
+    player_name = str(player_name or "").strip()
+    answer = str(answer or "").strip()
+
+    if state.get("phase") != PHASE:
+        return {
+            "state": state,
+            "accepted": False,
+            "message": "La trivia no está activa.",
+            "points": 0,
+            "correct": False,
+        }
+
+    if not player_name:
+        return {
+            "state": state,
+            "accepted": False,
+            "message": "No se detectó jugador.",
+            "points": 0,
+            "correct": False,
+        }
+
+    answered = state.get("answered") or {}
+
+    if answered.get(player_name):
+        return {
+            "state": state,
+            "accepted": False,
+            "message": "Ya respondiste esta pregunta.",
+            "points": 0,
+            "correct": False,
+        }
+
+    started_at = float(state.get("started_at") or _now())
+    duration = float(state.get("duration_seconds") or QUESTION_SECONDS)
+
+    if client_elapsed_ms is not None:
+        elapsed = max(0, int(client_elapsed_ms) / 1000)
+    else:
+        elapsed = max(0, _now() - started_at)
+
+    if elapsed > duration + 1:
+        return {
+            "state": state,
+            "accepted": False,
+            "message": "Se acabó el tiempo.",
+            "points": 0,
+            "correct": False,
+            "late": True,
+        }
+
+    correct_answer = state.get("correct")
+    is_correct = answer == correct_answer
+
+    base_points = int(state.get("points_correct") or 100)
+    points = base_points if is_correct else WRONG_POINTS
+
+    answers = state.get("answers") or {}
+    answer_order = state.get("answer_order") or []
+    correct_players = state.get("correct_players") or []
+
+    answers[player_name] = {
+        "answer": answer,
+        "correct": is_correct,
+        "elapsed_seconds": round(elapsed, 3),
+        "points_base": points,
+    }
+
+    answered[player_name] = True
+
+    answer_order.append({
+        "player_name": player_name,
+        "answer": answer,
+        "correct": is_correct,
+        "elapsed_seconds": round(elapsed, 3),
+    })
+
+    if is_correct:
+        correct_players.append(player_name)
+
+    state["answers"] = answers
+    state["answered"] = answered
+    state["answer_order"] = answer_order
+    state["correct_players"] = correct_players
+
+    if is_correct:
+        message = random.choice(NARRATOR_CORRECT_LINES)
+    else:
+        message = random.choice(NARRATOR_WRONG_LINES)
+
+    return {
+        "state": state,
+        "accepted": True,
+        "message": message,
+        "points": points,
+        "correct": is_correct,
+        "elapsed_seconds": round(elapsed, 3),
+    }
+
+
+def _add_point_event(events, player_name, points, label):
+    if not player_name or points == 0:
+        return
+
+    events.append({
+        "player_name": player_name,
+        "points": points,
+        "label": label,
+    })
+
+
+def resolve_for_reveal(state: dict, players=None):
+    state = deepcopy(state or {})
+    players = players or []
+
+    if state.get("scored"):
+        return state, state.get("point_events", []), True
+
+    answers = state.get("answers") or {}
+    session = state.get("trivia_session") or {}
+
+    streaks = session.get("streaks") or {}
+    correct_counts = session.get("correct_counts") or {}
+    wrong_counts = session.get("wrong_counts") or {}
+    fastest_counts = session.get("fastest_counts") or {}
+
+    point_events = []
+    player_results = []
+
+    correct_entries = [
+        {
+            "player_name": name,
+            **payload,
+        }
+        for name, payload in answers.items()
+        if payload.get("correct")
+    ]
+
+    fastest_correct = None
+
+    if correct_entries:
+        fastest_correct = min(
+            correct_entries,
+            key=lambda item: float(item.get("elapsed_seconds") or 999),
+        )
+
+    for player in players:
+        name = player.get("name")
+        house = player.get("house")
+        payload = answers.get(name)
+
+        if not payload:
+            streaks[name] = 0
+            player_results.append({
+                "player_name": name,
+                "house": house,
+                "answered": False,
+                "correct": False,
+                "answer": None,
+                "elapsed_seconds": None,
+                "points": 0,
+                "labels": ["Sin respuesta"],
+            })
+            continue
+
+        is_correct = bool(payload.get("correct"))
+        points = 0
+        labels = []
+
+        if is_correct:
+            base = int(payload.get("points_base") or state.get("points_correct") or 100)
+            points += base
+            labels.append(f"Correcta +{base}")
+
+            streaks[name] = int(streaks.get(name) or 0) + 1
+            correct_counts[name] = int(correct_counts.get(name) or 0) + 1
+
+            if fastest_correct and fastest_correct.get("player_name") == name:
+                points += FASTEST_CORRECT_BONUS
+                fastest_counts[name] = int(fastest_counts.get(name) or 0) + 1
+                labels.append(random.choice(FASTEST_LINES) + f" +{FASTEST_CORRECT_BONUS}")
+
+            if streaks[name] > 0 and streaks[name] % 3 == 0:
+                points += STREAK_3_BONUS
+                labels.append(random.choice(STREAK_LINES) + f" +{STREAK_3_BONUS}")
+
+        else:
+            streaks[name] = 0
+            wrong_counts[name] = int(wrong_counts.get(name) or 0) + 1
+            labels.append("Incorrecta")
+
+        _add_point_event(
+            point_events,
+            name,
+            points,
+            " · ".join(labels),
+        )
+
+        player_results.append({
+            "player_name": name,
+            "house": house,
+            "answered": True,
+            "correct": is_correct,
+            "answer": payload.get("answer"),
+            "elapsed_seconds": payload.get("elapsed_seconds"),
+            "points": points,
+            "labels": labels,
+            "streak": streaks.get(name, 0),
+        })
+
+    history = session.get("history") or []
+    history.append({
+        "round_number": state.get("round_number"),
+        "question": state.get("question"),
+        "category": state.get("category"),
+        "difficulty": state.get("difficulty"),
+        "correct": state.get("correct"),
+        "correct_label": state.get("correct_label"),
+        "fastest_correct": fastest_correct,
+        "player_results": player_results,
+    })
+
+    session["streaks"] = streaks
+    session["correct_counts"] = correct_counts
+    session["wrong_counts"] = wrong_counts
+    session["fastest_counts"] = fastest_counts
+    session["history"] = history[-60:]
+
+    state["phase"] = "results_trivia"
+    state["trivia_session"] = session
+    state["trivia_result"] = {
+        "correct": state.get("correct"),
+        "correct_label": state.get("correct_label"),
+        "commentary": state.get("narrator"),
+        "fastest_correct": fastest_correct,
+        "player_results": player_results,
+        "narrator_correct": random.choice(NARRATOR_CORRECT_LINES),
+        "narrator_wrong": random.choice(NARRATOR_WRONG_LINES),
+        "summary": "Pregunta resuelta. El host puede avanzar a la siguiente pregunta.",
+    }
+    state["point_events"] = point_events
+    state["scored"] = True
+
+    return state, point_events, True
 
 
 @router.post("/api/host/{room_code}/start_trivia")
 async def start_trivia(room_code: str):
-    new_state = build_trivia_state()
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    room = (
+        supabase.table("rooms")
+        .select("game_state")
+        .eq("room_code", room_code.upper())
+        .execute()
+    )
+
+    previous_state = {}
+
+    if room.data:
+        previous_state = room.data[0].get("game_state") or {}
+
+    new_state = build_trivia_state(
+        room_code=room_code.upper(),
+        previous_state=previous_state,
+    )
+
     supabase.table("rooms").update({
         "status": "playing",
         "game_state": new_state,
     }).eq("room_code", room_code.upper()).execute()
 
-    return {"message": "Trivia iniciada"}
+    return {
+        "message": "Trivia del Mundo Mágico iniciada",
+        "game_id": GAME_ID,
+        "round_number": new_state.get("round_number"),
+    }
+
+
+@router.post("/api/host/{room_code}/trivia_next")
+async def trivia_next(room_code: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    room = (
+        supabase.table("rooms")
+        .select("game_state")
+        .eq("room_code", room_code.upper())
+        .execute()
+    )
+
+    if not room.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    previous_state = room.data[0].get("game_state") or {}
+
+    new_state = build_trivia_state(
+        room_code=room_code.upper(),
+        previous_state=previous_state,
+    )
+
+    supabase.table("rooms").update({
+        "status": "playing",
+        "game_state": new_state,
+    }).eq("room_code", room_code.upper()).execute()
+
+    return {
+        "message": "Siguiente pregunta de trivia",
+        "round_number": new_state.get("round_number"),
+        "question": new_state.get("question"),
+    }
+
+
+@router.get("/api/trivia/questions")
+async def get_trivia_questions():
+    return {
+        "total": len(TRIVIA_POOL),
+        "questions": TRIVIA_POOL,
+    }

@@ -5,12 +5,21 @@ let lastPlayKey = "";
 let lastTickSecond = null;
 let autoRevealLock = false;
 let roomCreating = false;
+let lastResultsKey = "";
+let triviaSparklesInterval = null;
 
 const houseIcons = {
   Gryffindor: "🦁",
   Slytherin: "🐍",
   Ravenclaw: "🦅",
   Hufflepuff: "🦡",
+};
+
+const houseNames = {
+  Gryffindor: "Gryffindor",
+  Slytherin: "Slytherin",
+  Ravenclaw: "Ravenclaw",
+  Hufflepuff: "Hufflepuff",
 };
 
 const houseColors = {
@@ -20,13 +29,622 @@ const houseColors = {
   Hufflepuff: "#f1c40f",
 };
 
-const spellEmoji = {
-  Expelliarmus: "🪄",
-  Protego: "🛡️",
-  Stupefy: "💥",
-  Esquivar: "💨",
-  Rictusempra: "😂",
+const houseGradients = {
+  Gryffindor: "linear-gradient(135deg, rgba(192,57,43,.95), rgba(255,196,87,.78))",
+  Slytherin: "linear-gradient(135deg, rgba(39,174,96,.95), rgba(196,255,220,.58))",
+  Ravenclaw: "linear-gradient(135deg, rgba(41,128,185,.95), rgba(170,220,255,.62))",
+  Hufflepuff: "linear-gradient(135deg, rgba(241,196,15,.95), rgba(40,40,40,.72))",
 };
+
+const answerLetters = ["A", "B", "C", "D"];
+
+const difficultyLabels = {
+  facil: "Fácil",
+  fácil: "Fácil",
+  media: "Media",
+  dificil: "Difícil",
+  difícil: "Difícil",
+  experto: "Experto",
+};
+
+const difficultyClass = {
+  facil: "easy",
+  fácil: "easy",
+  media: "medium",
+  dificil: "hard",
+  difícil: "hard",
+  experto: "expert",
+};
+
+function injectTriviaStyles() {
+  if (document.getElementById("trivia-premium-styles")) return;
+
+  const style = document.createElement("style");
+  style.id = "trivia-premium-styles";
+  style.textContent = `
+    .trivia-board {
+      position: relative;
+      overflow: hidden;
+      width: min(1220px, 96vw);
+      min-height: 90vh;
+      padding: 26px;
+      border-radius: 36px;
+      color: #fff7dc;
+      border: 1px solid rgba(255, 216, 121, .30);
+      background:
+        radial-gradient(circle at 16% 12%, rgba(255, 216, 121, .18), transparent 26%),
+        radial-gradient(circle at 84% 20%, rgba(93, 150, 255, .20), transparent 28%),
+        radial-gradient(circle at 50% 95%, rgba(255, 216, 121, .10), transparent 34%),
+        linear-gradient(180deg, rgba(8, 17, 34, .98), rgba(3, 7, 14, .99));
+      box-shadow:
+        0 36px 120px rgba(0,0,0,.62),
+        inset 0 0 0 1px rgba(255,255,255,.045);
+    }
+
+    .trivia-board::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 72px 72px;
+      opacity: .45;
+      pointer-events: none;
+    }
+
+    .trivia-board::after {
+      content: "";
+      position: absolute;
+      inset: -20%;
+      background:
+        radial-gradient(circle, rgba(255, 216, 121, .18) 0 2px, transparent 3px),
+        radial-gradient(circle, rgba(255,255,255,.12) 0 1px, transparent 2px);
+      background-size: 120px 120px, 82px 82px;
+      animation: triviaStars 28s linear infinite;
+      opacity: .40;
+      pointer-events: none;
+    }
+
+    @keyframes triviaStars {
+      from { transform: translate3d(0, 0, 0); }
+      to { transform: translate3d(-90px, 70px, 0); }
+    }
+
+    .trivia-candles {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+    }
+
+    .trivia-candle {
+      position: absolute;
+      width: 8px;
+      height: 28px;
+      border-radius: 999px;
+      background: linear-gradient(180deg, #fff5c7, #d9a441);
+      box-shadow:
+        0 0 18px rgba(255, 216, 121, .65),
+        0 0 44px rgba(255, 216, 121, .22);
+      opacity: .62;
+      animation: floatCandle 4.5s ease-in-out infinite alternate;
+    }
+
+    .trivia-candle::before {
+      content: "";
+      position: absolute;
+      left: 50%;
+      top: -13px;
+      width: 13px;
+      height: 18px;
+      transform: translateX(-50%);
+      border-radius: 50% 50% 45% 45%;
+      background: radial-gradient(circle at center, #fff, #ffd978 48%, transparent 72%);
+      animation: flameFlicker .42s ease-in-out infinite alternate;
+    }
+
+    @keyframes floatCandle {
+      from { transform: translateY(-6px); }
+      to { transform: translateY(8px); }
+    }
+
+    @keyframes flameFlicker {
+      from { transform: translateX(-50%) scale(.9) rotate(-3deg); opacity: .75; }
+      to { transform: translateX(-50%) scale(1.12) rotate(3deg); opacity: 1; }
+    }
+
+    .trivia-content {
+      position: relative;
+      z-index: 2;
+    }
+
+    .trivia-header {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 18px;
+      align-items: start;
+      margin-bottom: 16px;
+    }
+
+    .trivia-badge-row {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+
+    .trivia-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 13px;
+      border-radius: 999px;
+      color: #ffe7a3;
+      background: rgba(255,216,121,.12);
+      border: 1px solid rgba(255,216,121,.26);
+      font-weight: 900;
+      font-size: .86rem;
+      letter-spacing: .03em;
+      text-transform: uppercase;
+    }
+
+    .trivia-pill.category {
+      color: #d8ecff;
+      background: rgba(96,165,250,.13);
+      border-color: rgba(125,211,252,.24);
+    }
+
+    .trivia-pill.easy {
+      color: #bbf7d0;
+      background: rgba(34,197,94,.13);
+      border-color: rgba(74,222,128,.28);
+    }
+
+    .trivia-pill.medium {
+      color: #dbeafe;
+      background: rgba(59,130,246,.13);
+      border-color: rgba(147,197,253,.28);
+    }
+
+    .trivia-pill.hard {
+      color: #fed7aa;
+      background: rgba(249,115,22,.13);
+      border-color: rgba(253,186,116,.30);
+    }
+
+    .trivia-pill.expert {
+      color: #fecaca;
+      background: rgba(220,38,38,.15);
+      border-color: rgba(248,113,113,.34);
+    }
+
+    .trivia-title {
+      margin: 10px 0 4px;
+      color: #fff;
+      font-size: clamp(2.4rem, 5vw, 5.2rem);
+      line-height: .88;
+      letter-spacing: -.075em;
+    }
+
+    .trivia-subtitle {
+      margin: 0;
+      max-width: 790px;
+      color: rgba(255, 247, 220, .70);
+      font-size: 1rem;
+    }
+
+    .trivia-timer-card {
+      min-width: 178px;
+      padding: 16px 18px;
+      border-radius: 26px;
+      text-align: center;
+      background:
+        radial-gradient(circle at top, rgba(255,216,121,.14), transparent 58%),
+        rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.11);
+      backdrop-filter: blur(16px);
+      box-shadow: 0 18px 50px rgba(0,0,0,.28);
+    }
+
+    .trivia-timer-card span {
+      display: block;
+      margin-bottom: 6px;
+      color: rgba(255,247,220,.62);
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-weight: 900;
+      font-size: .75rem;
+    }
+
+    .trivia-timer-card strong {
+      display: block;
+      color: #ffe089;
+      font-size: 3.3rem;
+      line-height: 1;
+      font-weight: 1000;
+    }
+
+    .trivia-main-grid {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) 315px;
+      gap: 16px;
+    }
+
+    .trivia-question-card {
+      position: relative;
+      overflow: hidden;
+      min-height: 430px;
+      padding: 24px;
+      border-radius: 30px;
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255,216,121,.12), transparent 42%),
+        linear-gradient(180deg, rgba(255,255,255,.075), rgba(255,255,255,.038));
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: inset 0 0 70px rgba(255,216,121,.035);
+    }
+
+    .trivia-question-card::before {
+      content: "";
+      position: absolute;
+      inset: 16px;
+      border-radius: 24px;
+      border: 1px solid rgba(255,216,121,.11);
+      pointer-events: none;
+    }
+
+    .trivia-round-line {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 14px;
+      color: rgba(255,247,220,.72);
+      font-weight: 900;
+      text-transform: uppercase;
+      letter-spacing: .08em;
+      font-size: .78rem;
+    }
+
+    .trivia-question-text {
+      min-height: 106px;
+      display: flex;
+      align-items: center;
+      margin: 0 0 20px;
+      color: #fff;
+      font-size: clamp(2rem, 3.3vw, 3.35rem);
+      line-height: 1.02;
+      letter-spacing: -.055em;
+      font-weight: 1000;
+      text-wrap: balance;
+    }
+
+    .trivia-options {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .trivia-option {
+      position: relative;
+      overflow: hidden;
+      min-height: 96px;
+      display: grid;
+      grid-template-columns: 56px 1fr;
+      align-items: center;
+      gap: 12px;
+      padding: 13px 15px;
+      border-radius: 22px;
+      background: rgba(255,255,255,.065);
+      border: 1px solid rgba(255,255,255,.10);
+      box-shadow: 0 12px 32px rgba(0,0,0,.14);
+      animation: optionIn .45s ease both;
+    }
+
+    .trivia-option::after {
+      content: "";
+      position: absolute;
+      inset: -80%;
+      background: linear-gradient(115deg, transparent 42%, rgba(255,255,255,.14), transparent 58%);
+      transform: translateX(-70%);
+      animation: optionShine 3.2s ease-in-out infinite;
+      opacity: .75;
+      pointer-events: none;
+    }
+
+    @keyframes optionIn {
+      from { opacity: 0; transform: translateY(10px) scale(.98); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    @keyframes optionShine {
+      0%, 55% { transform: translateX(-72%); }
+      100% { transform: translateX(72%); }
+    }
+
+    .trivia-option-letter {
+      width: 52px;
+      height: 52px;
+      display: grid;
+      place-items: center;
+      border-radius: 16px;
+      color: #271600;
+      background: linear-gradient(135deg, #fff8d6, #facc15);
+      box-shadow:
+        0 0 26px rgba(250,204,21,.24),
+        inset 0 0 0 1px rgba(255,255,255,.45);
+      font-weight: 1000;
+      font-size: 1.35rem;
+    }
+
+    .trivia-option-text {
+      position: relative;
+      z-index: 2;
+      color: rgba(255,255,255,.94);
+      font-size: clamp(1.05rem, 1.55vw, 1.45rem);
+      line-height: 1.12;
+      font-weight: 900;
+    }
+
+    .trivia-progress {
+      margin-top: 16px;
+      height: 13px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+    }
+
+    .trivia-progress > div {
+      height: 100%;
+      width: 100%;
+      transform-origin: left center;
+      background: linear-gradient(90deg, #22c55e, #fde68a, #ef4444);
+      transition: transform .12s linear;
+    }
+
+    .trivia-side {
+      display: grid;
+      gap: 12px;
+      align-content: start;
+    }
+
+    .trivia-side-card {
+      padding: 16px;
+      border-radius: 24px;
+      background: rgba(255,255,255,.065);
+      border: 1px solid rgba(255,255,255,.10);
+      backdrop-filter: blur(14px);
+      box-shadow: 0 16px 42px rgba(0,0,0,.20);
+    }
+
+    .trivia-side-title {
+      margin: 0 0 10px;
+      color: rgba(255,247,220,.72);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .13em;
+      font-weight: 1000;
+    }
+
+    .trivia-house-score {
+      display: grid;
+      gap: 8px;
+    }
+
+    .trivia-house-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px 11px;
+      border-radius: 16px;
+      background: rgba(255,255,255,.055);
+      border: 1px solid rgba(255,255,255,.08);
+    }
+
+    .trivia-house-row .name {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #fff;
+      font-weight: 900;
+    }
+
+    .trivia-house-row .score {
+      color: #ffe089;
+      font-weight: 1000;
+      font-size: 1.12rem;
+    }
+
+    .trivia-players {
+      display: grid;
+      gap: 8px;
+    }
+
+    .trivia-player-row {
+      display: grid;
+      grid-template-columns: 1fr auto;
+      align-items: center;
+      gap: 8px;
+      padding: 9px 10px;
+      border-radius: 14px;
+      color: rgba(255,247,220,.80);
+      background: rgba(255,255,255,.045);
+      border: 1px solid rgba(255,255,255,.075);
+    }
+
+    .trivia-player-row.answered {
+      color: #fff;
+      background: rgba(34,197,94,.13);
+      border-color: rgba(74,222,128,.28);
+    }
+
+    .trivia-player-row .status {
+      font-size: .78rem;
+      font-weight: 1000;
+      color: rgba(255,247,220,.68);
+    }
+
+    .trivia-player-row.answered .status {
+      color: #86efac;
+    }
+
+    .trivia-narrator {
+      margin-top: 12px;
+      padding: 12px 14px;
+      border-radius: 17px;
+      color: rgba(255,247,220,.84);
+      background: rgba(3,7,18,.40);
+      border: 1px solid rgba(255,216,121,.16);
+      font-weight: 700;
+      line-height: 1.25;
+    }
+
+    .trivia-results-wrap {
+      position: relative;
+      overflow: hidden;
+      width: min(1160px, 94vw);
+      padding: 30px;
+      border-radius: 34px;
+      color: #fff7dc;
+      border: 1px solid rgba(255,216,121,.28);
+      background:
+        radial-gradient(circle at 50% 0%, rgba(255,216,121,.16), transparent 32%),
+        radial-gradient(circle at 20% 90%, rgba(34,197,94,.13), transparent 30%),
+        radial-gradient(circle at 84% 86%, rgba(59,130,246,.13), transparent 30%),
+        linear-gradient(180deg, rgba(8,17,34,.98), rgba(3,7,14,.99));
+      box-shadow: 0 36px 120px rgba(0,0,0,.62);
+    }
+
+    .trivia-results-title {
+      margin: 0;
+      color: #fff;
+      font-size: clamp(2.5rem, 5vw, 5rem);
+      line-height: .9;
+      letter-spacing: -.075em;
+      text-align: center;
+    }
+
+    .trivia-correct-answer {
+      margin: 18px auto 10px;
+      width: fit-content;
+      max-width: 92%;
+      padding: 16px 22px;
+      border-radius: 24px;
+      color: #251600;
+      background: linear-gradient(135deg, #fff8d6, #facc15);
+      box-shadow: 0 18px 50px rgba(250,204,21,.22);
+      font-size: clamp(1.4rem, 2.5vw, 2.4rem);
+      font-weight: 1000;
+      text-align: center;
+    }
+
+    .trivia-results-comment {
+      max-width: 900px;
+      margin: 0 auto 20px;
+      color: rgba(255,247,220,.74);
+      font-size: 1.1rem;
+      text-align: center;
+      font-weight: 800;
+    }
+
+    .trivia-fastest-banner {
+      margin: 0 auto 18px;
+      width: fit-content;
+      max-width: 92%;
+      padding: 11px 16px;
+      border-radius: 999px;
+      color: #ffe7a3;
+      background: rgba(255,216,121,.12);
+      border: 1px solid rgba(255,216,121,.28);
+      font-weight: 1000;
+    }
+
+    .trivia-result-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .trivia-result-card {
+      padding: 15px 16px;
+      border-radius: 20px;
+      background: rgba(255,255,255,.065);
+      border: 1px solid rgba(255,255,255,.10);
+    }
+
+    .trivia-result-card.correct {
+      background: rgba(34,197,94,.13);
+      border-color: rgba(74,222,128,.28);
+    }
+
+    .trivia-result-card.wrong {
+      background: rgba(239,68,68,.12);
+      border-color: rgba(248,113,113,.24);
+    }
+
+    .trivia-result-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .trivia-result-name {
+      color: #fff;
+      font-size: 1.18rem;
+      font-weight: 1000;
+    }
+
+    .trivia-result-house {
+      margin-top: 2px;
+      color: rgba(255,247,220,.62);
+      font-size: .78rem;
+      text-transform: uppercase;
+      letter-spacing: .11em;
+      font-weight: 800;
+    }
+
+    .trivia-result-points {
+      color: #ffe089;
+      font-size: 1.65rem;
+      font-weight: 1000;
+    }
+
+    .trivia-result-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 7px;
+      margin-top: 10px;
+    }
+
+    .trivia-chip {
+      padding: 7px 9px;
+      border-radius: 999px;
+      color: rgba(255,247,220,.82);
+      background: rgba(255,255,255,.07);
+      border: 1px solid rgba(255,255,255,.08);
+      font-size: .78rem;
+      font-weight: 900;
+    }
+
+    @media (max-width: 920px) {
+      .trivia-main-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .trivia-result-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .trivia-options {
+        grid-template-columns: 1fr;
+      }
+    }
+  `;
+
+  document.head.appendChild(style);
+}
 
 function getBgMusic() {
   const audio = document.getElementById("tv-bg-music");
@@ -101,7 +719,25 @@ function toggleBackgroundMusic() {
   }
 }
 
+function playMagicSound(name) {
+  try {
+    if (window.MagicSound && typeof window.MagicSound.play === "function") {
+      window.MagicSound.play(name);
+    }
+  } catch (error) {}
+}
+
+function unlockMagicSound() {
+  try {
+    if (window.MagicSound && typeof window.MagicSound.unlock === "function") {
+      window.MagicSound.unlock();
+    }
+  } catch (error) {}
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  injectTriviaStyles();
+
   const audio = getBgMusic();
 
   if (audio) {
@@ -128,7 +764,11 @@ function showScreen(id) {
     screen.classList.remove("visible");
   });
 
-  document.getElementById(id).classList.add("visible");
+  const target = document.getElementById(id);
+
+  if (target) {
+    target.classList.add("visible");
+  }
 }
 
 function safeText(value) {
@@ -152,35 +792,117 @@ function getRoundKey(state) {
   return `${state.phase}-${state.round_id || getQuestion(state)}`;
 }
 
+function normalizeDifficulty(value) {
+  return safeText(value || "media")
+    .toLowerCase()
+    .replaceAll("í", "i")
+    .replaceAll("á", "a");
+}
+
+function getDifficultyLabel(value) {
+  return difficultyLabels[value] || difficultyLabels[normalizeDifficulty(value)] || safeText(value || "Media");
+}
+
+function getDifficultyClass(value) {
+  return difficultyClass[value] || difficultyClass[normalizeDifficulty(value)] || "medium";
+}
+
+function calculateHouseScores(players = []) {
+  const totals = {
+    Gryffindor: 0,
+    Slytherin: 0,
+    Ravenclaw: 0,
+    Hufflepuff: 0,
+  };
+
+  players.forEach((player) => {
+    if (!totals[player.house]) {
+      totals[player.house] = 0;
+    }
+
+    totals[player.house] += Number(player.score || 0);
+  });
+
+  return totals;
+}
+
+function renderHouseScoreboard(players = []) {
+  const scores = calculateHouseScores(players);
+
+  return Object.keys(scores)
+    .sort((a, b) => Number(scores[b] || 0) - Number(scores[a] || 0))
+    .map((house) => `
+      <div class="trivia-house-row" style="box-shadow: inset 4px 0 0 ${houseColors[house] || "#facc15"};">
+        <div class="name">${houseIcons[house] || "✨"} ${escapeHTML(houseNames[house] || house)}</div>
+        <div class="score">${Number(scores[house] || 0)}</div>
+      </div>
+    `)
+    .join("");
+}
+
+function renderCandles() {
+  const positions = [
+    [7, 12, 0],
+    [16, 28, .7],
+    [27, 10, 1.4],
+    [41, 19, .3],
+    [55, 9, 1.1],
+    [68, 22, .5],
+    [82, 11, 1.7],
+    [92, 30, .9],
+    [13, 70, 1.2],
+    [88, 74, .2],
+  ];
+
+  return `
+    <div class="trivia-candles">
+      ${positions.map(([left, top, delay]) => `
+        <div class="trivia-candle" style="left:${left}%; top:${top}%; animation-delay:${delay}s;"></div>
+      `).join("")}
+    </div>
+  `;
+}
+
 async function crearSala() {
   if (currentRoom || roomCreating) return;
 
   roomCreating = true;
 
-  MagicSound.unlock();
-  MagicSound.play("start");
+  unlockMagicSound();
+  playMagicSound("start");
   startBackgroundMusic();
 
-  const res = await fetch("/api/host/create_room", {
-    method: "POST",
-  });
+  try {
+    const res = await fetch("/api/host/create_room", {
+      method: "POST",
+    });
 
-  const data = await res.json();
+    const data = await res.json();
 
-  currentRoom = data.room_code;
-  roomCreating = false;
+    currentRoom = data.room_code;
+    roomCreating = false;
 
-  showScreen("view-lobby");
+    showScreen("view-lobby");
 
-  document.getElementById("tv-code").innerText = currentRoom;
+    const tvCode = document.getElementById("tv-code");
+    const joinUrl = document.getElementById("join-url");
+    const qr = document.getElementById("tv-qr");
 
-  const urlUnirse = `${window.location.origin}/mobile/index.html?room=${currentRoom}`;
-  document.getElementById("join-url").innerText = urlUnirse;
+    if (tvCode) tvCode.innerText = currentRoom;
 
-  document.getElementById("tv-qr").src =
-    `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
+    const urlUnirse = `${window.location.origin}/mobile/index.html?room=${currentRoom}`;
 
-  iniciarRadar();
+    if (joinUrl) joinUrl.innerText = urlUnirse;
+
+    if (qr) {
+      qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
+    }
+
+    iniciarRadar();
+  } catch (error) {
+    roomCreating = false;
+    console.error("No se pudo crear la sala:", error);
+  }
 }
 
 function iniciarRadar() {
@@ -192,7 +914,10 @@ function iniciarRadar() {
     if (!currentRoom) return;
 
     try {
-      const res = await fetch(`/api/room/${currentRoom}/status`);
+      const res = await fetch(`/api/room/${currentRoom}/status?ts=${Date.now()}`, {
+        cache: "no-store",
+      });
+
       if (!res.ok) return;
 
       const data = await res.json();
@@ -219,13 +944,16 @@ function iniciarRadar() {
         }
       }
     } catch (error) {
-      console.error("Buscando radar...");
+      console.error("Buscando radar...", error);
     }
-  }, 850);
+  }, 650);
 }
 
 function renderLobby(data) {
   autoRevealLock = false;
+  lastPlayKey = "";
+  lastResultsKey = "";
+
   showScreen("view-lobby");
 
   const hostBox = document.getElementById("host-status");
@@ -241,32 +969,39 @@ function renderLobby(data) {
   }
 
   const lista = document.getElementById("lista-jugadores");
-  lista.innerHTML = "";
 
-  data.players.forEach((player) => {
-    const item = document.createElement("div");
-    item.className = "player-tag";
-    item.textContent = `${houseIcons[player.house] || "✨"} ${player.name}`;
-    lista.appendChild(item);
-  });
+  if (lista) {
+    lista.innerHTML = "";
 
-  document.getElementById("controles-host").style.display =
-    data.players.length >= 1 ? "block" : "none";
+    (data.players || []).forEach((player) => {
+      const item = document.createElement("div");
+      item.className = "player-tag";
+      item.textContent = `${houseIcons[player.house] || "✨"} ${player.name}`;
+      lista.appendChild(item);
+    });
+  }
+
+  const controls = document.getElementById("controles-host");
+
+  if (controls) {
+    controls.style.display = (data.players || []).length >= 1 ? "block" : "none";
+  }
 }
 
 function renderPlaying(data) {
-  const state = data.game_state;
+  const state = data.game_state || {};
+  const players = data.players || [];
   const key = getRoundKey(state);
 
   showScreen("view-game");
 
   if (state.phase === "atrapa_snitch") {
     if (typeof window.renderSnitchTv === "function") {
-      window.renderSnitchTv(state, data.players || [], {
+      window.renderSnitchTv(state, players, {
         reveal: revelarResultados,
       });
     } else {
-      renderGenericGame(state);
+      renderGenericGame(state, players);
     }
 
     return;
@@ -276,54 +1011,222 @@ function renderPlaying(data) {
     window.destroySnitchTv();
   }
 
+  if (state.phase === "trivia") {
+    if (lastPlayKey !== key) {
+      lastPlayKey = key;
+      lastTickSecond = null;
+      autoRevealLock = false;
+      playMagicSound("start");
+      renderTrivia(state, players);
+    }
+
+    updateTriviaTimer(state);
+    updateTriviaPlayers(state, players);
+    updateTriviaHouseScores(players);
+    return;
+  }
+
   if (lastPlayKey !== key) {
     lastPlayKey = key;
     lastTickSecond = null;
     autoRevealLock = false;
-    MagicSound.play("start");
+    playMagicSound("start");
+    renderGenericGame(state, players);
+  }
 
-    if (state.phase === "clase_pociones") {
-      renderPociones(state, data.players);
-    } else if (state.phase === "sombrero" || state.phase === "sombrero_tiebreak") {
-      renderSombrero(state);
-    } else if (state.phase === "duelo") {
-      renderDuel(state);
-    } else if (state.phase === "duelo_clash") {
-      renderDuelClash(state);
-    } else if (state.phase === "artes_ridiculas") {
-      renderArtesRidiculas(state, data.players);
-    } else {
-      renderGenericGame(state);
+  updateGenericTimer(state);
+}
+
+function renderTrivia(state, players) {
+  const container = document.getElementById("game-container");
+  if (!container) return;
+
+  const options = state.options || [];
+  const roundNumber = Number(state.round_number || 1);
+  const totalQuestions = Number(state.trivia_session?.total_questions || 25);
+  const category = state.category || state.question_payload?.categoria || "Mundo mágico";
+  const difficulty = state.difficulty || state.question_payload?.dificultad || "media";
+  const difficultyLabel = getDifficultyLabel(difficulty);
+  const diffClass = getDifficultyClass(difficulty);
+  const basePoints = Number(state.points_correct || state.question_payload?.puntosBase || 100);
+
+  container.innerHTML = `
+    <section id="trivia-board" class="trivia-board">
+      ${renderCandles()}
+
+      <div class="trivia-content">
+        <header class="trivia-header">
+          <div>
+            <div class="trivia-badge-row">
+              <div class="trivia-pill">🏰 Trivia del Mundo Mágico</div>
+              <div class="trivia-pill category">📜 ${escapeHTML(category)}</div>
+              <div class="trivia-pill ${diffClass}">⚡ ${escapeHTML(difficultyLabel)} · +${basePoints}</div>
+            </div>
+
+            <h1 class="trivia-title">Pregunta ${roundNumber}</h1>
+            <p class="trivia-subtitle">
+              Modo principal de Copa de las Casas · Responde desde tu celular · Rápida +40 · Racha de 3 +100
+            </p>
+          </div>
+
+          <div class="trivia-timer-card">
+            <span>Tiempo</span>
+            <strong id="trivia-time">10.0</strong>
+          </div>
+        </header>
+
+        <div class="trivia-main-grid">
+          <div class="trivia-question-card">
+            <div class="trivia-round-line">
+              <span>Ronda ${roundNumber} de ${totalQuestions}</span>
+              <span id="trivia-answered-count">0/${players.length || 0} respondieron</span>
+            </div>
+
+            <h2 class="trivia-question-text">${escapeHTML(getQuestion(state))}</h2>
+
+            <div class="trivia-options">
+              ${options.map((option, index) => `
+                <div class="trivia-option" style="animation-delay:${index * 70}ms;">
+                  <div class="trivia-option-letter">${answerLetters[index] || "?"}</div>
+                  <div class="trivia-option-text">${escapeHTML(option)}</div>
+                </div>
+              `).join("")}
+            </div>
+
+            <div class="trivia-progress">
+              <div id="trivia-progress-bar"></div>
+            </div>
+
+            <div class="trivia-narrator">
+              “${escapeHTML(state.narrator || "El Gran Comedor está esperando sus respuestas.")}”
+            </div>
+          </div>
+
+          <aside class="trivia-side">
+            <div class="trivia-side-card">
+              <h3 class="trivia-side-title">Marcador de casas</h3>
+              <div id="trivia-house-score" class="trivia-house-score">
+                ${renderHouseScoreboard(players)}
+              </div>
+            </div>
+
+            <div class="trivia-side-card">
+              <h3 class="trivia-side-title">Jugadores</h3>
+              <div id="trivia-players" class="trivia-players"></div>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  `;
+
+  updateTriviaTimer(state);
+  updateTriviaPlayers(state, players);
+  updateTriviaHouseScores(players);
+}
+
+function updateTriviaHouseScores(players) {
+  const box = document.getElementById("trivia-house-score");
+  if (!box) return;
+
+  box.innerHTML = renderHouseScoreboard(players || []);
+}
+
+function updateTriviaPlayers(state, players) {
+  const box = document.getElementById("trivia-players");
+  const count = document.getElementById("trivia-answered-count");
+
+  if (!box) return;
+
+  const answered = state.answered || {};
+  const answeredCount = Object.keys(answered).length;
+  const total = (players || []).length;
+
+  if (count) {
+    count.textContent = `${answeredCount}/${total} respondieron`;
+  }
+
+  box.innerHTML = "";
+
+  (players || []).forEach((player) => {
+    const hasAnswered = Boolean(answered[player.name]);
+    const item = document.createElement("div");
+
+    item.className = `trivia-player-row ${hasAnswered ? "answered" : ""}`;
+    item.innerHTML = `
+      <span>${houseIcons[player.house] || "✨"} ${escapeHTML(player.name)}</span>
+      <span class="status">${hasAnswered ? "Respondió" : "Pensando..."}</span>
+    `;
+
+    box.appendChild(item);
+  });
+}
+
+function updateTriviaTimer(state) {
+  const bar = document.getElementById("trivia-progress-bar");
+  const label = document.getElementById("trivia-time");
+
+  if (!bar || !label) return;
+
+  const duration = Number(state.duration_seconds || 10);
+  const startedAt = Number(state.started_at || Date.now() / 1000);
+  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
+  const left = Math.max(0, duration - elapsed);
+  const pct = duration > 0 ? Math.max(0, Math.min(1, left / duration)) : 0;
+
+  bar.style.transform = `scaleX(${pct})`;
+  label.textContent = `${left.toFixed(1)}`;
+
+  const rounded = Math.ceil(left);
+
+  if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
+    lastTickSecond = rounded;
+    playMagicSound("timer-danger");
+
+    const board = document.getElementById("trivia-board");
+    if (board) {
+      board.animate(
+        [
+          { filter: "brightness(1)" },
+          { filter: "brightness(1.25)" },
+          { filter: "brightness(1)" },
+        ],
+        { duration: 180, easing: "ease-out" }
+      );
     }
   }
 
-  if (state.phase === "clase_pociones") {
-    updatePocionesTimer(state);
-    updatePocionesPlayers(state, data.players);
-  }
+  if (left <= 0 && !autoRevealLock) {
+    autoRevealLock = true;
 
-  if (state.phase === "sombrero" || state.phase === "sombrero_tiebreak") {
-    updateSombreroVotes(state);
-  }
-
-  if (state.phase === "duelo") {
-    updateDuelTimer(state);
-    updateDuelPlayers(state);
-  }
-
-  if (state.phase === "duelo_clash") {
-    updateDuelClashTimer(state);
-    updateDuelClashTaps(state);
-  }
-
-  if (state.phase === "artes_ridiculas") {
-    updateArtesTimer(state);
-    updateArtesPlayers(state, data.players);
+    setTimeout(() => {
+      revelarResultados();
+    }, 650);
   }
 }
 
-function renderGenericGame(state) {
+function updateGenericTimer(state) {
+  const duration = Number(state.duration_seconds || 0);
+  const startedAt = Number(state.started_at || 0);
+
+  if (!duration || !startedAt) return;
+
+  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
+  const left = Math.max(0, duration - elapsed);
+
+  if (left <= 0 && !autoRevealLock) {
+    autoRevealLock = true;
+
+    setTimeout(() => {
+      revelarResultados();
+    }, 650);
+  }
+}
+
+function renderGenericGame(state, players = []) {
   const container = document.getElementById("game-container");
+
+  if (!container) return;
 
   container.innerHTML = `
     <section class="generic-card">
@@ -336,6 +1239,8 @@ function renderGenericGame(state) {
 
   const grid = document.getElementById("tv-opciones");
 
+  if (!grid) return;
+
   (state.options || []).forEach((option) => {
     const box = document.createElement("div");
     box.className = "option-box";
@@ -344,777 +1249,204 @@ function renderGenericGame(state) {
   });
 }
 
-function getIngredientEmoji(state, name) {
-  const map = state.ingredient_map || {};
-  return map[name]?.emoji || "🧪";
-}
-
-function getPocionesPhaseInfo(state) {
-  const memorize = Number(state.memorize_seconds || 7);
-  const mix = Number(state.mix_seconds || 15);
-  const startedAt = Number(state.started_at || Date.now() / 1000);
-  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
-
-  if (elapsed < memorize) {
-    return {
-      mode: "memorize",
-      left: Math.max(0, memorize - elapsed),
-      total: memorize,
-      text: "Memoriza la receta",
-    };
-  }
-
-  return {
-    mode: "mix",
-    left: Math.max(0, memorize + mix - elapsed),
-    total: mix,
-    text: "Preparando pociones",
-  };
-}
-
-function renderPociones(state, players) {
-  const container = document.getElementById("game-container");
-  const info = getPocionesPhaseInfo(state);
-  const recipe = state.recipe || [];
-
-  const recipeHtml = info.mode === "memorize"
-    ? `
-      <div class="potion-recipe-list">
-        ${recipe.map((item, index) => `
-          <div class="potion-step">
-            <span>${index + 1}.</span>
-            <span>${getIngredientEmoji(state, item)} ${escapeHTML(item)}</span>
-          </div>
-        `).join("")}
-      </div>
-    `
-    : `
-      <div class="potion-hidden">
-        La receta desapareció.<br>
-        Ahora confía en tu memoria, joven alquimista.
-      </div>
-    `;
-
-  container.innerHTML = `
-    <section id="pociones-board" class="pociones-board">
-      <header class="pociones-header">
-        <div class="badge">🧪 Clase de Pociones</div>
-        <h1 class="pociones-title">${escapeHTML(state.title || "Clase de Pociones")}</h1>
-        <p class="pociones-subtitle">${escapeHTML(state.subtitle || "Memoriza, mezcla y reza por no explotar.")}</p>
-      </header>
-
-      <div class="pociones-stage">
-        <div class="cauldron-wrap">
-          <div class="cauldron-smoke"></div>
-          <div class="cauldron"></div>
-        </div>
-
-        <div class="potion-recipe-card">
-          <div class="potion-name">${escapeHTML(state.potion_name || "Poción misteriosa")}</div>
-          <div class="potion-question">${escapeHTML(info.text)}</div>
-          ${recipeHtml}
-          <div class="pociones-narrator">“${escapeHTML(state.narrator || "Si el caldero explota, no me culpen, yo sí di instrucciones.")}”</div>
-        </div>
-      </div>
-
-      <div class="pociones-progress">
-        <div class="pociones-progress-track">
-          <div id="pociones-progress-bar" class="pociones-progress-bar"></div>
-        </div>
-        <div id="pociones-progress-text" class="pociones-progress-text">Tiempo: ${info.left.toFixed(1)}s</div>
-      </div>
-
-      <div id="pociones-players" class="pociones-players"></div>
-
-      <div class="host-help">Primero memoricen 7 segundos. Después mezclen en el celular.</div>
-    </section>
-  `;
-
-  updatePocionesTimer(state);
-  updatePocionesPlayers(state, players);
-}
-
-function updatePocionesTimer(state) {
-  const bar = document.getElementById("pociones-progress-bar");
-  const text = document.getElementById("pociones-progress-text");
-
-  if (!bar || !text) return;
-
-  const info = getPocionesPhaseInfo(state);
-  const pct = info.total > 0 ? Math.max(0, Math.min(1, info.left / info.total)) : 0;
-
-  bar.style.transform = `scaleX(${pct})`;
-  text.textContent = `${info.text}: ${info.left.toFixed(1)}s`;
-
-  const rounded = Math.ceil(info.left);
-
-  if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
-    lastTickSecond = rounded;
-    MagicSound.play("timer-danger");
-  }
-
-  if (info.mode === "mix" && info.left <= 0 && !autoRevealLock) {
-    autoRevealLock = true;
-
-    const board = document.getElementById("pociones-board");
-    if (board) {
-      board.classList.add("explosion");
-    }
-
-    setTimeout(() => {
-      revelarResultados();
-    }, 700);
-  }
-
-  const currentRecipeVisible = document.querySelector(".potion-recipe-list");
-  const currentHidden = document.querySelector(".potion-hidden");
-
-  if (info.mode === "mix" && currentRecipeVisible && !currentHidden) {
-    renderPociones(state, []);
-  }
-}
-
-function updatePocionesPlayers(state, players) {
-  const box = document.getElementById("pociones-players");
-  if (!box) return;
-
-  const submitted = state.potion_submitted_players || [];
-
-  box.innerHTML = "";
-
-  players.forEach((player) => {
-    const item = document.createElement("div");
-    item.className = `pociones-player ${submitted.includes(player.name) ? "ready" : ""}`;
-    item.textContent = `${houseIcons[player.house] || "✨"} ${player.name} — ${submitted.includes(player.name) ? "Poción entregada" : "Mezclando..."}`;
-    box.appendChild(item);
-  });
-}
-
-function renderSombrero(state) {
-  const container = document.getElementById("game-container");
-
-  container.innerHTML = `
-    <section class="sombrero-board">
-      <header class="sombrero-header">
-        <div class="badge">${state.phase === "sombrero_tiebreak" ? "⚡ Desempate" : "🎩 Sombrero Burlón"}</div>
-        <h1 class="sombrero-title">${escapeHTML(state.title || "Sombrero Burlón")}</h1>
-        <p class="sombrero-subtitle">${escapeHTML(state.subtitle || "Votación social con cero responsabilidad emocional.")}</p>
-      </header>
-
-      <div class="sombrero-stage">
-        <div class="magic-hat">
-          <div class="hat-tip"></div>
-          <div class="hat-body"></div>
-          <div class="hat-eye left"></div>
-          <div class="hat-eye right"></div>
-          <div class="hat-mouth"></div>
-          <div class="hat-brim"></div>
-        </div>
-
-        <div class="sombrero-question-box">
-          <div class="sombrero-question">${escapeHTML(state.question)}</div>
-          <div class="sombrero-narrator">“${escapeHTML(state.narrator || "El sombrero está pensando cosas que no debería decir en voz alta.")}”</div>
-        </div>
-      </div>
-
-      <div class="sombrero-progress">
-        <div class="sombrero-progress-track">
-          <div id="sombrero-progress-bar" class="sombrero-progress-bar"></div>
-        </div>
-        <div id="sombrero-progress-text" class="sombrero-progress-text">Votos: 0 / 0</div>
-      </div>
-
-      <div id="sombrero-voters" class="sombrero-voters"></div>
-
-      <div class="host-help">El host puede revelar resultados desde su celular cuando todos voten.</div>
-    </section>
-  `;
-
-  updateSombreroVotes(state);
-}
-
-function updateSombreroVotes(state) {
-  const bar = document.getElementById("sombrero-progress-bar");
-  const text = document.getElementById("sombrero-progress-text");
-  const votersBox = document.getElementById("sombrero-voters");
-
-  if (!bar || !text || !votersBox) return;
-
-  const total = Number(state.total_voters || 0);
-  const voted = Number(state.voted_count || 0);
-  const pct = total > 0 ? Math.max(0, Math.min(1, voted / total)) : 0;
-
-  bar.style.transform = `scaleX(${pct})`;
-  text.textContent = `Votos: ${voted} / ${total}`;
-
-  const votedPlayers = state.voted_players || [];
-  const players = state.players || [];
-
-  votersBox.innerHTML = "";
-
-  players.forEach((player) => {
-    const item = document.createElement("div");
-    item.className = `sombrero-voter ${votedPlayers.includes(player.name) ? "ready" : ""}`;
-    item.textContent = `${houseIcons[player.house] || "✨"} ${player.name} — ${votedPlayers.includes(player.name) ? "Votó" : "Esperando"}`;
-    votersBox.appendChild(item);
-  });
-}
-
-function renderDuel(state) {
-  const duelists = state.duelists || [];
-  const p1 = duelists[0] || { name: "Duelista A", house: "Casa" };
-  const p2 = duelists[1] || { name: "Duelista B", house: "Casa" };
-
-  const container = document.getElementById("game-container");
-
-  container.innerHTML = `
-    <section class="duel-board">
-      <header class="duel-header">
-        <div class="badge">⚔️ Duelo de Hechizos</div>
-        <h1 class="duel-title">${escapeHTML(state.title || "Duelo de Hechizos")}</h1>
-        <p class="duel-subtitle">${escapeHTML(state.subtitle || "Dos casas entran. Una sale con ego inflado.")}</p>
-      </header>
-
-      <div class="duel-versus">
-        <div class="duel-player left">
-          <div class="duel-house">${houseIcons[p1.house] || "✨"} ${escapeHTML(p1.house || "")}</div>
-          <div class="duel-name">${escapeHTML(p1.name || "Duelista A")}</div>
-          <div id="duel-status-${escapeHTML(p1.name)}" class="duel-answer-status">Esperando hechizo...</div>
-        </div>
-
-        <div class="duel-vs">VS</div>
-
-        <div class="duel-player right">
-          <div class="duel-house">${houseIcons[p2.house] || "✨"} ${escapeHTML(p2.house || "")}</div>
-          <div class="duel-name">${escapeHTML(p2.name || "Duelista B")}</div>
-          <div id="duel-status-${escapeHTML(p2.name)}" class="duel-answer-status">Esperando hechizo...</div>
-        </div>
-      </div>
-
-      <div class="duel-timer">
-        <div class="duel-timer-track">
-          <div id="duel-timer-bar" class="duel-timer-bar"></div>
-        </div>
-        <div id="duel-time-text" class="duel-time-text">Tiempo: 5.0s</div>
-      </div>
-
-      <div class="duel-status">
-        “${escapeHTML(state.narrator || "¡Varitas arriba!") }”
-      </div>
-
-      <div class="duel-score-preview">
-        <div class="duel-score-pill">Victoria +150</div>
-        <div class="duel-score-pill">Más rápido +30</div>
-        <div class="duel-score-pill">Desempate +80</div>
-        <div class="duel-score-pill">Sin responder -30</div>
-      </div>
-    </section>
-  `;
-
-  updateDuelTimer(state);
-  updateDuelPlayers(state);
-}
-
-function renderDuelClash(state) {
-  const duelists = state.duelists || [];
-  const p1 = duelists[0] || { name: "Duelista A", house: "Casa" };
-  const p2 = duelists[1] || { name: "Duelista B", house: "Casa" };
-
-  const container = document.getElementById("game-container");
-
-  container.innerHTML = `
-    <section class="duel-board">
-      <header class="duel-header">
-        <div class="badge">⚡ Choque de Varitas</div>
-        <h1 class="duel-title">¡Choque de Varitas!</h1>
-        <p class="duel-subtitle">Ambos eligieron el mismo hechizo. Ahora gana quien presione más rápido.</p>
-      </header>
-
-      <div class="duel-clash-counter">
-        <div class="duel-clash-box">
-          <div class="duel-clash-name">${houseIcons[p1.house] || "✨"} ${escapeHTML(p1.name)}</div>
-          <div id="clash-taps-${escapeHTML(p1.name)}" class="duel-clash-taps">0</div>
-        </div>
-
-        <div class="duel-clash-box">
-          <div class="duel-clash-name">${houseIcons[p2.house] || "✨"} ${escapeHTML(p2.name)}</div>
-          <div id="clash-taps-${escapeHTML(p2.name)}" class="duel-clash-taps">0</div>
-        </div>
-      </div>
-
-      <div class="duel-timer">
-        <div class="duel-timer-track">
-          <div id="duel-clash-timer-bar" class="duel-timer-bar"></div>
-        </div>
-        <div id="duel-clash-time-text" class="duel-time-text">Tiempo: 5.0s</div>
-      </div>
-
-      <div class="duel-status">
-        “${escapeHTML(state.narrator || "¡Choque de varitas!") }”
-      </div>
-    </section>
-  `;
-
-  updateDuelClashTimer(state);
-  updateDuelClashTaps(state);
-}
-
-function updateDuelTimer(state) {
-  const bar = document.getElementById("duel-timer-bar");
-  const label = document.getElementById("duel-time-text");
-
-  if (!bar || !label) return;
-
-  const duration = Number(state.duration_seconds || 5);
-  const startedAt = Number(state.started_at || Date.now() / 1000);
-  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
-  const left = Math.max(0, duration - elapsed);
-  const pct = Math.max(0, Math.min(1, left / duration));
-
-  bar.style.transform = `scaleX(${pct})`;
-  label.textContent = `Tiempo: ${left.toFixed(1)}s`;
-
-  const rounded = Math.ceil(left);
-
-  if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
-    lastTickSecond = rounded;
-    MagicSound.play("timer-danger");
-  }
-
-  if (left <= 0 && !autoRevealLock) {
-    autoRevealLock = true;
-
-    setTimeout(() => {
-      revelarResultados();
-    }, 650);
-  }
-}
-
-function updateDuelPlayers(state) {
-  const answers = state.answers || {};
-  const duelists = state.duelists || [];
-
-  duelists.forEach((player) => {
-    const el = document.getElementById(`duel-status-${player.name}`);
-    if (!el) return;
-
-    if (answers[player.name]) {
-      el.textContent = "Hechizo elegido";
-      el.classList.add("ready");
-    } else {
-      el.textContent = "Esperando hechizo...";
-      el.classList.remove("ready");
-    }
-  });
-}
-
-function updateDuelClashTimer(state) {
-  const bar = document.getElementById("duel-clash-timer-bar");
-  const label = document.getElementById("duel-clash-time-text");
-
-  if (!bar || !label) return;
-
-  const clash = state.clash || {};
-  const duration = Number(clash.duration_seconds || 5);
-  const startedAt = Number(clash.started_at || Date.now() / 1000);
-  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
-  const left = Math.max(0, duration - elapsed);
-  const pct = Math.max(0, Math.min(1, left / duration));
-
-  bar.style.transform = `scaleX(${pct})`;
-  label.textContent = `Tiempo: ${left.toFixed(1)}s`;
-
-  const rounded = Math.ceil(left);
-
-  if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
-    lastTickSecond = rounded;
-    MagicSound.play("timer-danger");
-  }
-
-  if (left <= 0 && !autoRevealLock) {
-    autoRevealLock = true;
-
-    setTimeout(() => {
-      revelarResultados();
-    }, 650);
-  }
-}
-
-function updateDuelClashTaps(state) {
-  const clash = state.clash || {};
-  const taps = clash.taps || {};
-  const duelists = state.duelists || [];
-
-  duelists.forEach((player) => {
-    const el = document.getElementById(`clash-taps-${player.name}`);
-    if (el) {
-      el.textContent = taps[player.name] || 0;
-    }
-  });
-}
-
-function renderArtesRidiculas(state, players) {
-  const container = document.getElementById("game-container");
-
-  container.innerHTML = `
-    <section class="artes-board">
-      <div class="creature-shadow"></div>
-
-      <header class="artes-header">
-        <div class="badge">🛡️ Defensa Contra las Artes Ridículas</div>
-        <h1 class="artes-title">${escapeHTML(state.title || "Defensa Contra las Artes Ridículas")}</h1>
-        <p class="artes-subtitle">${escapeHTML(state.subtitle || "Clase práctica de supervivencia mágica.")}</p>
-      </header>
-
-      <div class="artes-question">
-        ${escapeHTML(state.question)}
-      </div>
-
-      <div class="artes-narrator">
-        “${escapeHTML(state.narrator || "Hoy aprenderemos a defendernos de peligros oscuros, como la cuenta dividida entre ocho.")}”
-      </div>
-
-      <div class="timer-shell">
-        <div id="artes-timer-bar" class="timer-bar"></div>
-      </div>
-
-      <div class="artes-meta">
-        <span id="artes-time-text">Tiempo: 6.0s</span>
-        <span>Correcta +100 · Rápida +30 · Racha +80 · Error -20 · Humor +20</span>
-      </div>
-
-      <div class="host-help">El host puede revelar o continuar desde su celular.</div>
-
-      <div id="artes-player-grid" class="artes-player-grid"></div>
-    </section>
-  `;
-
-  updateArtesTimer(state);
-  updateArtesPlayers(state, players);
-}
-
-function updateArtesTimer(state) {
-  const bar = document.getElementById("artes-timer-bar");
-  const label = document.getElementById("artes-time-text");
-
-  if (!bar || !label) return;
-
-  const duration = Number(state.duration_seconds || 6);
-  const startedAt = Number(state.started_at || Date.now() / 1000);
-  const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
-  const left = Math.max(0, duration - elapsed);
-  const pct = Math.max(0, Math.min(1, left / duration));
-
-  bar.style.transform = `scaleX(${pct})`;
-  label.textContent = `Tiempo: ${left.toFixed(1)}s`;
-
-  const rounded = Math.ceil(left);
-
-  if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
-    lastTickSecond = rounded;
-    MagicSound.play("timer-danger");
-  }
-
-  if (left <= 0 && !autoRevealLock) {
-    autoRevealLock = true;
-
-    setTimeout(() => {
-      revelarResultados();
-    }, 650);
-  }
-}
-
-function updateArtesPlayers(state, players) {
-  const grid = document.getElementById("artes-player-grid");
-  if (!grid) return;
-
-  const answered = state.answered || {};
-  grid.innerHTML = "";
-
-  players.forEach((player) => {
-    const card = document.createElement("div");
-    card.className = `artes-player-card ${answered[player.name] ? "answered" : ""}`;
-
-    const top = document.createElement("div");
-    top.textContent = `${houseIcons[player.house] || "✨"} ${player.name}`;
-
-    const bottom = document.createElement("small");
-    bottom.textContent = answered[player.name] ? "Respuesta recibida" : "Esperando...";
-
-    card.appendChild(top);
-    card.appendChild(bottom);
-    grid.appendChild(card);
-  });
-}
-
 function renderResults(data) {
-  const state = data.game_state;
+  const state = data.game_state || {};
+  const players = data.players || [];
   const phase = state.phase || "";
-  const resultSoundKey = `results-${state.round_id || state.correct || phase}`;
+  const resultKey = `results-${phase}-${state.round_id || state.correct || state.question}`;
+
+  if (lastResultsKey !== resultKey) {
+    lastResultsKey = resultKey;
+    playMagicSound("reveal");
+  }
 
   showScreen("view-results");
 
+  if (typeof window.destroySnitchTv === "function") {
+    window.destroySnitchTv();
+  }
+
+  if (phase === "results_trivia") {
+    renderTriviaResults(state, players);
+    return;
+  }
+
+  if (phase === "results_atrapa_snitch") {
+    renderSnitchResults(state, players);
+    return;
+  }
+
+  renderGenericResults(state, players);
+}
+
+function renderTriviaResults(state, players = []) {
   const title = document.getElementById("titulo-resultados");
   const correct = document.getElementById("tv-correcta");
   const explanation = document.getElementById("tv-explicacion");
   const extra = document.getElementById("tv-extra-results");
+  const scores = document.getElementById("tv-marcadores");
 
-  extra.innerHTML = "";
-  explanation.textContent = "";
+  const result = state.trivia_result || {};
+  const fastest = result.fastest_correct || null;
+  const playerResults = result.player_results || [];
+  const correctLabel = result.correct_label || state.correct_label || "";
+  const correctAnswer = result.correct || state.correct || "Respuesta revelada";
+  const commentary = result.commentary || state.narrator || "Pregunta resuelta.";
 
-  if (phase === "results_atrapa_snitch") {
-    if (typeof window.destroySnitchTv === "function") {
-      window.destroySnitchTv();
-    }
+  if (title) title.innerText = "Resultado de la Trivia";
+  if (correct) correct.innerText = `${correctLabel ? `${correctLabel}: ` : ""}${correctAnswer}`;
+  if (explanation) explanation.innerText = commentary;
 
-    title.innerText = "Resultado de la Snitch:";
-    correct.innerText = state.correct || "La Snitch fue capturada";
-    explanation.textContent = state.snitch_result?.summary || "";
+  if (extra) {
+    extra.innerHTML = `
+      <section class="trivia-results-wrap">
+        <h1 class="trivia-results-title">El Gran Comedor ha decidido</h1>
+
+        <div class="trivia-correct-answer">
+          ${escapeHTML(correctLabel ? `${correctLabel}: ${correctAnswer}` : correctAnswer)}
+        </div>
+
+        <p class="trivia-results-comment">
+          “${escapeHTML(commentary)}”
+        </p>
+
+        ${
+          fastest
+            ? `
+              <div class="trivia-fastest-banner">
+                ⚡ Respuesta correcta más rápida: ${escapeHTML(fastest.player_name)} · ${Number(fastest.elapsed_seconds || 0).toFixed(2)}s · +40
+              </div>
+            `
+            : `
+              <div class="trivia-fastest-banner">
+                💨 Nadie acertó lo suficientemente rápido. El pergamino está decepcionado.
+              </div>
+            `
+        }
+
+        <div class="trivia-result-grid">
+          ${
+            playerResults.length
+              ? playerResults.map((row) => renderTriviaResultCard(row)).join("")
+              : `<div class="trivia-result-card wrong">Nadie respondió esta pregunta.</div>`
+          }
+        </div>
+      </section>
+    `;
+  }
+
+  if (scores) {
+    scores.innerHTML = renderScoreGrid(players);
+  }
+}
+
+function renderTriviaResultCard(row) {
+  const isCorrect = Boolean(row.correct);
+  const points = Number(row.points || 0);
+  const labels = row.labels || [];
+  const elapsed = row.elapsed_seconds;
+
+  return `
+    <div class="trivia-result-card ${isCorrect ? "correct" : "wrong"}">
+      <div class="trivia-result-top">
+        <div>
+          <div class="trivia-result-name">
+            ${isCorrect ? "✅" : row.answered ? "❌" : "⏳"} ${escapeHTML(row.player_name || "Jugador")}
+          </div>
+          <div class="trivia-result-house">
+            ${houseIcons[row.house] || "✨"} ${escapeHTML(row.house || "Sin casa")}
+          </div>
+        </div>
+
+        <div class="trivia-result-points">
+          ${points > 0 ? "+" : ""}${points}
+        </div>
+      </div>
+
+      <div class="trivia-result-meta">
+        <span class="trivia-chip">${isCorrect ? "Correcta" : row.answered ? "Incorrecta" : "Sin respuesta"}</span>
+        ${elapsed !== null && elapsed !== undefined ? `<span class="trivia-chip">${Number(elapsed).toFixed(2)}s</span>` : ""}
+        ${row.streak ? `<span class="trivia-chip">Racha ${row.streak}</span>` : ""}
+        ${labels.map((label) => `<span class="trivia-chip">${escapeHTML(label)}</span>`).join("")}
+      </div>
+    </div>
+  `;
+}
+
+function renderSnitchResults(state, players) {
+  const title = document.getElementById("titulo-resultados");
+  const correct = document.getElementById("tv-correcta");
+  const explanation = document.getElementById("tv-explicacion");
+  const extra = document.getElementById("tv-extra-results");
+  const scores = document.getElementById("tv-marcadores");
+
+  if (title) title.innerText = "Resultado de la Snitch:";
+  if (correct) correct.innerText = state.correct || "La Snitch fue perseguida";
+  if (explanation) explanation.textContent = state.snitch_result?.summary || "";
+
+  if (extra) {
+    extra.innerHTML = "";
 
     if (typeof window.renderSnitchTvResults === "function") {
       window.renderSnitchTvResults(state, extra);
-    } else {
-      renderGenericResults(state, extra);
     }
-  } else if (phase === "results_clase_pociones") {
-    title.innerText = "Resultado de Pociones:";
-    correct.innerText = state.correct || "";
-    explanation.textContent = state.pociones_result?.summary || "";
-    renderPocionesResults(state, extra);
-  } else if (phase === "results_sombrero") {
-    title.innerText = "El Sombrero Burlón eligió:";
-    correct.innerText = state.correct || "";
-    explanation.textContent = state.sombrero_result?.summary || "";
-    renderSombreroResults(state, extra);
-  } else if (phase === "results_duelo") {
-    title.innerText = "Resultado del duelo:";
-    correct.innerText = state.correct || "";
-    explanation.textContent = state.duel_result?.summary || "";
-    renderDuelResults(state, extra);
-  } else if (phase === "results_artes_ridiculas") {
-    title.innerText = "La defensa correcta era:";
-    correct.innerText = state.correct || "";
-    explanation.textContent = state.explanation || "";
-    renderArtesResults(state, extra);
-  } else if (phase === "results_patronus_personalizado") {
-    title.innerText = "¡El más votado es!";
-    correct.innerText = state.correct || "Nadie votó";
-  } else {
-    title.innerText = "Resultado de la ronda:";
-    correct.innerText = state.correct || "Nadie votó";
-    renderGenericResults(state, extra);
   }
 
-  renderHouseScores(data.players);
-
-  if (lastPlayKey !== resultSoundKey) {
-    lastPlayKey = resultSoundKey;
-    MagicSound.play("reveal");
+  if (scores) {
+    scores.innerHTML = renderScoreGrid(players);
   }
 }
 
-function renderGenericResults(state, container) {
-  const events = state.point_events || [];
+function renderGenericResults(state, players) {
+  const title = document.getElementById("titulo-resultados");
+  const correct = document.getElementById("tv-correcta");
+  const explanation = document.getElementById("tv-explicacion");
+  const extra = document.getElementById("tv-extra-results");
+  const scores = document.getElementById("tv-marcadores");
 
-  if (!events.length) {
-    const row = document.createElement("div");
-    row.className = "result-row neutral";
-    row.textContent = "Sin detalle de resultados.";
-    container.appendChild(row);
-    return;
+  if (title) title.innerText = "Resultado de la ronda:";
+  if (correct) correct.innerText = state.correct || "Resultados revelados";
+  if (explanation) explanation.textContent = state.explanation || state.narrator || "";
+  if (extra) extra.innerHTML = "";
+  if (scores) scores.innerHTML = renderScoreGrid(players || []);
+}
+
+function renderScoreGrid(players = []) {
+  if (!players.length) {
+    return `<div class="score-card">Sin jugadores todavía</div>`;
   }
 
-  events.forEach((event) => {
-    const row = document.createElement("div");
-    row.className = `result-row ${event.points > 0 ? "good" : event.points < 0 ? "bad" : "neutral"}`;
+  const sorted = [...players].sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
 
-    const left = document.createElement("span");
-    left.textContent = `${event.player_name} — ${event.label}`;
-
-    const right = document.createElement("span");
-    right.textContent = `${event.points > 0 ? "+" : ""}${event.points} pts`;
-
-    row.appendChild(left);
-    row.appendChild(right);
-    container.appendChild(row);
-  });
-}
-
-function renderPocionesResults(state, container) {
-  const result = state.pociones_result || {};
-  const events = state.point_events || [];
-  const recipe = result.recipe || state.recipe || [];
-
-  const panel = document.createElement("div");
-  panel.className = "pociones-result-panel";
-
-  const title = document.createElement("div");
-  title.className = "pociones-result-title";
-  title.textContent = `🧪 ${result.potion_name || state.potion_name || "Poción finalizada"}`;
-
-  const line = document.createElement("div");
-  line.className = "pociones-result-line";
-  line.textContent = `“${result.narrator || "Esa poción no mataría a nadie… probablemente."}”`;
-
-  const recipeLine = document.createElement("div");
-  recipeLine.className = "pociones-result-line";
-  recipeLine.textContent = `Receta: ${recipe.join(" → ")}`;
-
-  panel.appendChild(title);
-  panel.appendChild(line);
-  panel.appendChild(recipeLine);
-  container.appendChild(panel);
-
-  events.forEach((event) => {
-    const row = document.createElement("div");
-    row.className = `result-row ${event.points > 0 ? "good" : "bad"}`;
-
-    const left = document.createElement("span");
-    left.textContent = `${event.player_name} — ${event.label}`;
-
-    const right = document.createElement("span");
-    right.textContent = `${event.points > 0 ? "+" : ""}${event.points} pts`;
-
-    row.appendChild(left);
-    row.appendChild(right);
-    container.appendChild(row);
-  });
-}
-
-function renderSombreroResults(state, container) {
-  const result = state.sombrero_result || {};
-  const events = state.point_events || [];
-
-  const panel = document.createElement("div");
-  panel.className = "sombrero-result";
-
-  const winner = document.createElement("div");
-  winner.className = "sombrero-winner";
-  winner.textContent = result.winner
-    ? `🎩 ${result.winner}`
-    : "🎩 Nadie fue elegido";
-
-  const line = document.createElement("div");
-  line.className = "sombrero-hat-line";
-  line.textContent = `“${result.hat_line || "El sombrero se reserva sus comentarios… por ahora."}”`;
-
-  panel.appendChild(winner);
-  panel.appendChild(line);
-  container.appendChild(panel);
-
-  events.forEach((event) => {
-    const row = document.createElement("div");
-    row.className = `result-row ${event.points >= 0 ? "good" : "bad"}`;
-
-    const left = document.createElement("span");
-    left.textContent = `${event.player_name} — ${event.label}`;
-
-    const right = document.createElement("span");
-    right.textContent = `${event.points > 0 ? "+" : ""}${event.points} pts`;
-
-    row.appendChild(left);
-    row.appendChild(right);
-    container.appendChild(row);
-  });
-}
-
-function renderDuelResults(state, container) {
-  const result = state.duel_result || {};
-  const events = state.point_events || [];
-
-  const panel = document.createElement("div");
-  panel.className = "duel-results-panel";
-
-  const summary = document.createElement("div");
-  summary.className = "duel-result-summary";
-  summary.textContent = result.summary || "Duelo finalizado.";
-
-  const narrator = document.createElement("div");
-  narrator.className = "duel-result-narrator";
-  narrator.textContent = `“${result.narrator || "¡Varitas abajo antes de que alguien pierda una ceja!"}”`;
-
-  panel.appendChild(summary);
-  panel.appendChild(narrator);
-  container.appendChild(panel);
-
-  events.forEach((event) => {
-    const row = document.createElement("div");
-    row.className = `result-row ${event.points >= 0 ? "good" : "bad"}`;
-
-    const left = document.createElement("span");
-    left.textContent = `${event.player_name} — ${event.label}`;
-
-    const right = document.createElement("span");
-    right.textContent = `${event.points > 0 ? "+" : ""}${event.points} pts`;
-
-    row.appendChild(left);
-    row.appendChild(right);
-    container.appendChild(row);
-  });
-}
-
-function renderArtesResults(state, container) {
-  const results = state.last_results || {};
-  const names = Object.keys(results);
-
-  if (!names.length) {
-    const row = document.createElement("div");
-    row.className = "result-row neutral";
-    row.textContent = "Nadie respondió. La clase reprueba con honores.";
-    container.appendChild(row);
-    return;
-  }
-
-  names.forEach((name) => {
-    const result = results[name];
-
-    const row = document.createElement("div");
-    row.className = `result-row ${result.correct ? "good" : "bad"}`;
-
-    const left = document.createElement("span");
-    left.textContent = `${name} — ${result.answer}`;
-
-    const labels = Array.isArray(result.labels) ? result.labels.join(" · ") : "";
-    const right = document.createElement("span");
-    right.textContent =
-      `${result.points > 0 ? "+" : ""}${result.points} pts${labels ? " · " + labels : ""}`;
-
-    row.appendChild(left);
-    row.appendChild(right);
-    container.appendChild(row);
-  });
-}
-
-function renderHouseScores(players) {
-  const scores = {
-    Gryffindor: 0,
-    Slytherin: 0,
-    Ravenclaw: 0,
-    Hufflepuff: 0,
-  };
-
-  players.forEach((player) => {
-    scores[player.house] = (scores[player.house] || 0) + (player.score || 0);
-  });
-
-  const container = document.getElementById("tv-marcadores");
-  container.innerHTML = "";
-
-  Object.entries(scores).forEach(([house, score]) => {
-    const card = document.createElement("div");
-    card.className = "house-score";
-    card.style.borderColor = houseColors[house] || "#ffffff";
-    card.textContent = `${houseIcons[house] || "✨"} ${score} pts`;
-    container.appendChild(card);
-  });
+  return sorted.map((player, index) => `
+    <div class="score-card" style="border-color:${houseColors[player.house] || "#facc15"};">
+      <div class="score-rank">#${index + 1}</div>
+      <div class="score-name">${houseIcons[player.house] || "✨"} ${escapeHTML(player.name)}</div>
+      <div class="score-points">${Number(player.score || 0)} pts</div>
+    </div>
+  `).join("");
 }
 
 async function revelarResultados() {
   if (!currentRoom) return;
 
-  MagicSound.play("click");
+  try {
+    await fetch(`/api/host/${currentRoom}/reveal`, {
+      method: "POST",
+    });
+  } catch (error) {
+    console.error("No se pudieron revelar resultados:", error);
+  }
+}
 
-  await fetch(`/api/host/${currentRoom}/reveal`, {
-    method: "POST",
-  });
+async function volverLobby() {
+  if (!currentRoom) return;
+
+  try {
+    await fetch(`/api/host/${currentRoom}/return_lobby`, {
+      method: "POST",
+    });
+  } catch (error) {
+    console.error("No se pudo volver al lobby:", error);
+  }
 }
