@@ -241,6 +241,11 @@ function iniciarRadarMovil() {
       }
 
       if (data.status === "playing" && phase !== "lobby" && !phase.includes("results_")) {
+        if (phase === "sombrero" || phase === "sombrero_tiebreak") {
+          renderSombreroMobile(state);
+          return;
+        }
+
         if (phase === "duelo") {
           renderDuelMobile(state);
           return;
@@ -289,8 +294,18 @@ function renderLobbyWait(data) {
   clashTapCount = 0;
 
   document.getElementById("m-botones").innerHTML = "";
-  document.getElementById("duel-mobile-panel").classList.remove("visible");
-  document.getElementById("duel-mobile-panel").innerHTML = "";
+
+  const duelPanel = document.getElementById("duel-mobile-panel");
+  if (duelPanel) {
+    duelPanel.classList.remove("visible");
+    duelPanel.innerHTML = "";
+  }
+
+  const sombreroPanel = document.getElementById("sombrero-mobile-panel");
+  if (sombreroPanel) {
+    sombreroPanel.classList.remove("visible");
+    sombreroPanel.innerHTML = "";
+  }
 
   showScreen("view-wait");
 
@@ -343,11 +358,82 @@ function renderResultsWait() {
   showHostPanels(myIsHost);
 }
 
+function renderSombreroMobile(state) {
+  showScreen("view-game");
+  showHostPanels(myIsHost);
+
+  document.getElementById("m-botones").innerHTML = "";
+
+  const duelPanel = document.getElementById("duel-mobile-panel");
+  duelPanel.classList.remove("visible");
+  duelPanel.innerHTML = "";
+
+  const panel = document.getElementById("sombrero-mobile-panel");
+  panel.innerHTML = "";
+  panel.classList.add("visible");
+
+  const votedPlayers = state.voted_players || [];
+  const alreadyVoted = votedPlayers.includes(myName);
+
+  if (alreadyVoted || hasAnsweredCurrentRound) {
+    renderAnsweredWait(state);
+    return;
+  }
+
+  const newKey = getRoundKey(state);
+
+  if (newKey !== currentRoundKey) {
+    currentRoundKey = newKey;
+    hasAnsweredCurrentRound = false;
+    MagicSound.play("start");
+  }
+
+  document.getElementById("game-pill").innerText =
+    state.phase === "sombrero_tiebreak" ? "⚡ Desempate" : "🎩 Sombrero";
+
+  document.getElementById("m-pregunta-aviso").innerText =
+    state.phase === "sombrero_tiebreak" ? "¡Vota el desempate!" : "¡Vota con honestidad dudosa!";
+
+  document.getElementById("m-question-small").innerText = state.question || "Elige a alguien.";
+  document.getElementById("mobile-timer").style.display = "none";
+  document.getElementById("mobile-status").innerText = "No puedes votar por ti mismo.";
+
+  panel.innerHTML = `
+    <div class="sombrero-vote-grid" id="sombrero-vote-grid"></div>
+  `;
+
+  const grid = document.getElementById("sombrero-vote-grid");
+
+  const options = state.options || [];
+
+  options
+    .filter((name) => name !== myName)
+    .forEach((name) => {
+      const button = document.createElement("button");
+      button.className = "sombrero-vote-btn";
+      button.textContent = `🎩 ${name}`;
+      button.addEventListener("click", () => enviarRespuesta(name, button));
+      grid.appendChild(button);
+    });
+
+  if (!grid.children.length) {
+    document.getElementById("mobile-status").innerText =
+      "No hay opciones disponibles para votar.";
+  }
+}
+
 function renderDuelMobile(state) {
   showScreen("view-game");
   showHostPanels(myIsHost);
 
   document.getElementById("m-botones").innerHTML = "";
+
+  const sombreroPanel = document.getElementById("sombrero-mobile-panel");
+  if (sombreroPanel) {
+    sombreroPanel.classList.remove("visible");
+    sombreroPanel.innerHTML = "";
+  }
+
   document.getElementById("duel-mobile-panel").innerHTML = "";
   document.getElementById("duel-mobile-panel").classList.remove("visible");
 
@@ -410,6 +496,13 @@ function renderDuelClashMobile(state) {
   showHostPanels(myIsHost);
 
   document.getElementById("m-botones").innerHTML = "";
+
+  const sombreroPanel = document.getElementById("sombrero-mobile-panel");
+  if (sombreroPanel) {
+    sombreroPanel.classList.remove("visible");
+    sombreroPanel.innerHTML = "";
+  }
+
   document.getElementById("duel-mobile-panel").innerHTML = "";
 
   const iAmDuelist = isMeDuelist(state);
@@ -542,8 +635,15 @@ function renderMobileGame(state) {
   showScreen("view-game");
   showHostPanels(myIsHost);
 
-  document.getElementById("duel-mobile-panel").classList.remove("visible");
-  document.getElementById("duel-mobile-panel").innerHTML = "";
+  const duelPanel = document.getElementById("duel-mobile-panel");
+  duelPanel.classList.remove("visible");
+  duelPanel.innerHTML = "";
+
+  const sombreroPanel = document.getElementById("sombrero-mobile-panel");
+  if (sombreroPanel) {
+    sombreroPanel.classList.remove("visible");
+    sombreroPanel.innerHTML = "";
+  }
 
   if (newKey === currentRoundKey) {
     if (state.phase === "artes_ridiculas") {
@@ -568,7 +668,7 @@ function renderMobileGame(state) {
   buttons.innerHTML = "";
   status.innerText = "Elige una opción.";
 
-  if (["sombrero", "patronus_personalizado"].includes(state.phase)) {
+  if (["patronus_personalizado"].includes(state.phase)) {
     pill.innerText = "🗳️ Votación";
     aviso.innerText = "¡Vota por un jugador!";
     question.innerText = getQuestion(state);
@@ -628,7 +728,7 @@ async function enviarRespuesta(option, clickedButton) {
 
   const elapsed = Math.max(0, Date.now() - currentRoundStartedMs);
 
-  document.querySelectorAll(".option-btn, .duel-spell-btn").forEach((btn) => {
+  document.querySelectorAll(".option-btn, .duel-spell-btn, .sombrero-vote-btn").forEach((btn) => {
     btn.disabled = true;
     btn.classList.add("locked");
   });
@@ -701,6 +801,27 @@ async function hostStartSelectedGame() {
   const gameId = document.getElementById("host-game-select").value;
 
   MagicSound.play("click");
+
+  if (gameId === "sombrero_burlon") {
+    const question =
+      typeof window.getSombreroPrompt === "function"
+        ? window.getSombreroPrompt()
+        : "¿Quién merece ser señalado por el Sombrero Burlón?";
+
+    await fetch(`/api/mobile/host/${myRoom}/start_sombrero_custom`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        player_name: myName,
+        host_token: myHostToken,
+        question: question,
+      }),
+    });
+
+    return;
+  }
 
   await fetch(`/api/mobile/host/${myRoom}/start_game/${gameId}`, {
     method: "POST",
