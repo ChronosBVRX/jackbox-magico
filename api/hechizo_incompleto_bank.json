@@ -1,0 +1,184 @@
+{
+  "items": [
+    {
+      "id": "wingardium_leviosa",
+      "type": "hechizo",
+      "difficulty": "facil",
+      "question": "Wingardium Levi___",
+      "options": ["osa", "oso", "uza", "isa"],
+      "correct": "osa",
+      "narrator_comment": "Pronuncien bien, por favor. Una vocal mal puesta y alguien termina con una pluma en la nariz."
+    },
+    {
+      "id": "expecto_patronum",
+      "type": "hechizo",
+      "difficulty": "media",
+      "question": "Expecto Patro___",
+      "options": ["num", "nam", "nus", "nium"],
+      "correct": "num",
+      "narrator_comment": "Correcto. Con eso espantas dementores y, con suerte, pensamientos de lunes."
+    },
+    {
+      "id": "expelliarmus",
+      "type": "hechizo",
+      "difficulty": "facil",
+      "question": "Expelli___",
+      "options": ["armus", "armis", "ormus", "asmus"],
+      "correct": "armus",
+      "narrator_comment": "El clásico de Harry: sencillo, dramático y útil para quitarle la varita al intenso de la mesa."
+    },
+    {
+      "id": "alohomora",
+      "type": "hechizo",
+      "difficulty": "facil",
+      "question": "Aloho___",
+      "options": ["mora", "moro", "mira", "mura"],
+      "correct": "mora",
+      "narrator_comment": "Abre cerraduras, no conversaciones que claramente ya debieron terminar."
+    },
+    {
+      "id": "petrificus_totalus",
+      "type": "hechizo",
+      "difficulty": "media",
+      "question": "Petrificus Tot___",
+      "options": ["alus", "olis", "alis", "ulus"],
+      "correct": "alus",
+      "narrator_comment": "Bien. Neville lo vivió y aun así terminó siendo más valiente que todos nosotros."
+    },
+    {
+      "id": "riddikulus",
+      "type": "hechizo",
+      "difficulty": "media",
+      "question": "Riddi___",
+      "options": ["kulus", "culus", "colus", "kilus"],
+      "correct": "kulus",
+      "narrator_comment": "Correcto. El boggart se ríe, pero tú también, y eso psicológicamente cuenta."
+    },
+    {
+      "id": "sectumsempra",
+      "type": "hechizo",
+      "difficulty": "experto",
+      "question": "Sectum___",
+      "options": ["sempra", "sempro", "sombra", "sempre"],
+      "correct": "sempra",
+      "narrator_comment": "Cuidado con ese hechizo. Si lo pronuncias mal, no es latín mágico: es invento de borracho."
+    },
+    {
+      "id": "oculus_reparo",
+      "type": "hechizo",
+      "difficulty": "media",
+      "question": "Oculus Re___",
+      "options": ["paro", "pero", "pairo", "puro"],
+      "correct": "paro",
+      "narrator_comment": "Correcto. Magia oftálmica básica para salvar lentes y dignidad."
+    },
+    {
+      "id": "obliviate",
+      "type": "hechizo",
+      "difficulty": "dificil",
+      "question": "Obli___",
+      "options": ["viate", "veate", "vium", "viosa"],
+      "correct": "viate",
+      "narrator_comment": "Útil para recuerdos. No recomendado para borrar deudas, capturas ni audios comprometedores."
+    },
+    {
+      "id": "lumos_maxima",
+      "type": "hechizo",
+      "difficulty": "facil",
+      "question": "Lumos ___",
+      "options": ["Máxima", "Mínima", "Mágica", "Mortal"],
+      "correct": "Máxima",
+      "narrator_comment": "Correcto. Luz suficiente para encontrar la mesa, la varita o la dignidad perdida."
+    },
+    {
+      "id": "mischief_managed",
+      "type": "frase",
+      "difficulty": "media",
+      "question": "Para cerrar el Mapa del Merodeador: Travesura ___",
+      "options": ["realizada", "terminada", "completada", "cancelada"],
+      "correct": "realizada",
+      "narrator_comment": "Bien. Travesura realizada, evidencia desaparecida y Filch confundido."
+    },
+    {
+      "id": "solemnly_swear",
+      "type": "frase",
+      "difficulty": "media",
+      "question": "Juro solemnemente que mis intenciones no son ___",
+      "options": ["buenas", "malas", "claras", "santas"],
+      "correct": "buenas",
+      "narrator_comment": "Correcto. Frase elegante para anunciar que vas a hacer exactamente lo que no debías."
+    },
+    {
+      "id": "levicorpus",
+      "type": "hechizo",
+      "difficulty": "dificil",
+      "question": "Levi___",
+      "options": ["corpus", "corpos", "cuerpus", "curpus"],
+      "correct": "corpus",
+      "narrator_comment": "Correcto, por un momento sonaste como alguien que sí estudió."
+    },
+    {
+      "id": "morsmordre",
+      "type": "hechizo",
+      "difficulty": "experto",
+      "question": "Mors___",
+      "options": ["mordre", "mordra", "morte", "mordrex"],
+      "correct": "mordre",
+      "narrator_comment": "Ese no se grita en reuniones familiares. Ni en karaoke. Ni por accidente."
+    },
+    {
+      "id": "protego",
+      "type": "hechizo",
+      "difficulty": "facil",
+      "question": "Pro___",
+      "options": ["tego", "tigo", "tega", "togo"],
+      "correct": "tego",
+      "narrator_comment": "Escudo básico. Sirve contra hechizos y contra comentarios pasivo-agresivos."
+    },
+    {
+      "id": "accio",
+      "type": "hechizo",
+      "difficulty": "facil",
+      "question": "Ac___",
+      "options": ["cio", "sio", "xio", "zio"],
+      "correct": "cio",
+      "narrator_comment": "Muy bien. Ahora úsalo con responsabilidad, no para atraer papas de otra mesa."
+    },
+    {
+      "id": "confundus",
+      "type": "hechizo",
+      "difficulty": "dificil",
+      "question": "Con___",
+      "options": ["fundus", "fundo", "fendus", "fundis"],
+      "correct": "fundus",
+      "narrator_comment": "Correcto. El hechizo favorito de quien explica una cuenta dividida entre ocho."
+    },
+    {
+      "id": "aguamenti",
+      "type": "hechizo",
+      "difficulty": "media",
+      "question": "Agua___",
+      "options": ["menti", "mente", "manti", "mundi"],
+      "correct": "menti",
+      "narrator_comment": "Bien. Agua mágica, ideal para incendios, dragones y nachos demasiado enchilados."
+    },
+    {
+      "id": "nox",
+      "type": "hechizo",
+      "difficulty": "facil",
+      "question": "Para apagar Lumos se dice: ___",
+      "options": ["Nox", "Knox", "Lux", "Nexus"],
+      "correct": "Nox",
+      "narrator_comment": "Correcto. Oscuridad activada. Responsabilidad emocional no incluida."
+    },
+    {
+      "id": "avada_kedavra",
+      "type": "hechizo",
+      "difficulty": "experto",
+      "question": "Avada Ke___",
+      "options": ["davra", "dabro", "dabra", "devra"],
+      "correct": "davra",
+      "narrator_comment": "Eso está muy oscuro para una convivencia familiar. Pero sí, la pronunciación fue correcta."
+    }
+  ]
+}
