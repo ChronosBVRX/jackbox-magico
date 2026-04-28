@@ -2,6 +2,7 @@ let currentRoom = "";
 let radarInterval = null;
 let lastPlayKey = "";
 let lastTickSecond = null;
+let autoRevealLock = false;
 
 const houseIcons = {
   Gryffindor: "🦁",
@@ -125,6 +126,7 @@ function iniciarRadar() {
 }
 
 function renderLobby(data) {
+  autoRevealLock = false;
   showScreen("view-lobby");
 
   const lista = document.getElementById("lista-jugadores");
@@ -150,6 +152,7 @@ function renderPlaying(data) {
   if (lastPlayKey !== key) {
     lastPlayKey = key;
     lastTickSecond = null;
+    autoRevealLock = false;
     MagicSound.play("start");
 
     if (state.phase === "artes_ridiculas") {
@@ -219,13 +222,16 @@ function renderArtesRidiculas(state, players) {
         <span>Correcta +100 · Rápida +30 · Racha +80 · Error -20 · Humor +20</span>
       </div>
 
-      <div id="artes-player-grid" class="artes-player-grid"></div>
-
-      <div style="position:relative;z-index:2;text-align:center;margin-top:30px;">
+      <div class="artes-actions">
         <button class="primary-btn reveal-btn" onclick="revelarResultados()">
           Revelar Resultados
         </button>
+        <button class="secondary-btn" onclick="volverAlLobby()">
+          Volver al Lobby
+        </button>
       </div>
+
+      <div id="artes-player-grid" class="artes-player-grid"></div>
     </section>
   `;
 
@@ -253,6 +259,13 @@ function updateArtesTimer(state) {
   if (rounded <= 3 && rounded > 0 && rounded !== lastTickSecond) {
     lastTickSecond = rounded;
     MagicSound.play("timer-danger");
+  }
+
+  if (left <= 0 && !autoRevealLock) {
+    autoRevealLock = true;
+    setTimeout(() => {
+      revelarResultados();
+    }, 650);
   }
 }
 
@@ -377,6 +390,7 @@ async function lanzarJuegoSeleccionado() {
 
   lastPlayKey = "";
   lastTickSecond = null;
+  autoRevealLock = false;
 
   MagicSound.play("click");
 
@@ -386,6 +400,8 @@ async function lanzarJuegoSeleccionado() {
 }
 
 async function revelarResultados() {
+  if (!currentRoom) return;
+
   MagicSound.play("click");
 
   await fetch(`/api/host/${currentRoom}/reveal`, {
@@ -394,8 +410,11 @@ async function revelarResultados() {
 }
 
 async function volverAlLobby() {
+  if (!currentRoom) return;
+
   lastPlayKey = "";
   lastTickSecond = null;
+  autoRevealLock = false;
 
   MagicSound.play("click");
 
