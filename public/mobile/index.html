@@ -1,157 +1,79 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Control Mágico</title>
-    <style>
-        body { background-color: #2c3e50; color: white; font-family: sans-serif; text-align: center; padding: 20px; margin: 0; }
-        .screen { display: none; }
-        input, select, button { width: 100%; padding: 15px; margin: 15px 0; font-size: 1.2rem; border-radius: 8px; border: none; box-sizing: border-box; }
-        .btn-join { background-color: #27ae60; color: white; font-weight: bold; cursor: pointer; }
-        .btn-join:disabled { background-color: #7f8c8d; cursor: not-allowed; }
-        .grid-buttons { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-top: 20px; }
-        .btn-opt { background: #f39c12; color: #1a1a2e; height: 120px; font-size: 1.5rem; font-weight: bold; cursor: pointer; }
-        .btn-opt:active { background: #d35400; }
-        .spinner { font-size: 3rem; animation: spin 2s linear infinite; display: inline-block; margin-top: 20px;}
-        @keyframes spin { 100% { transform: rotate(360deg); } }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Control Mágico</title>
+
+  <link rel="stylesheet" href="/mobile/styles.css">
 </head>
+
 <body>
+  <div class="mobile-ambient"></div>
 
-    <div id="view-login" class="screen" style="display: block;">
-        <h2>¡Prepara tu varita!</h2>
-        <input type="text" id="m-room" placeholder="Código de la Sala (ej. HGW4)" style="text-transform: uppercase;">
-        <input type="text" id="m-name" placeholder="Tu Nombre o Apodo" maxlength="15">
-        
-        <select id="m-house">
-            <option value="Gryffindor">🦁 Leones (Gryffindor)</option>
-            <option value="Slytherin">🐍 Serpientes (Slytherin)</option>
-            <option value="Ravenclaw">🦅 Águilas (Ravenclaw)</option>
-            <option value="Hufflepuff">🦡 Tejones (Hufflepuff)</option>
-        </select>
-        
-        <button class="btn-join" id="btn-unirse">Entrar a la Sala</button>
-    </div>
+  <div id="view-login" class="screen visible">
+    <section class="card">
+      <div class="pill">⚡ Control mágico</div>
 
-    <div id="view-wait" class="screen">
-        <h2 id="wait-msg">¡Estás dentro!</h2>
-        <p>Mira la pantalla principal.</p>
-        <div class="spinner">⏳</div>
-    </div>
+      <h1>Prepara tu varita</h1>
 
-    <div id="view-game" class="screen">
-        <h3 id="m-pregunta-aviso">¡Responde rápido!</h3>
-        <div class="grid-buttons" id="m-botones"></div>
-    </div>
+      <p>
+        Entra a la sala, elige tu casa y mira la pantalla principal.
+      </p>
 
-    <script>
-        let myRoom = "";
-        let myName = "";
+      <input type="text" id="m-room" placeholder="Código de la sala" autocomplete="off">
+      <input type="text" id="m-name" placeholder="Tu nombre o apodo" maxlength="15" autocomplete="off">
 
-        const urlParams = new URLSearchParams(window.location.search);
-        if(urlParams.has('room')) {
-            document.getElementById('m-room').value = urlParams.get('room').toUpperCase();
-            document.getElementById('m-room').disabled = true; 
-        }
+      <select id="m-house">
+        <option value="Gryffindor">🦁 Leones (Gryffindor)</option>
+        <option value="Slytherin">🐍 Serpientes (Slytherin)</option>
+        <option value="Ravenclaw">🦅 Águilas (Ravenclaw)</option>
+        <option value="Hufflepuff">🦡 Tejones (Hufflepuff)</option>
+      </select>
 
-        document.getElementById('btn-unirse').addEventListener('click', async () => {
-            const btn = document.getElementById('btn-unirse');
-            myRoom = document.getElementById('m-room').value.toUpperCase();
-            myName = document.getElementById('m-name').value;
-            const house = document.getElementById('m-house').value;
+      <button class="join-btn" id="btn-unirse">
+        Entrar a la Sala
+      </button>
+    </section>
+  </div>
 
-            // TU PROTECCIÓN ORIGINAL
-            if(!myRoom || !myName) {
-                alert("No seas muggle, llena todos los campos.");
-                return;
-            }
+  <div id="view-wait" class="screen">
+    <section class="card">
+      <div class="pill">🕯️ Conectado</div>
 
-            btn.innerText = "Conectando...";
-            btn.disabled = true;
+      <h1 id="wait-msg">¡Estás dentro!</h1>
 
-            // TU TRY/CATCH ORIGINAL
-            try {
-                const res = await fetch('/api/player/join', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ room_code: myRoom, player_name: myName, house: house })
-                });
-                
-                const data = await res.json();
-                
-                if(res.ok) {
-                    document.getElementById('view-login').style.display = 'none';
-                    document.getElementById('view-wait').style.display = 'block';
-                    iniciarRadarMovil();
-                } else {
-                    alert("Error: " + data.detail);
-                    btn.innerText = "Entrar a la Sala";
-                    btn.disabled = false;
-                }
-            } catch (error) {
-                alert("Error de conexión al castillo.");
-                btn.innerText = "Entrar a la Sala";
-                btn.disabled = false;
-            }
-        });
+      <p id="wait-subtitle">
+        Mira la pantalla principal.
+      </p>
 
-        function iniciarRadarMovil() {
-            setInterval(async () => {
-                try {
-                    const res = await fetch(`/api/room/${myRoom}/status`);
-                    if(!res.ok) return;
-                    const data = await res.json();
+      <div id="points-feedback" class="points-feedback"></div>
 
-                    // Lógica para mostrar la pantalla de juego (Trivia, Duelo o Sombrero)
-                    if(data.status === 'playing' && !data.game_state.phase.includes('results_')) {
-                        document.getElementById('view-wait').style.display = 'none';
-                        document.getElementById('view-game').style.display = 'block';
-                        
-                        // Cambiamos el aviso según el minijuego
-                        if(['sombrero','patronus_personalizado'].includes(data.game_state.phase)) {
-                            document.getElementById('m-pregunta-aviso').innerText = "¡Vota por un jugador!";
-                        } else {
-                            document.getElementById('m-pregunta-aviso').innerText = "¡Juega rápido!";
-                        }
-                        
-                        const btnContainer = document.getElementById('m-botones');
-                        if(btnContainer.innerHTML === "") { 
-                            data.game_state.options.forEach(opt => {
-                                btnContainer.innerHTML += `<button class="btn-opt" onclick="enviarRespuesta('${opt}')">${opt}</button>`;
-                            });
-                        }
-                    }
+      <div class="spinner">⏳</div>
+    </section>
+  </div>
 
-                    // Lógica para regresar a la pantalla de espera
-                    if(data.status === 'lobby' || (data.status === 'playing' && data.game_state.phase.includes('results'))) {
-                        document.getElementById('view-game').style.display = 'none';
-                        document.getElementById('view-wait').style.display = 'block';
-                        document.getElementById('m-botones').innerHTML = ""; 
-                        
-                        if (data.status === 'lobby') {
-                            document.getElementById('wait-msg').innerText = "¡Estás dentro!";
-                        } else {
-                            document.getElementById('wait-msg').innerText = "¡Mira la TV para ver los resultados!";
-                        }
-                    }
-                } catch (e) {
-                    console.error("Buscando conexión...");
-                }
-            }, 2000);
-        }
+  <div id="view-game" class="screen">
+    <section class="card">
+      <div class="pill" id="game-pill">✨ Minijuego</div>
 
-        async function enviarRespuesta(opt) {
-            document.getElementById('view-game').style.display = 'none';
-            document.getElementById('view-wait').style.display = 'block';
-            document.getElementById('wait-msg').innerText = "¡Respuesta enviada!";
-            
-            await fetch('/api/player/submit_answer', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ room_code: myRoom, player_name: myName, answer: opt })
-            });
-        }
-    </script>
+      <h1 id="m-pregunta-aviso">¡Responde rápido!</h1>
+
+      <p id="m-question-small"></p>
+
+      <div id="mobile-timer" class="mobile-timer">
+        <div id="mobile-timer-bar" class="mobile-timer-bar"></div>
+      </div>
+
+      <div id="m-botones" class="buttons-grid"></div>
+
+      <div id="mobile-status" class="status-box">
+        Elige una opción cuando aparezca.
+      </div>
+    </section>
+  </div>
+
+  <script src="/assets/js/magic-sounds.js"></script>
+  <script src="/mobile/app.js"></script>
 </body>
 </html>
