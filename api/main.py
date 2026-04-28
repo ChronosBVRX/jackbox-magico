@@ -6,7 +6,7 @@ from copy import deepcopy
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 
-from api.database import supabase, PlayerJoinInfo, AnswerInfo, HostControlInfo, DuelClashTapInfo
+from api.database import supabase, PlayerJoinInfo, AnswerInfo, HostControlInfo, DuelClashTapInfo, SombreroStartInfo
 from api import trivia, duelo, sombrero
 from api import clase_pociones, atrapa_snitch, retratos_chismosos, mapa_travieso
 from api import hechizo_incompleto, artes_ridiculas, caldero_mentiroso, patronus_personalizado, copa_final
@@ -37,7 +37,7 @@ def generate_host_token():
 
 
 def add_points(room_id: int, player_name: str, points: int):
-    if points == 0:
+    if points == 0 or not player_name:
         return
 
     player = (
@@ -117,6 +117,9 @@ def sanitize_game_state(state: dict):
         public_state.pop("last_results", None)
         public_state.pop("duel_result", None)
         public_state.pop("point_events", None)
+        public_state.pop("sombrero_result", None)
+        public_state.pop("votes_by_voter", None)
+        public_state.pop("votes_by_target", None)
 
         answered = public_state.get("answered")
         if isinstance(answered, dict):
@@ -133,7 +136,7 @@ def sanitize_game_state(state: dict):
     return public_state
 
 
-def ensure_host_in_state(state: dict, host: dict | None):
+def ensure_host_in_state(state: dict, host: dict):
     state = state or {}
 
     if host:
@@ -170,7 +173,10 @@ def build_game_state(room_code: str, game_id: str, previous_state: dict):
         )
 
     if game_id == "sombrero_burlon":
-        return sombrero.build_sombrero_state(room_code)
+        return sombrero.build_sombrero_state(
+            room_code=room_code,
+            previous_state=previous_state,
+        )
 
     if game_id == "clase_pociones":
         return clase_pociones.build_state()
@@ -289,6 +295,20 @@ async def join_room(info: PlayerJoinInfo):
 
     is_reconnect = bool(existing_player.data)
 
+    players_in_room = get_players(room_id)
+
+    if not is_reconnect and len(players_in_room) >= 8:
+        raise HTTPException(status_code=403, detail="La sala ya tiene 8 jugadores")
+
+    if not is_reconnect:
+        players_same_house = [
+            player for player in players_in_room
+            if player.get("house") == info.house
+        ]
+
+        if len(players_same_house) >= 2:
+            raise HTTPException(status_code=403, detail="Esa casa ya tiene 2 jugadores")
+
     if not is_reconnect and status != "lobby":
         raise HTTPException(status_code=403, detail="Partida ya en curso")
 
@@ -376,6 +396,34 @@ async def mobile_host_start_game(room_code: str, game_id: str, info: HostControl
     return start_game_internal(room_code, game_id)
 
 
+@app.post("/api/mobile/host/{room_code}/start_sombrero_custom")
+async def mobile_host_start_sombrero_custom(room_code: str, info: SombreroStartInfo):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    room = validate_mobile_host(room_code, info)
+    previous_state = room.get("game_state") or {}
+    host = get_host_from_state(previous_state)
+
+    new_state = sombrero.build_sombrero_state(
+        room_code=room_code,
+        previous_state=previous_state,
+        custom_question=info.question,
+    )
+
+    new_state = ensure_host_in_state(new_state, host)
+
+    supabase.table("rooms").update({
+        "status": "playing",
+        "game_state": new_state,
+    }).eq("room_code", room_code.upper()).execute()
+
+    return {
+        "message": "Sombrero Burlón iniciado",
+        "game_id": "sombrero_burlon",
+    }
+
+
 @app.post("/api/player/submit_answer")
 async def submit_answer(info: AnswerInfo):
     if not supabase:
@@ -412,7 +460,29 @@ async def submit_answer(info: AnswerInfo):
             "accepted": result.get("accepted", False),
         }
 
-    elif phase in {"sombrero", "patronus_personalizado"}:
+    elif phase in {"duelo_clash"}:
+        return {
+            "message": "Usa el botón de Choque de Varitas.",
+            "accepted": False,
+        }
+
+    elif phase in {"sombrero", "sombrero_tiebreak"}:
+        result = sombrero.submit_vote(
+            state=state,
+            voter_name=info.player_name,
+            target_name=info.answer,
+        )
+
+        supabase.table("rooms").update({
+            "game_state": result["state"],
+        }).eq("room_code", info.room_code.upper()).execute()
+
+        return {
+            "message": result.get("message", "Voto registrado."),
+            "accepted": result.get("accepted", False),
+        }
+
+    elif phase in {"patronus_personalizado"}:
         votes = state.get("votes", {})
         votes[info.answer] = votes.get(info.answer, 0) + 1
         state["votes"] = votes
@@ -521,7 +591,22 @@ async def reveal_results(room_code: str):
             "is_final": is_final,
         }
 
-    if state.get("phase") in {"sombrero", "patronus_personalizado"}:
+    if state.get("phase") in {"sombrero", "sombrero_tiebreak"}:
+        state, point_events, is_final = sombrero.resolve_for_reveal(state)
+
+        if is_final:
+            apply_point_events(room_id, point_events)
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "Sombrero revelado" if is_final else "Desempate iniciado",
+            "is_final": is_final,
+        }
+
+    if state.get("phase") in {"patronus_personalizado"}:
         votes = state.get("votes", {})
 
         if votes:
@@ -540,7 +625,7 @@ async def reveal_results(room_code: str):
                     pts = votes[player["name"]] * 10
 
                     if player["name"] == winner:
-                        pts += 120 if state.get("phase") == "patronus_personalizado" else 80
+                        pts += 120
 
                     current_score = player.get("score") or 0
 
