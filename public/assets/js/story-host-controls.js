@@ -2,6 +2,7 @@
   let storiesLoaded = false;
   let stories = [];
   let storyPrepared = false;
+  let lastStoryStatusKey = "";
 
   function escapeHTML(value) {
     return String(value ?? "")
@@ -44,6 +45,30 @@
     }
   }
 
+  function isSafeToAdvance(data) {
+    const phase = data?.game_state?.phase || "lobby";
+    const status = data?.status || "lobby";
+
+    return status === "lobby" || phase === "lobby" || String(phase).startsWith("results_");
+  }
+
+  function getStoryData(data) {
+    const state = data?.game_state || {};
+    return state.mode === "story" ? state : null;
+  }
+
+  async function getRoomStatus() {
+    const room = getRoom();
+    if (!room) return null;
+
+    const res = await fetch(`/api/room/${room}/status?storyHostTs=${Date.now()}`, {
+      cache: "no-store",
+    });
+
+    if (!res.ok) return null;
+    return await res.json();
+  }
+
   async function loadStories() {
     if (storiesLoaded) return stories;
 
@@ -84,6 +109,7 @@
         <button id="story-prepare-btn" type="button">Preparar historia</button>
         <button id="story-start-btn" type="button" class="ghost-btn">Iniciar historia</button>
         <button id="story-next-btn" type="button" class="ghost-btn">Siguiente etapa</button>
+        <div id="story-host-advice" class="story-host-advice"></div>
         <div id="story-host-status" class="story-host-status"></div>
       </div>
     `;
@@ -107,6 +133,62 @@
 
     box.className = `story-host-status ${kind}`;
     box.textContent = message || "";
+  }
+
+  function setStoryAdvice(data) {
+    const box = document.getElementById("story-host-advice");
+    const nextBtn = document.getElementById("story-next-btn");
+    const startBtn = document.getElementById("story-start-btn");
+    const prepareBtn = document.getElementById("story-prepare-btn");
+    const select = document.getElementById("story-select");
+
+    if (!box) return;
+
+    const state = data?.game_state || {};
+    const storyState = getStoryData(data);
+    const safe = isSafeToAdvance(data);
+    const phase = state.phase || "lobby";
+    const storyTitle = state.story_public?.story_title || state.story?.story_title || "Modo Historia";
+    const step = state.story_public?.current_story_step || state.story?.current_story_step || state.story_step || null;
+    const stepType = step?.type || state.story_step_type || "";
+    const targetQuestions = Number(state.story_trivia_target_questions || step?.questions || 0);
+
+    if (nextBtn) nextBtn.disabled = !storyState || !safe;
+    if (startBtn) startBtn.disabled = Boolean(storyState && data?.status === "playing" && phase !== "lobby");
+    if (prepareBtn) prepareBtn.disabled = Boolean(data?.status !== "lobby");
+    if (select) select.disabled = Boolean(data?.status !== "lobby");
+
+    if (!storyState) {
+      box.innerHTML = "El modo Historia todavía no está preparado para esta sala.";
+      return;
+    }
+
+    let label = "Historia preparada";
+    let detail = "Cuando todos estén listos, inicia la historia.";
+
+    if (phase === "trivia") {
+      label = "Trivia narrativa en curso";
+      detail = targetQuestions
+        ? `Bloque objetivo: ${targetQuestions} preguntas. No avances hasta revelar resultados.`
+        : "No avances mientras la pregunta esté activa. Primero revela resultados.";
+    } else if (String(phase).startsWith("results_")) {
+      label = "Resultados listos";
+      detail = stepType === "trivia_block"
+        ? "Puedes ir a la siguiente pregunta normal o avanzar a la siguiente etapa de la historia."
+        : "Puedes avanzar a la siguiente etapa narrativa.";
+    } else if (phase === "lobby") {
+      label = "Lobby de historia";
+      detail = "Puedes iniciar la historia cuando estén todos los jugadores.";
+    } else {
+      label = "Prueba mágica activa";
+      detail = "Espera a revelar resultados antes de avanzar a la siguiente etapa.";
+    }
+
+    box.innerHTML = `
+      <strong>${escapeHTML(storyTitle)}</strong><br>
+      <span>${escapeHTML(label)}</span><br>
+      <small>${escapeHTML(detail)}</small>
+    `;
   }
 
   async function prepareStoryMode() {
@@ -156,6 +238,12 @@
       return;
     }
 
+    const current = await getRoomStatus();
+    if (current && current.status !== "lobby") {
+      setStoryStatus("Solo puedes iniciar la historia desde el lobby.", "bad");
+      return;
+    }
+
     if (!storyPrepared) {
       await prepareStoryMode();
     }
@@ -191,6 +279,18 @@
 
     if (!room || !playerName || !hostToken) {
       setStoryStatus("Faltan datos para avanzar historia.", "bad");
+      return;
+    }
+
+    const current = await getRoomStatus();
+
+    if (!current || !getStoryData(current)) {
+      setStoryStatus("Esta sala todavía no está en modo Historia.", "bad");
+      return;
+    }
+
+    if (!isSafeToAdvance(current)) {
+      setStoryStatus("No avances todavía: primero termina la ronda y revela resultados.", "bad");
       return;
     }
 
@@ -253,6 +353,32 @@
         width: 100%;
         margin-top: 8px;
       }
+      #story-prepare-btn:disabled,
+      #story-start-btn:disabled,
+      #story-next-btn:disabled,
+      #story-select:disabled {
+        opacity: .45;
+        cursor: not-allowed;
+        filter: grayscale(.2);
+      }
+      .story-host-advice {
+        margin-top: 10px;
+        padding: 10px;
+        border-radius: 14px;
+        color: rgba(255,248,221,.84);
+        background: rgba(255,255,255,.06);
+        border: 1px solid rgba(255,255,255,.10);
+        font-size: .82rem;
+        line-height: 1.28;
+      }
+      .story-host-advice strong {
+        color: #ffe7a3;
+      }
+      .story-host-advice small {
+        display: block;
+        margin-top: 3px;
+        color: rgba(255,248,221,.62);
+      }
       .story-host-status {
         margin-top: 10px;
         min-height: 22px;
@@ -268,11 +394,16 @@
     document.head.appendChild(style);
   }
 
-  const interval = setInterval(() => {
+  const interval = setInterval(async () => {
     injectStyles();
 
     if (isHost()) {
-      ensureStoryPanel();
+      await ensureStoryPanel();
+
+      try {
+        const data = await getRoomStatus();
+        if (data) setStoryAdvice(data);
+      } catch (error) {}
     }
   }, 900);
 
