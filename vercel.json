@@ -9,6 +9,10 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/copa_final_api.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "public/**",
       "use": "@vercel/static"
     }
@@ -17,6 +21,10 @@
     {
       "src": "/api/caldero/(.*)",
       "dest": "api/caldero_api.py"
+    },
+    {
+      "src": "/api/copa-final/(.*)",
+      "dest": "api/copa_final_api.py"
     },
     {
       "src": "/api/(.*)",
