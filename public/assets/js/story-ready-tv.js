@@ -1,0 +1,293 @@
+(() => {
+  let lastRoom = "";
+  let lastReadyKey = "";
+  let advancingKey = "";
+
+  function getRoomCode() {
+    const domCode = document.getElementById("tv-code")?.textContent?.trim();
+    if (domCode && domCode !== "----") {
+      lastRoom = domCode.toUpperCase();
+      return lastRoom;
+    }
+    try {
+      if (typeof currentRoom !== "undefined" && currentRoom) {
+        lastRoom = String(currentRoom).toUpperCase();
+        return lastRoom;
+      }
+    } catch (error) {}
+    return lastRoom;
+  }
+
+  function getTvToken() {
+    if (window.RoomLifecycleTv?.getTvToken) return window.RoomLifecycleTv.getTvToken();
+    let token = localStorage.getItem("jackbox_magico_tv_token");
+    if (!token) {
+      token = crypto?.randomUUID ? crypto.randomUUID() : `tv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      localStorage.setItem("jackbox_magico_tv_token", token);
+    }
+    return token;
+  }
+
+  function escapeHTML(value) {
+    return String(value ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function getPhase(data) {
+    return data?.game_state?.phase || data?.status || "lobby";
+  }
+
+  function getStepType(data) {
+    const state = data?.game_state || {};
+    const step = state.story_public?.current_story_step || state.story?.current_story_step || state.story_step || null;
+    return step?.type || state.story_step_type || "";
+  }
+
+  async function fetchRoomStatus(room) {
+    try {
+      const res = await fetch(`/api/room/${room}/status?readyTvRoomTs=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function fetchReadyStatus(room) {
+    try {
+      const res = await fetch(`/api/story-ready/${room}/status?readyTvTs=${Date.now()}`, { cache: "no-store" });
+      if (!res.ok) return null;
+      return await res.json();
+    } catch (error) {
+      return null;
+    }
+  }
+
+  async function resetReady(room) {
+    try {
+      await fetch(`/api/story-ready/${room}/reset`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tv_token: getTvToken() }),
+      });
+    } catch (error) {}
+  }
+
+  async function callNextTrivia(room) {
+    const res = await fetch(`/api/story-tv/${room}/next-trivia`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tv_token: getTvToken() }),
+    });
+    if (!res.ok) throw new Error("No se pudo avanzar trivia");
+  }
+
+  async function callNextStep(room) {
+    const res = await fetch(`/api/story-tv/${room}/next-step`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tv_token: getTvToken() }),
+    });
+    if (!res.ok) throw new Error("No se pudo avanzar etapa");
+  }
+
+  function ensurePanel() {
+    let panel = document.getElementById("story-ready-tv-panel");
+    if (panel) return panel;
+    panel = document.createElement("div");
+    panel.id = "story-ready-tv-panel";
+    panel.innerHTML = `
+      <div class="story-ready-tv-title">¿Todos listos?</div>
+      <div class="story-ready-tv-count">0/0</div>
+      <div class="story-ready-tv-pending"></div>
+    `;
+    document.body.appendChild(panel);
+    return panel;
+  }
+
+  function showPanel(ready) {
+    const panel = ensurePanel();
+    panel.classList.add("visible");
+    const count = panel.querySelector(".story-ready-tv-count");
+    const pending = panel.querySelector(".story-ready-tv-pending");
+    if (count) count.textContent = `${ready.ready_count || 0}/${ready.total_players || 0}`;
+    if (pending) {
+      const pendingPlayers = ready.pending_players || [];
+      pending.textContent = pendingPlayers.length
+        ? `Faltan: ${pendingPlayers.map(escapeHTML).join(", ")}`
+        : "Todos confirmaron. Avanzando...";
+    }
+  }
+
+  function hidePanel() {
+    const panel = document.getElementById("story-ready-tv-panel");
+    if (panel) panel.classList.remove("visible");
+  }
+
+  function shouldWaitForReady(status) {
+    const state = status?.game_state || {};
+    const phase = getPhase(status);
+    if (state.mode !== "story") return false;
+    return String(phase).startsWith("results_");
+  }
+
+  function progressCompleteLocally(status) {
+    const state = status?.game_state || {};
+    const stepType = getStepType(status);
+    const target = Number(state.story_trivia_target_questions || 0);
+    if (getPhase(status) !== "results_trivia" || stepType !== "trivia_block") return true;
+    if (!target) return true;
+
+    const room = getRoomCode();
+    const storyId = state.story_public?.story_id || state.story?.story_id || "story";
+    const stepIndex = Number(state.story_public?.story_step_index ?? state.story?.story_step_index ?? 0);
+    const key = `jackbox_story_progress_${room}_${storyId}_${stepIndex}`;
+    try {
+      const list = JSON.parse(localStorage.getItem(key) || "[]");
+      return Array.isArray(list) && list.length >= target;
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function recordTriviaResultLocally(status) {
+    const state = status?.game_state || {};
+    if (getPhase(status) !== "results_trivia" || getStepType(status) !== "trivia_block") return;
+    const room = getRoomCode();
+    const storyId = state.story_public?.story_id || state.story?.story_id || "story";
+    const stepIndex = Number(state.story_public?.story_step_index ?? state.story?.story_step_index ?? 0);
+    const key = `jackbox_story_progress_${room}_${storyId}_${stepIndex}`;
+    const id = [state.round_id, state.question_id, state.current_question_id, state.question, state.correct_label, state.correct]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join("|") || `${Date.now()}`;
+    try {
+      const list = JSON.parse(localStorage.getItem(key) || "[]");
+      const arr = Array.isArray(list) ? list : [];
+      if (!arr.includes(id)) arr.push(id);
+      localStorage.setItem(key, JSON.stringify(arr.slice(-30)));
+    } catch (error) {}
+  }
+
+  async function advanceAfterReady(room, status, ready) {
+    if (!ready.all_ready || advancingKey === ready.ready_key) return;
+    advancingKey = ready.ready_key;
+
+    window.setTimeout(async () => {
+      try {
+        const fresh = await fetchRoomStatus(room);
+        if (!fresh || !shouldWaitForReady(fresh)) return;
+
+        recordTriviaResultLocally(fresh);
+
+        if (getPhase(fresh) === "results_trivia" && getStepType(fresh) === "trivia_block") {
+          if (progressCompleteLocally(fresh)) {
+            await callNextStep(room);
+          } else {
+            await callNextTrivia(room);
+          }
+        } else {
+          await callNextStep(room);
+        }
+
+        await resetReady(room);
+      } catch (error) {
+        advancingKey = "";
+      }
+    }, 1200);
+  }
+
+  function injectStyles() {
+    if (document.getElementById("story-ready-tv-style")) return;
+    const style = document.createElement("style");
+    style.id = "story-ready-tv-style";
+    style.textContent = `
+      #story-ready-tv-panel {
+        position: fixed;
+        right: clamp(12px, 2vw, 24px);
+        top: 50%;
+        z-index: 10020;
+        width: min(260px, 28vw);
+        transform: translateY(-50%) translateX(18px);
+        opacity: 0;
+        pointer-events: none;
+        padding: 16px;
+        border-radius: 22px;
+        color: #fff7dc;
+        background:
+          radial-gradient(circle at 15% 0%, rgba(255,216,121,.22), transparent 36%),
+          rgba(5, 10, 24, .82);
+        border: 1px solid rgba(255,216,121,.28);
+        box-shadow: 0 18px 60px rgba(0,0,0,.42);
+        backdrop-filter: blur(14px);
+        transition: opacity .25s ease, transform .25s ease;
+      }
+      #story-ready-tv-panel.visible {
+        opacity: 1;
+        transform: translateY(-50%) translateX(0);
+      }
+      .story-ready-tv-title {
+        color: #ffe7a3;
+        font-weight: 1000;
+        font-size: clamp(1rem, 1.5vw, 1.35rem);
+        margin-bottom: 8px;
+      }
+      .story-ready-tv-count {
+        font-size: clamp(2rem, 3vw, 3.2rem);
+        font-weight: 1000;
+        line-height: 1;
+      }
+      .story-ready-tv-pending {
+        margin-top: 8px;
+        color: rgba(255,248,221,.76);
+        font-weight: 850;
+        font-size: clamp(.72rem, 1vw, .9rem);
+        line-height: 1.2;
+      }
+      @media (max-width: 900px) {
+        #story-ready-tv-panel {
+          top: auto;
+          bottom: 12px;
+          left: 50%;
+          right: auto;
+          width: min(520px, calc(100vw - 28px));
+          transform: translateX(-50%) translateY(18px);
+        }
+        #story-ready-tv-panel.visible {
+          transform: translateX(-50%) translateY(0);
+        }
+      }
+    `;
+    document.head.appendChild(style);
+  }
+
+  async function tick() {
+    injectStyles();
+    const room = getRoomCode();
+    if (!room) return;
+    const status = await fetchRoomStatus(room);
+    if (!status || !shouldWaitForReady(status)) {
+      hidePanel();
+      return;
+    }
+    recordTriviaResultLocally(status);
+    const ready = await fetchReadyStatus(room);
+    if (!ready) return;
+    if (ready.ready_key !== lastReadyKey) {
+      lastReadyKey = ready.ready_key;
+      advancingKey = "";
+    }
+    showPanel(ready);
+    await advanceAfterReady(room, status, ready);
+  }
+
+  document.addEventListener("DOMContentLoaded", () => {
+    injectStyles();
+    setInterval(tick, 900);
+    setTimeout(tick, 700);
+  });
+})();
