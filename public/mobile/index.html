@@ -63,15 +63,15 @@
 
   <div id="view-wait" class="screen">
     <section class="card">
-      <div class="pill" id="wait-pill">🕯️ Conectado</div>
+      <div class="pill" id="wait-pill">🕯️ Jugador</div>
 
       <h1 id="wait-msg">¡Estás dentro!</h1>
 
       <p id="wait-subtitle">
-        Mira la pantalla principal.
+        Mira la TV. La pantalla principal controla la historia y las rondas.
       </p>
 
-      <div id="host-panel" class="host-panel">
+      <div id="host-panel" class="host-panel" hidden aria-hidden="true">
         <div class="host-title">👑 Eres el host</div>
 
         <p>
@@ -139,7 +139,7 @@
 
       <div id="copa-final-mobile-panel" class="copa-mobile-panel"></div>
 
-      <div id="host-game-panel" class="host-panel mini">
+      <div id="host-game-panel" class="host-panel mini" hidden aria-hidden="true">
         <div class="host-title">👑 Controles de host</div>
 
         <button class="ghost-btn" onclick="hostRevealResults()">
@@ -170,5 +170,6 @@
   <script src="/assets/js/caldero-mobile.js?v=caldero-mentiroso-1"></script>
   <script src="/assets/js/patronus-mobile.js?v=patronus-1"></script>
   <script src="/assets/js/copa-final-mobile.js?v=copa-final-1"></script>
+  <script src="/assets/js/mobile-player-only.js?v=player-only-1"></script>
 </body>
 </html>
