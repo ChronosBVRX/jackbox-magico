@@ -17,6 +17,10 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/story_prepare_api.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "public/**",
       "use": "@vercel/static"
     }
@@ -29,6 +33,10 @@
     {
       "src": "/api/copa-final/(.*)",
       "dest": "api/copa_final_api.py"
+    },
+    {
+      "src": "/api/story-prepare/(.*)",
+      "dest": "api/story_prepare_api.py"
     },
     {
       "src": "/api/story/(.*)",
