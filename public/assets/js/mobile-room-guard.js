@@ -50,22 +50,44 @@
     const fromInput = document.getElementById("m-room")?.value?.trim().toUpperCase() || "";
     const fromUrl = getRoomFromUrl();
     const fromStorage = getRoomFromStorage();
-
     return fromInput || fromUrl || fromStorage;
   }
 
   function getSafePlayerName() {
     const fromInput = document.getElementById("m-name")?.value?.trim() || "";
     const fromStorage = getNameFromStorage();
-
     return fromInput || fromStorage;
   }
 
   function getSafeHouse() {
     const fromInput = document.getElementById("m-house")?.value || "";
     const fromStorage = getHouseFromStorage();
-
     return fromInput || fromStorage || "Gryffindor";
+  }
+
+  function loadScriptOnce(id, src) {
+    if (document.getElementById(id)) return;
+    const script = document.createElement("script");
+    script.id = id;
+    script.src = src;
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+
+  function loadLifecycleCleanup() {
+    loadScriptOnce("room-lifecycle-mobile-script", "/assets/js/room-lifecycle-mobile.js?v=lifecycle-1");
+  }
+
+  function loadStoryAutopilot() {
+    loadScriptOnce("story-autopilot-script", "/assets/js/story-autopilot.js?v=story-auto-2");
+  }
+
+  function loadStoryReadyButton() {
+    loadScriptOnce("story-ready-mobile-script", "/assets/js/story-ready-mobile.js?v=story-ready-1");
+  }
+
+  function loadStoryBetControls() {
+    loadScriptOnce("story-bet-mobile-script", "/assets/js/story-bet-mobile.js?v=story-bet-1");
   }
 
   window.MobileRoomGuard = {
@@ -73,11 +95,19 @@
     getSafeRoomCode,
     getSafePlayerName,
     getSafeHouse,
+    loadLifecycleCleanup,
+    loadStoryAutopilot,
+    loadStoryReadyButton,
+    loadStoryBetControls,
   };
 
   syncMobileIdentity();
 
   document.addEventListener("DOMContentLoaded", () => {
     syncMobileIdentity();
+    loadLifecycleCleanup();
+    loadStoryAutopilot();
+    loadStoryReadyButton();
+    loadStoryBetControls();
   });
 })();

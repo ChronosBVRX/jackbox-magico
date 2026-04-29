@@ -13,6 +13,30 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/story_api.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/story_prepare_api.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/story_tv_api.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/story_ready_api.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/story_bet_api.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/room_lifecycle_api.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "public/**",
       "use": "@vercel/static"
     }
@@ -25,6 +49,30 @@
     {
       "src": "/api/copa-final/(.*)",
       "dest": "api/copa_final_api.py"
+    },
+    {
+      "src": "/api/story-bet/(.*)",
+      "dest": "api/story_bet_api.py"
+    },
+    {
+      "src": "/api/story-ready/(.*)",
+      "dest": "api/story_ready_api.py"
+    },
+    {
+      "src": "/api/story-tv/(.*)",
+      "dest": "api/story_tv_api.py"
+    },
+    {
+      "src": "/api/story-prepare/(.*)",
+      "dest": "api/story_prepare_api.py"
+    },
+    {
+      "src": "/api/story/(.*)",
+      "dest": "api/story_api.py"
+    },
+    {
+      "src": "/api/room-lifecycle/(.*)",
+      "dest": "api/room_lifecycle_api.py"
     },
     {
       "src": "/api/(.*)",
