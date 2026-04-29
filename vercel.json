@@ -5,11 +5,19 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/caldero_api.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "public/**",
       "use": "@vercel/static"
     }
   ],
   "routes": [
+    {
+      "src": "/api/caldero/(.*)",
+      "dest": "api/caldero_api.py"
+    },
     {
       "src": "/api/(.*)",
       "dest": "api/main.py"
