@@ -21,6 +21,10 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/room_lifecycle_api.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "public/**",
       "use": "@vercel/static"
     }
@@ -41,6 +45,10 @@
     {
       "src": "/api/story/(.*)",
       "dest": "api/story_api.py"
+    },
+    {
+      "src": "/api/room-lifecycle/(.*)",
+      "dest": "api/room_lifecycle_api.py"
     },
     {
       "src": "/api/(.*)",
