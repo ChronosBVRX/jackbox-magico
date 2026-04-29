@@ -246,6 +246,34 @@ def build_game_state_for_game(room_code: str, game_id: str, previous_state: dict
     raise HTTPException(status_code=400, detail="Juego sin constructor")
 
 
+def get_game_display_name(game_id: str) -> str:
+    return GAME_CATALOG.get(game_id, {}).get("name") or game_id.replace("_", " ").title()
+
+
+def build_minigame_transition_lines(game_id: str, reason: Optional[str]) -> list[str]:
+    name = get_game_display_name(game_id)
+    base_reason = reason or "La Copa decidió que ya fue suficiente teoría y ahora exige una prueba práctica."
+
+    return [
+        base_reason,
+        f"Prepárense: la siguiente prueba será {name}. Guarden la dignidad en la túnica, puede que la necesiten después.",
+    ]
+
+
+def build_trivia_transition_lines(question_count: int) -> list[str]:
+    return [
+        "La Copa vuelve a exigir conocimiento. Porque aparentemente sufrir con una sola ronda no era suficiente.",
+        f"Nuevo bloque de trivia: {question_count} preguntas. Respondan rápido, pero no como si el sombrero les hubiera quedado apretado.",
+    ]
+
+
+def build_final_transition_lines() -> list[str]:
+    return [
+        "Las velas bajan, la música se pone dramática y una casa ya está ensayando discurso de victoria.",
+        "Llegó la Copa Final. Una pregunta puede cambiarlo todo, incluso la autoestima del último lugar.",
+    ]
+
+
 def attach_story_metadata(
     game_state: dict,
     story_state: dict,
@@ -275,11 +303,7 @@ def attach_story_metadata(
 
 
 def advance_until_playable_step(story_state: dict) -> tuple[dict, list[str]]:
-    """Avanza diálogos y regresa el siguiente step jugable.
-
-    Por ahora los diálogos se acumulan en `story_dialogue` para que después la TV
-    pueda mostrarlos como transición antes de entrar al minijuego/trivia.
-    """
+    """Avanza diálogos y regresa el siguiente step jugable."""
     state = deepcopy(story_state or {})
     dialogue_lines: list[str] = []
 
@@ -310,12 +334,13 @@ def start_step_for_story(
     if not step:
         game_id = DEFAULT_FINAL_GAME_ID
         game_state = build_game_state_for_game(room_code, game_id, previous_state)
+        transition_lines = dialogue_lines + build_final_transition_lines()
         return attach_story_metadata(
             game_state=game_state,
             story_state=story_state,
             host=host,
             game_id=game_id,
-            dialogue_lines=dialogue_lines,
+            dialogue_lines=transition_lines,
             transition_reason="La historia llegó al cierre final.",
         )
 
@@ -323,16 +348,18 @@ def start_step_for_story(
 
     if step_type == "trivia_block":
         game_id = DEFAULT_TRIVIA_GAME_ID
+        question_count = int(step.get("questions") or 3)
         game_state = build_game_state_for_game(room_code, game_id, previous_state)
-        game_state["story_trivia_target_questions"] = int(step.get("questions") or 3)
+        game_state["story_trivia_target_questions"] = question_count
         game_state["story_trivia_answered_in_block"] = 0
+        transition_lines = dialogue_lines + build_trivia_transition_lines(question_count)
         return attach_story_metadata(
             game_state=game_state,
             story_state=story_state,
             host=host,
             game_id=game_id,
-            dialogue_lines=dialogue_lines,
-            transition_reason=step.get("reason"),
+            dialogue_lines=transition_lines,
+            transition_reason=step.get("reason") or "La historia regresa a la trivia principal.",
         )
 
     if step_type == "minigame_random":
@@ -349,25 +376,31 @@ def start_step_for_story(
 
         game_id = pick["game_id"]
         game_state = build_game_state_for_game(room_code, game_id, previous_state)
+        transition_reason = step.get("reason") or "La Copa activó una prueba mágica inesperada."
+        transition_lines = dialogue_lines + build_minigame_transition_lines(game_id, transition_reason)
+        game_state["story_selected_minigame_name"] = get_game_display_name(game_id)
+
         return attach_story_metadata(
             game_state=game_state,
             story_state=story_state,
             host=host,
             game_id=game_id,
-            dialogue_lines=dialogue_lines,
-            transition_reason=step.get("reason"),
+            dialogue_lines=transition_lines,
+            transition_reason=transition_reason,
         )
 
     if step_type == "copa_final":
         game_id = DEFAULT_FINAL_GAME_ID
         game_state = build_game_state_for_game(room_code, game_id, previous_state)
+        transition_reason = "Llegó la Pregunta Final. La Copa ya está juzgando a todos en silencio."
+        transition_lines = dialogue_lines + build_final_transition_lines()
         return attach_story_metadata(
             game_state=game_state,
             story_state=story_state,
             host=host,
             game_id=game_id,
-            dialogue_lines=dialogue_lines,
-            transition_reason="Llegó la Pregunta Final. La Copa ya está juzgando a todos en silencio.",
+            dialogue_lines=transition_lines,
+            transition_reason=transition_reason,
         )
 
     raise HTTPException(status_code=400, detail=f"Step de historia no soportado: {step_type}")
@@ -514,8 +547,6 @@ async def story_next_step(room_code: str, info: StoryHostNextInfo):
     if not isinstance(story_state, dict):
         raise HTTPException(status_code=409, detail="Esta sala no tiene historia activa")
 
-    # El endpoint se usa cuando el bloque actual ya terminó. Por eso avanzamos
-    # al siguiente step narrativo y arrancamos lo que toque.
     story_state = advance_story_state(story_state)
 
     game_state = start_step_for_story(
