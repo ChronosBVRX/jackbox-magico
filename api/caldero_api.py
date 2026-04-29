@@ -233,6 +233,11 @@ async def caldero_reveal_results(room_code: str, info: CalderoRevealInfo):
     result = caldero_mentiroso.reveal_results(state, players)
     new_state = result["state"]
 
+    # Importante: la bóveda privada de ingredientes vive en `correct` durante la ronda.
+    # En resultados ya existe `caldero_result` con lo que debe mostrarse, así que no
+    # guardamos `correct` para evitar filtrarlo por el endpoint público de status.
+    new_state.pop("correct", None)
+
     new_state = apply_point_events_once(
         room_id=room["id"],
         state=new_state,
