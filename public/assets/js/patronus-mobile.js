@@ -1,34 +1,636 @@
-(()=>{
-const PHASE="patronus_personalizado",PREFIX="PATRONUS_V1",MAX=80;
-let last=null,lastRound="",busy=false;
-const oldReveal=window.hostRevealResults,oldHide=window.hideGamePanels;
-function esc(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;").replaceAll("'","&#039;")}
-function attr(v){return esc(v).replaceAll("`","&#096;")}
-function e64(v){const u=encodeURIComponent(String(v??"")).replace(/%([0-9A-F]{2})/g,(_,c)=>String.fromCharCode(parseInt(c,16)));return btoa(u).replaceAll("+","-").replaceAll("/","_").replaceAll("=","")}
-function d64(v){try{const s=String(v||"").replaceAll("-","+").replaceAll("_","/");const p=s+"=".repeat((4-s.length%4)%4),b=atob(p);return decodeURIComponent([...b].map(c=>`%${c.charCodeAt(0).toString(16).padStart(2,"0")}`).join(""))}catch(e){return""}}
-function g(){return{room:typeof myRoom!=="undefined"?myRoom:"",name:typeof myName!=="undefined"?myName:"",house:typeof myHouse!=="undefined"?myHouse:"",isHost:typeof myIsHost!=="undefined"?myIsHost:false,hostToken:typeof myHostToken!=="undefined"?myHostToken:""}}
-function snd(n){try{if(typeof safeSound==="function")safeSound(n);else if(window.MagicSound?.play)window.MagicSound.play(n)}catch(e){}}
-function vib(p){try{if(typeof vibrate==="function")vibrate(p);else if(navigator.vibrate)navigator.vibrate(p)}catch(e){}}
-function ev(k){const p=String(k||"").split("::");if(p[0]!==PREFIX)return null;if(p[1]==="ANSWER"&&p.length>=6)return{t:"answer",r:d64(p[2]),player:d64(p[3]),house:d64(p[4]),answer:d64(p[5])};if(p[1]==="VOTE"&&p.length>=5)return{t:"vote",r:d64(p[2]),voter:d64(p[3]),target:d64(p[4])};if(p[1]==="CTRL"&&p.length>=5)return{t:"control",r:d64(p[2]),action:d64(p[3])};return null}
-function parse(state={},players=[]){const r=state.round_id||"",subs={},votesByVoter={},controls=new Set();Object.keys(state.votes||{}).forEach(k=>{const x=ev(k);if(!x||x.r!==r)return;if(x.t==="answer"&&x.player&&!subs[x.player])subs[x.player]={player:x.player,house:x.house,answer:String(x.answer||"").slice(0,MAX)};if(x.t==="vote"&&x.voter&&x.target)votesByVoter[x.voter]=x.target;if(x.t==="control")controls.add(x.action)});const total=players.length||Number(state.total_players||0),submitted=Object.keys(subs).length,voted=Object.keys(votesByVoter).length;let stage="writing";if(controls.has("RESULTS"))stage="results";else if(controls.has("VOTING")||(submitted>=total&&submitted>1))stage="voting";const counts={};Object.keys(subs).forEach(t=>counts[t]=0);Object.entries(votesByVoter).forEach(([v,t])=>{if(t in counts&&v!==t)counts[t]++});const ranking=Object.values(subs).sort((a,b)=>(counts[b.player]||0)-(counts[a.player]||0)||a.player.localeCompare(b.player));return{r,subs,votesByVoter,counts,ranking,total,submitted,voted,stage}}
-const answerEv=(r,p,h,a)=>[PREFIX,"ANSWER",e64(r),e64(p),e64(h),e64(String(a||"").trim().slice(0,MAX))].join("::");
-const voteEv=(r,v,t)=>[PREFIX,"VOTE",e64(r),e64(v),e64(t)].join("::");
-const ctrlEv=(r,a,h)=>[PREFIX,"CTRL",e64(r),e64(a),e64(h)].join("::");
-function panel(){let p=document.getElementById("patronus-mobile-panel");if(!p){p=document.createElement("div");p.id="patronus-mobile-panel";p.className="patronus-mobile-panel";const h=document.getElementById("host-game-panel"),c=document.querySelector("#view-game .card");if(h&&h.parentElement)h.parentElement.insertBefore(p,h);else if(c)c.appendChild(p)}return p}
-function status(msg,type=""){const s=document.getElementById("patronus-mobile-status");if(s){s.className=`patronus-mobile-status ${type}`.trim();s.textContent=msg}}
-async function send(key,msg){if(busy)return false;const {room,name}=g();busy=true;status("Enviando al bosque plateado...");try{const res=await fetch("/api/player/submit_answer",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({room_code:room,player_name:name,answer:key})});const data=await res.json();if(!res.ok||!data.accepted){status(data.detail||data.message||"No se pudo registrar.","bad");vib(55);return false}snd("success");vib([18,26,18]);status(msg,"good");return true}catch(e){status("Error de conexión con el Patronus.","bad");vib(55);return false}finally{busy=false}}
-function hostBtns(pa){if(!g().isHost)return"";if(pa.stage==="writing")return`<button class="patronus-mobile-btn secondary" onclick="patronusOpenVoting()">Abrir votación</button>`;if(pa.stage==="voting")return`<button class="patronus-mobile-btn" onclick="patronusRevealResults()">Revelar resultados</button>`;return""}
-function writing(state,pa,mine){if(mine)return`<div class="patronus-mobile-card"><div class="patronus-mobile-content"><div class="patronus-pill">🦌 Respuesta enviada</div><h2 class="patronus-mobile-question">Tu Patronus ya salió al bosque.</h2><div class="patronus-mobile-status good">Mira la TV. Cuando todos respondan, se abrirá la votación.</div>${hostBtns(pa)}</div></div>`;return`<div class="patronus-mobile-card"><div class="patronus-mobile-content"><div class="patronus-pill">🦌 Fase de invocación</div><h2 class="patronus-mobile-question">${esc(state.question||"Tu Patronus aparece, pero viene raro. ¿Qué forma tiene?")}</h2><textarea id="patronus-answer-input" class="patronus-textarea" maxlength="${MAX}" placeholder="Escribe una respuesta graciosa..." oninput="patronusUpdateCounter()"></textarea><div id="patronus-char-counter" class="patronus-char-count">0/${MAX}</div><button class="patronus-mobile-btn" onclick="patronusSubmitAnswer()">Invocar respuesta</button><div id="patronus-mobile-status" class="patronus-mobile-status">Máximo ${MAX} caracteres. Respuesta corta, golpe directo.</div>${hostBtns(pa)}</div></div>`}
-function voting(state,pa,myVote){const buttons=pa.ranking.map((o,i)=>{const mine=o.player===g().name,disabled=mine||!!myVote,label=state.settings?.show_names?o.player:`Respuesta ${i+1}`;return`<button class="patronus-vote-option" ${disabled?"disabled":""} onclick="patronusVote('${attr(o.player)}')"><small>${mine?"Tu respuesta":esc(label)}</small><br>“${esc(o.answer)}”</button>`}).join("");return`<div class="patronus-mobile-card"><div class="patronus-mobile-content"><div class="patronus-pill">🗳️ Fase de votación</div><h2 class="patronus-mobile-question">Elige la respuesta más graciosa.</h2>${buttons||`<div class="patronus-mobile-status">Todavía no hay suficientes respuestas.</div>`}<div id="patronus-mobile-status" class="patronus-mobile-status ${myVote?"good":""}">${myVote?"Voto registrado. Mira la TV para el drama.":"No puedes votar por tu propia respuesta."}</div>${hostBtns(pa)}</div></div>`}
-function result(pa){const w=pa.ranking[0];return`<div class="patronus-mobile-card"><div class="patronus-mobile-content"><div class="patronus-pill">🏆 Resultados</div><h2 class="patronus-mobile-question">${w?"El Patronus ganador apareció.":"Los Patronus se fueron al bosque."}</h2><div class="patronus-mobile-status good">${w?`Ganó: “${esc(w.answer)}”`:"Mira la TV para ver el resultado."}</div>${hostBtns(pa)}</div></div>`}
-function render(state={},players=[]){if(typeof showScreen==="function")showScreen("view-game");if(typeof showHostPanels==="function")showHostPanels(g().isHost);const b=document.getElementById("m-botones");if(b)b.innerHTML="";const timer=document.getElementById("mobile-timer");if(timer)timer.style.display="none";const pill=document.getElementById("game-pill"),title=document.getElementById("m-pregunta-aviso"),small=document.getElementById("m-question-small"),ms=document.getElementById("mobile-status");if(pill)pill.textContent="🦌 Patronus";if(title)title.textContent="Patronus Personalizado";if(small)small.textContent="Escribe, vota y deja que el bosque juzgue.";if(ms)ms.textContent="Mira la TV para seguir el avance de la ronda.";const pa=parse(state,players),name=g().name,mine=pa.subs[name],myVote=pa.votesByVoter[name];if(lastRound!==pa.r){lastRound=pa.r;snd("start");vib([18,22,18])}const p=panel();p.classList.add("visible");p.innerHTML=pa.stage==="writing"?writing(state,pa,mine):pa.stage==="voting"?voting(state,pa,myVote):result(pa);last={state,players,pa}}
-window.patronusUpdateCounter=()=>{const i=document.getElementById("patronus-answer-input"),c=document.getElementById("patronus-char-counter");if(i&&c)c.textContent=`${i.value.length}/${MAX}`};
-window.patronusSubmitAnswer=async()=>{const i=document.getElementById("patronus-answer-input"),txt=String(i?.value||"").replace(/\s+/g," ").replace(/[<>]/g,"").trim().slice(0,MAX);if(!txt){status("Escribe algo. Ni el Patronus sale con campo vacío.","bad");vib(45);return}const {name,house}=g(),pa=last?.pa;if(await send(answerEv(pa.r,name,house,txt),"Respuesta invocada. Mira la TV.")){if(i)i.disabled=true}};
-window.patronusVote=async(t)=>{if(!t||t===g().name){status("No puedes votar por tu propia respuesta, mago sospechoso.","bad");vib(45);return}await send(voteEv(last.pa.r,g().name,t),"Voto registrado. Mira la TV.")};
-window.patronusOpenVoting=()=>send(ctrlEv(last.pa.r,"VOTING",g().name),"Votación abierta.");
-window.patronusRevealResults=()=>send(ctrlEv(last.pa.r,"RESULTS",g().name),"Resultados revelados.");
-window.hostRevealResults=async function(){try{const {room}=g();if(room){const res=await fetch(`/api/room/${encodeURIComponent(room)}/status?ts=${Date.now()}`,{cache:"no-store"});if(res.ok){const d=await res.json();if(d.game_state?.phase===PHASE){await window.patronusRevealResults();return}}}}catch(e){}if(typeof oldReveal==="function")oldReveal()};
-window.hideGamePanels=function(){if(typeof oldHide==="function")oldHide();const p=document.getElementById("patronus-mobile-panel");if(p&&!p.dataset.keep){p.classList.remove("visible");p.innerHTML=""}if(p)delete p.dataset.keep};
-const timer=setInterval(()=>{if(typeof window.renderMobileGame==="function"){clearInterval(timer);const old=window.renderMobileGame;window.renderMobileGame=function(state={}){if(state.phase===PHASE){render(state,state.players||[]);return}old(state)}}},80);
-window.PatronusPersonalizadoMobile={render,parse};
+(() => {
+  const PHASE = "patronus_personalizado";
+  const PREFIX = "PATRONUS_V1";
+  const MAX = 80;
+
+  let last = null;
+  let lastRound = "";
+  let busy = false;
+
+  const oldReveal = window.hostRevealResults;
+  const oldHide = window.hideGamePanels;
+
+  function esc(v) {
+    return String(v ?? "")
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("'", "&#039;");
+  }
+
+  function attr(v) {
+    return esc(v).replaceAll("`", "&#096;");
+  }
+
+  function e64(v) {
+    const u = encodeURIComponent(String(v ?? "")).replace(
+      /%([0-9A-F]{2})/g,
+      (_, c) => String.fromCharCode(parseInt(c, 16))
+    );
+
+    return btoa(u)
+      .replaceAll("+", "-")
+      .replaceAll("/", "_")
+      .replaceAll("=", "");
+  }
+
+  function d64(v) {
+    try {
+      const s = String(v || "")
+        .replaceAll("-", "+")
+        .replaceAll("_", "/");
+
+      const p = s + "=".repeat((4 - (s.length % 4)) % 4);
+      const b = atob(p);
+
+      return decodeURIComponent(
+        [...b]
+          .map((c) => `%${c.charCodeAt(0).toString(16).padStart(2, "0")}`)
+          .join("")
+      );
+    } catch (e) {
+      return "";
+    }
+  }
+
+  function g() {
+    return {
+      room: typeof myRoom !== "undefined" ? myRoom : "",
+      name: typeof myName !== "undefined" ? myName : "",
+      house: typeof myHouse !== "undefined" ? myHouse : "",
+      isHost: typeof myIsHost !== "undefined" ? myIsHost : false,
+      hostToken: typeof myHostToken !== "undefined" ? myHostToken : "",
+    };
+  }
+
+  function snd(n) {
+    try {
+      if (typeof safeSound === "function") safeSound(n);
+      else if (window.MagicSound?.play) window.MagicSound.play(n);
+    } catch (e) {}
+  }
+
+  function vib(p) {
+    try {
+      if (typeof vibrate === "function") vibrate(p);
+      else if (navigator.vibrate) navigator.vibrate(p);
+    } catch (e) {}
+  }
+
+  function ev(k) {
+    const p = String(k || "").split("::");
+
+    if (p[0] !== PREFIX) return null;
+
+    if (p[1] === "ANSWER" && p.length >= 6) {
+      return {
+        t: "answer",
+        r: d64(p[2]),
+        player: d64(p[3]),
+        house: d64(p[4]),
+        answer: d64(p[5]),
+      };
+    }
+
+    if (p[1] === "VOTE" && p.length >= 5) {
+      return {
+        t: "vote",
+        r: d64(p[2]),
+        voter: d64(p[3]),
+        target: d64(p[4]),
+      };
+    }
+
+    if (p[1] === "CTRL" && p.length >= 5) {
+      return {
+        t: "control",
+        r: d64(p[2]),
+        action: d64(p[3]),
+      };
+    }
+
+    return null;
+  }
+
+  function parse(state = {}, players = []) {
+    const r = state.round_id || "";
+    const subs = {};
+    const votesByVoter = {};
+    const controls = new Set();
+
+    Object.keys(state.votes || {}).forEach((k) => {
+      const x = ev(k);
+
+      if (!x || x.r !== r) return;
+
+      if (x.t === "answer" && x.player && !subs[x.player]) {
+        subs[x.player] = {
+          player: x.player,
+          house: x.house,
+          answer: String(x.answer || "").slice(0, MAX),
+        };
+      }
+
+      if (x.t === "vote" && x.voter && x.target) {
+        votesByVoter[x.voter] = x.target;
+      }
+
+      if (x.t === "control") {
+        controls.add(x.action);
+      }
+    });
+
+    const total = players.length || Number(state.total_players || 0);
+    const submitted = Object.keys(subs).length;
+    const voted = Object.keys(votesByVoter).length;
+
+    let stage = "writing";
+
+    if (controls.has("RESULTS")) {
+      stage = "results";
+    } else if (controls.has("VOTING") || (submitted >= total && submitted > 1)) {
+      stage = "voting";
+    }
+
+    const counts = {};
+
+    Object.keys(subs).forEach((t) => {
+      counts[t] = 0;
+    });
+
+    Object.entries(votesByVoter).forEach(([v, t]) => {
+      if (t in counts && v !== t) counts[t]++;
+    });
+
+    const ranking = Object.values(subs).sort(
+      (a, b) =>
+        (counts[b.player] || 0) -
+          (counts[a.player] || 0) ||
+        a.player.localeCompare(b.player)
+    );
+
+    return {
+      r,
+      subs,
+      votesByVoter,
+      counts,
+      ranking,
+      total,
+      submitted,
+      voted,
+      stage,
+    };
+  }
+
+  function answerEv(r, p, h, a) {
+    return [
+      PREFIX,
+      "ANSWER",
+      e64(r),
+      e64(p),
+      e64(h),
+      e64(String(a || "").trim().slice(0, MAX)),
+    ].join("::");
+  }
+
+  function voteEv(r, v, t) {
+    return [PREFIX, "VOTE", e64(r), e64(v), e64(t)].join("::");
+  }
+
+  function ctrlEv(r, a, h) {
+    return [PREFIX, "CTRL", e64(r), e64(a), e64(h)].join("::");
+  }
+
+  function panel() {
+    let p = document.getElementById("patronus-mobile-panel");
+
+    if (!p) {
+      p = document.createElement("div");
+      p.id = "patronus-mobile-panel";
+      p.className = "patronus-mobile-panel";
+
+      const h = document.getElementById("host-game-panel");
+      const c = document.querySelector("#view-game .card");
+
+      if (h && h.parentElement) {
+        h.parentElement.insertBefore(p, h);
+      } else if (c) {
+        c.appendChild(p);
+      }
+    }
+
+    return p;
+  }
+
+  function status(msg, type = "") {
+    const s = document.getElementById("patronus-mobile-status");
+
+    if (s) {
+      s.className = `patronus-mobile-status ${type}`.trim();
+      s.textContent = msg;
+    }
+  }
+
+  async function send(key, msg) {
+    if (busy) return false;
+
+    const { room, name } = g();
+
+    busy = true;
+    status("Enviando al bosque plateado...");
+
+    try {
+      const res = await fetch("/api/player/submit_answer", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          room_code: room,
+          player_name: name,
+          answer: key,
+        }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok || !data.accepted) {
+        status(data.detail || data.message || "No se pudo registrar.", "bad");
+        vib(55);
+        return false;
+      }
+
+      snd("success");
+      vib([18, 26, 18]);
+      status(msg, "good");
+      return true;
+    } catch (e) {
+      status("Error de conexión con el Patronus.", "bad");
+      vib(55);
+      return false;
+    } finally {
+      busy = false;
+    }
+  }
+
+  function hostBtns(pa) {
+    if (!g().isHost) return "";
+
+    if (pa.stage === "writing") {
+      return `
+        <button class="patronus-mobile-btn secondary" onclick="patronusOpenVoting()">
+          Abrir votación
+        </button>
+      `;
+    }
+
+    if (pa.stage === "voting") {
+      return `
+        <button class="patronus-mobile-btn" onclick="patronusRevealResults()">
+          Revelar resultados
+        </button>
+      `;
+    }
+
+    return "";
+  }
+
+  function writing(state, pa, mine, draft = "") {
+    if (mine) {
+      return `
+        <div class="patronus-mobile-card">
+          <div class="patronus-mobile-content">
+            <div class="patronus-pill">🦌 Respuesta enviada</div>
+
+            <h2 class="patronus-mobile-question">
+              Tu Patronus ya salió al bosque.
+            </h2>
+
+            <div class="patronus-mobile-status good">
+              Mira la TV. Cuando todos respondan, se abrirá la votación.
+            </div>
+
+            ${hostBtns(pa)}
+          </div>
+        </div>
+      `;
+    }
+
+    return `
+      <div class="patronus-mobile-card">
+        <div class="patronus-mobile-content">
+          <div class="patronus-pill">🦌 Fase de invocación</div>
+
+          <h2 class="patronus-mobile-question">
+            ${esc(state.question || "Tu Patronus aparece, pero viene raro. ¿Qué forma tiene?")}
+          </h2>
+
+          <textarea
+            id="patronus-answer-input"
+            class="patronus-textarea"
+            maxlength="${MAX}"
+            placeholder="Escribe una respuesta graciosa..."
+            oninput="patronusUpdateCounter()"
+          >${esc(draft)}</textarea>
+
+          <div id="patronus-char-counter" class="patronus-char-count">
+            ${draft.length}/${MAX}
+          </div>
+
+          <button class="patronus-mobile-btn" onclick="patronusSubmitAnswer()">
+            Invocar respuesta
+          </button>
+
+          <div id="patronus-mobile-status" class="patronus-mobile-status">
+            Máximo ${MAX} caracteres. Respuesta corta, golpe directo.
+          </div>
+
+          ${hostBtns(pa)}
+        </div>
+      </div>
+    `;
+  }
+
+  function voting(state, pa, myVote) {
+    const buttons = pa.ranking
+      .map((o, i) => {
+        const mine = o.player === g().name;
+        const disabled = mine || !!myVote;
+        const label = state.settings?.show_names ? o.player : `Respuesta ${i + 1}`;
+
+        return `
+          <button
+            class="patronus-vote-option"
+            ${disabled ? "disabled" : ""}
+            onclick="patronusVote('${attr(o.player)}')"
+          >
+            <small>${mine ? "Tu respuesta" : esc(label)}</small><br>
+            “${esc(o.answer)}”
+          </button>
+        `;
+      })
+      .join("");
+
+    return `
+      <div class="patronus-mobile-card">
+        <div class="patronus-mobile-content">
+          <div class="patronus-pill">🗳️ Fase de votación</div>
+
+          <h2 class="patronus-mobile-question">
+            Elige la respuesta más graciosa.
+          </h2>
+
+          ${
+            buttons ||
+            `<div class="patronus-mobile-status">
+              Todavía no hay suficientes respuestas.
+            </div>`
+          }
+
+          <div
+            id="patronus-mobile-status"
+            class="patronus-mobile-status ${myVote ? "good" : ""}"
+          >
+            ${
+              myVote
+                ? "Voto registrado. Mira la TV para el drama."
+                : "No puedes votar por tu propia respuesta."
+            }
+          </div>
+
+          ${hostBtns(pa)}
+        </div>
+      </div>
+    `;
+  }
+
+  function result(pa) {
+    const w = pa.ranking[0];
+
+    return `
+      <div class="patronus-mobile-card">
+        <div class="patronus-mobile-content">
+          <div class="patronus-pill">🏆 Resultados</div>
+
+          <h2 class="patronus-mobile-question">
+            ${w ? "El Patronus ganador apareció." : "Los Patronus se fueron al bosque."}
+          </h2>
+
+          <div class="patronus-mobile-status good">
+            ${w ? `Ganó: “${esc(w.answer)}”` : "Mira la TV para ver el resultado."}
+          </div>
+
+          ${hostBtns(pa)}
+        </div>
+      </div>
+    `;
+  }
+
+  function render(state = {}, players = []) {
+    if (typeof showScreen === "function") showScreen("view-game");
+    if (typeof showHostPanels === "function") showHostPanels(g().isHost);
+
+    const b = document.getElementById("m-botones");
+    if (b) b.innerHTML = "";
+
+    const timer = document.getElementById("mobile-timer");
+    if (timer) timer.style.display = "none";
+
+    const pill = document.getElementById("game-pill");
+    const title = document.getElementById("m-pregunta-aviso");
+    const small = document.getElementById("m-question-small");
+    const ms = document.getElementById("mobile-status");
+
+    if (pill) pill.textContent = "🦌 Patronus";
+    if (title) title.textContent = "Patronus Personalizado";
+    if (small) small.textContent = "Escribe, vota y deja que el bosque juzgue.";
+    if (ms) ms.textContent = "Mira la TV para seguir el avance de la ronda.";
+
+    const pa = parse(state, players);
+    const name = g().name;
+    const mine = pa.subs[name];
+    const myVote = pa.votesByVoter[name];
+
+    if (lastRound !== pa.r) {
+      lastRound = pa.r;
+      snd("start");
+      vib([18, 22, 18]);
+    }
+
+    const p = panel();
+    p.classList.add("visible");
+
+    const currentInput = document.getElementById("patronus-answer-input");
+    const isTyping =
+      pa.stage === "writing" &&
+      !mine &&
+      currentInput &&
+      document.activeElement === currentInput;
+
+    if (isTyping) {
+      last = { state, players, pa };
+
+      const c = document.getElementById("patronus-char-counter");
+      if (c) c.textContent = `${currentInput.value.length}/${MAX}`;
+
+      return;
+    }
+
+    const draft =
+      pa.stage === "writing" && !mine && currentInput
+        ? currentInput.value
+        : "";
+
+    if (pa.stage === "writing") {
+      p.innerHTML = writing(state, pa, mine, draft);
+    } else if (pa.stage === "voting") {
+      p.innerHTML = voting(state, pa, myVote);
+    } else {
+      p.innerHTML = result(pa);
+    }
+
+    last = { state, players, pa };
+  }
+
+  window.patronusUpdateCounter = () => {
+    const i = document.getElementById("patronus-answer-input");
+    const c = document.getElementById("patronus-char-counter");
+
+    if (i && c) c.textContent = `${i.value.length}/${MAX}`;
+  };
+
+  window.patronusSubmitAnswer = async () => {
+    const i = document.getElementById("patronus-answer-input");
+
+    const txt = String(i?.value || "")
+      .replace(/\s+/g, " ")
+      .replace(/[<>]/g, "")
+      .trim()
+      .slice(0, MAX);
+
+    if (!txt) {
+      status("Escribe algo. Ni el Patronus sale con campo vacío.", "bad");
+      vib(45);
+      return;
+    }
+
+    const { name, house } = g();
+    const pa = last?.pa;
+
+    if (!pa?.r) {
+      status("La ronda todavía no está lista.", "bad");
+      return;
+    }
+
+    const ok = await send(
+      answerEv(pa.r, name, house, txt),
+      "Respuesta invocada. Mira la TV."
+    );
+
+    if (ok && i) {
+      i.disabled = true;
+    }
+  };
+
+  window.patronusVote = async (t) => {
+    if (!t || t === g().name) {
+      status("No puedes votar por tu propia respuesta, mago sospechoso.", "bad");
+      vib(45);
+      return;
+    }
+
+    if (!last?.pa?.r) {
+      status("La ronda todavía no está lista.", "bad");
+      return;
+    }
+
+    await send(
+      voteEv(last.pa.r, g().name, t),
+      "Voto registrado. Mira la TV."
+    );
+  };
+
+  window.patronusOpenVoting = () => {
+    if (!last?.pa?.r) {
+      status("La ronda todavía no está lista.", "bad");
+      return;
+    }
+
+    send(
+      ctrlEv(last.pa.r, "VOTING", g().name),
+      "Votación abierta."
+    );
+  };
+
+  window.patronusRevealResults = () => {
+    if (!last?.pa?.r) {
+      status("La ronda todavía no está lista.", "bad");
+      return;
+    }
+
+    send(
+      ctrlEv(last.pa.r, "RESULTS", g().name),
+      "Resultados revelados."
+    );
+  };
+
+  window.hostRevealResults = async function () {
+    try {
+      const { room } = g();
+
+      if (room) {
+        const res = await fetch(
+          `/api/room/${encodeURIComponent(room)}/status?ts=${Date.now()}`,
+          { cache: "no-store" }
+        );
+
+        if (res.ok) {
+          const d = await res.json();
+
+          if (d.game_state?.phase === PHASE) {
+            await window.patronusRevealResults();
+            return;
+          }
+        }
+      }
+    } catch (e) {}
+
+    if (typeof oldReveal === "function") oldReveal();
+  };
+
+  window.hideGamePanels = function () {
+    if (typeof oldHide === "function") oldHide();
+
+    const p = document.getElementById("patronus-mobile-panel");
+
+    if (p && !p.dataset.keep) {
+      p.classList.remove("visible");
+      p.innerHTML = "";
+    }
+
+    if (p) delete p.dataset.keep;
+  };
+
+  const timer = setInterval(() => {
+    if (typeof window.renderMobileGame === "function") {
+      clearInterval(timer);
+
+      const old = window.renderMobileGame;
+
+      window.renderMobileGame = function (state = {}) {
+        if (state.phase === PHASE) {
+          render(state, state.players || []);
+          return;
+        }
+
+        old(state);
+      };
+    }
+  }, 80);
+
+  window.PatronusPersonalizadoMobile = {
+    render,
+    parse,
+  };
 })();
