@@ -1,7 +1,8 @@
 """Modo Historia controlado desde la TV.
 
-Este módulo elimina la responsabilidad administrativa del celular. La TV elige la
-historia, la prepara, la inicia y avanza la secuencia narrativa.
+La TV elige y arranca la historia. Si ya existe un celular host, se conserva
+como operador técnico invisible para compatibilidad con los endpoints actuales.
+Visualmente, los celulares quedan como controles limpios de jugador.
 """
 
 from copy import deepcopy
@@ -80,6 +81,13 @@ def make_tv_host(tv_token: str) -> dict:
     }
 
 
+def get_host(state: dict, tv_token: str) -> dict:
+    host = (state or {}).get("host")
+    if isinstance(host, dict) and host.get("token"):
+        return host
+    return make_tv_host(tv_token)
+
+
 def get_lifecycle(state: dict) -> dict:
     lifecycle = (state or {}).get("lifecycle")
     return lifecycle if isinstance(lifecycle, dict) else {}
@@ -92,21 +100,17 @@ def validate_or_claim_tv(state: dict, tv_token: str) -> dict:
 
     lifecycle = get_lifecycle(state)
     saved_lifecycle_token = lifecycle.get("tv_token")
-    host = (state or {}).get("host") if isinstance((state or {}).get("host"), dict) else None
-    saved_host_token = host.get("token") if host and host.get("managed_by") == "tv" else None
 
     if saved_lifecycle_token and saved_lifecycle_token != tv_token:
-        raise HTTPException(status_code=403, detail="Token de TV inválido")
-
-    if saved_host_token and saved_host_token != tv_token:
         raise HTTPException(status_code=403, detail="Token de TV inválido")
 
     lifecycle["tv_token"] = tv_token
     lifecycle["tv_connected"] = True
 
     state["lifecycle"] = lifecycle
-    state["host"] = make_tv_host(tv_token)
     state["managed_by"] = "tv"
+    state["story_controlled_by"] = "tv"
+    state["story_autopilot"] = True
     return state
 
 
@@ -168,17 +172,18 @@ async def start_story_from_tv(room_code: str, info: TvStoryInfo):
     previous_state = deepcopy(room.get("game_state") or {})
     previous_state = validate_or_claim_tv(previous_state, info.tv_token)
     story_state = get_story_state_or_fail(previous_state)
-    tv_host = make_tv_host(info.tv_token)
+    host = get_host(previous_state, info.tv_token)
 
     game_state = start_step_for_story(
         room_code=room_code,
         previous_state=previous_state,
         story_state=story_state,
-        host=tv_host,
+        host=host,
         random_seed=info.random_seed,
     )
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
+    game_state["managed_by"] = "tv"
 
     update_room(room_code, status="playing", game_state=game_state)
 
@@ -200,17 +205,18 @@ async def next_story_step_from_tv(room_code: str, info: TvStoryInfo):
     previous_state = validate_or_claim_tv(previous_state, info.tv_token)
     story_state = get_story_state_or_fail(previous_state)
     story_state = advance_story_state(story_state)
-    tv_host = make_tv_host(info.tv_token)
+    host = get_host(previous_state, info.tv_token)
 
     game_state = start_step_for_story(
         room_code=room_code,
         previous_state=previous_state,
         story_state=story_state,
-        host=tv_host,
+        host=host,
         random_seed=info.random_seed,
     )
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
+    game_state["managed_by"] = "tv"
 
     update_room(room_code, status="playing", game_state=game_state)
 
@@ -231,7 +237,7 @@ async def next_trivia_from_tv(room_code: str, info: TvStoryInfo):
     previous_state = deepcopy(room.get("game_state") or {})
     previous_state = validate_or_claim_tv(previous_state, info.tv_token)
     story_state = get_story_state_or_fail(previous_state)
-    tv_host = make_tv_host(info.tv_token)
+    host = get_host(previous_state, info.tv_token)
 
     game_state = build_game_state_for_game(
         room_code=room_code,
@@ -241,11 +247,12 @@ async def next_trivia_from_tv(room_code: str, info: TvStoryInfo):
     game_state["story_trivia_target_questions"] = previous_state.get("story_trivia_target_questions") or 3
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
+    game_state["managed_by"] = "tv"
 
     game_state = attach_story_metadata(
         game_state=game_state,
         story_state=story_state,
-        host=tv_host,
+        host=host,
         game_id=DEFAULT_TRIVIA_GAME_ID,
         dialogue_lines=[
             "La siguiente pregunta aparece sola. Nadie toque nada, esto ya está embrujado profesionalmente.",
@@ -254,6 +261,7 @@ async def next_trivia_from_tv(room_code: str, info: TvStoryInfo):
     )
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
+    game_state["managed_by"] = "tv"
 
     update_room(room_code, status="playing", game_state=game_state)
 
