@@ -2,6 +2,7 @@
   "use strict";
 
   const LETTERS = ["A", "B", "C", "D"];
+
   const HOUSES = [
     ["🦁", "Gryffindor"],
     ["🐍", "Slytherin"],
@@ -44,14 +45,30 @@
 
   function vibrate(pattern) {
     try {
-      if (navigator.vibrate) navigator.vibrate(pattern);
+      if (navigator.vibrate) {
+        navigator.vibrate(pattern);
+      }
     } catch (error) {}
   }
 
   function phaseOf(dataOrState) {
     if (!dataOrState) return "";
-    if (dataOrState.game_state) return dataOrState.game_state.phase || "";
+
+    if (dataOrState.game_state) {
+      return dataOrState.game_state.phase || "";
+    }
+
     return dataOrState.phase || "";
+  }
+
+  function getStateFromData(dataOrState) {
+    if (!dataOrState) return {};
+
+    if (dataOrState.game_state) {
+      return dataOrState.game_state || {};
+    }
+
+    return dataOrState || {};
   }
 
   function roundKey(state) {
@@ -115,17 +132,24 @@
     });
 
     const target = document.getElementById(id);
-    if (target) target.classList.add("visible");
+    if (target) {
+      target.classList.add("visible");
+    }
   }
 
   function setText(id, value) {
     const element = document.getElementById(id);
-    if (element) element.innerText = value;
+
+    if (element) {
+      element.innerText = value;
+    }
   }
 
   function getRoomCode() {
     try {
-      if (typeof myRoom !== "undefined" && myRoom) return myRoom;
+      if (typeof myRoom !== "undefined" && myRoom) {
+        return myRoom;
+      }
     } catch (error) {}
 
     return (
@@ -139,7 +163,9 @@
 
   function getPlayerName() {
     try {
-      if (typeof myName !== "undefined" && myName) return myName;
+      if (typeof myName !== "undefined" && myName) {
+        return myName;
+      }
     } catch (error) {}
 
     return (
@@ -151,7 +177,9 @@
 
   function isHost() {
     try {
-      if (typeof myIsHost !== "undefined") return Boolean(myIsHost);
+      if (typeof myIsHost !== "undefined") {
+        return Boolean(myIsHost);
+      }
     } catch (error) {}
 
     return Boolean(window.myIsHost);
@@ -177,6 +205,25 @@
     return false;
   }
 
+  function forceResetAnsweredForNewRound(state) {
+    const key = roundKey(state);
+
+    localRoundKey = key;
+    localRoundStartedMs = Date.now();
+    localAnswered = false;
+    lastDangerSecond = null;
+
+    try {
+      hasAnsweredCurrentRound = false;
+    } catch (error) {}
+
+    try {
+      currentRoundKey = key;
+    } catch (error) {}
+
+    return key;
+  }
+
   function showHostPanelsSafe(show) {
     if (typeof window.showHostPanels === "function") {
       window.showHostPanels(Boolean(show));
@@ -186,8 +233,13 @@
     const hostPanel = document.getElementById("host-panel");
     const hostGamePanel = document.getElementById("host-game-panel");
 
-    if (hostPanel) hostPanel.classList.toggle("visible", Boolean(show));
-    if (hostGamePanel) hostGamePanel.classList.toggle("visible", Boolean(show));
+    if (hostPanel) {
+      hostPanel.classList.toggle("visible", Boolean(show));
+    }
+
+    if (hostGamePanel) {
+      hostGamePanel.classList.toggle("visible", Boolean(show));
+    }
   }
 
   function hideOtherMobilePanels() {
@@ -446,9 +498,17 @@
     const progress = document.getElementById("hechizo-tv-progress");
     const players = document.getElementById("hechizo-tv-players");
 
-    if (seconds) seconds.innerText = String(Math.ceil(info.left));
-    if (progress) progress.style.transform = `scaleX(${info.pct})`;
-    if (players) players.innerHTML = renderPlayers(data.players || [], state);
+    if (seconds) {
+      seconds.innerText = String(Math.ceil(info.left));
+    }
+
+    if (progress) {
+      progress.style.transform = `scaleX(${info.pct})`;
+    }
+
+    if (players) {
+      players.innerHTML = renderPlayers(data.players || [], state);
+    }
 
     const dangerSecond = Math.ceil(info.left);
 
@@ -542,14 +602,21 @@
     const info = getPhaseInfo(state);
 
     const progress = document.getElementById("hechizo-mobile-progress");
-    if (progress) progress.style.transform = `scaleX(${info.pct})`;
+    if (progress) {
+      progress.style.transform = `scaleX(${info.pct})`;
+    }
 
     const timer = document.getElementById("mobile-timer");
     const bar = document.getElementById("mobile-timer-bar");
     const status = document.getElementById("mobile-status");
 
-    if (timer) timer.style.display = "block";
-    if (bar) bar.style.transform = `scaleX(${info.pct})`;
+    if (timer) {
+      timer.style.display = "block";
+    }
+
+    if (bar) {
+      bar.style.transform = `scaleX(${info.pct})`;
+    }
 
     if (status && !getAnswered()) {
       status.innerText = info.isOver
@@ -578,16 +645,14 @@
     hideOtherMobilePanels();
 
     const buttons = document.getElementById("m-botones");
-    if (buttons) buttons.innerHTML = "";
+    if (buttons) {
+      buttons.innerHTML = "";
+    }
 
     const key = roundKey(state);
 
     if (key !== localRoundKey) {
-      localRoundKey = key;
-      localRoundStartedMs = Date.now();
-      localAnswered = false;
-      setAnswered(false);
-      lastDangerSecond = null;
+      forceResetAnsweredForNewRound(state);
       playSound("start");
       vibrate([25, 40, 25]);
     }
@@ -891,6 +956,12 @@
 
     showHostPanelsSafe(isHost());
 
+    try {
+      hasAnsweredCurrentRound = false;
+    } catch (error) {}
+
+    localAnswered = false;
+
     return true;
   }
 
@@ -963,6 +1034,36 @@
       installed = true;
     }
 
+    if (
+      typeof window.renderAnsweredWait === "function" &&
+      !window.renderAnsweredWait.__hechizoNewRoundFix
+    ) {
+      const original = window.renderAnsweredWait;
+
+      window.renderAnsweredWait = function (state) {
+        const cleanState = getStateFromData(state);
+
+        if (phaseOf(cleanState) === "hechizo_incompleto") {
+          const key = roundKey(cleanState);
+
+          if (key && key !== localRoundKey) {
+            forceResetAnsweredForNewRound(cleanState);
+
+            if (typeof window.renderMobileGame === "function") {
+              return window.renderMobileGame(cleanState);
+            }
+
+            return renderMobileStable(cleanState);
+          }
+        }
+
+        return original.apply(this, arguments);
+      };
+
+      window.renderAnsweredWait.__hechizoNewRoundFix = true;
+      installed = true;
+    }
+
     return installed;
   }
 
@@ -980,7 +1081,7 @@
   const timer = setInterval(() => {
     attempts += 1;
 
-    if (installBridge() || attempts > 80) {
+    if (installBridge() || attempts > 100) {
       clearInterval(timer);
     }
   }, 100);
