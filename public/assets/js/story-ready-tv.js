@@ -2,6 +2,20 @@
   let lastRoom = "";
   let lastReadyKey = "";
   let advancingKey = "";
+  let readyWindowStartedAt = 0;
+
+  function isDebugMode() {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return params.get("debug") === "1" || localStorage.getItem("jackbox_story_debug") === "1";
+    } catch (error) {
+      return false;
+    }
+  }
+
+  function getReadyTimeoutMs() {
+    return isDebugMode() ? 5000 : 18000;
+  }
 
   function getRoomCode() {
     const domCode = document.getElementById("tv-code")?.textContent?.trim();
@@ -104,9 +118,20 @@
       <div class="story-ready-tv-title">¿Todos listos?</div>
       <div class="story-ready-tv-count">0/0</div>
       <div class="story-ready-tv-pending"></div>
+      <div class="story-ready-tv-timer"></div>
+      <div class="story-ready-tv-bar"><span></span></div>
     `;
     document.body.appendChild(panel);
     return panel;
+  }
+
+  function getRemainingSeconds() {
+    if (!readyWindowStartedAt) return Math.ceil(getReadyTimeoutMs() / 1000);
+    return Math.max(0, Math.ceil((getReadyTimeoutMs() - (Date.now() - readyWindowStartedAt)) / 1000));
+  }
+
+  function isReadyTimedOut() {
+    return Boolean(readyWindowStartedAt && Date.now() - readyWindowStartedAt >= getReadyTimeoutMs());
   }
 
   function showPanel(ready) {
@@ -114,13 +139,29 @@
     panel.classList.add("visible");
     const count = panel.querySelector(".story-ready-tv-count");
     const pending = panel.querySelector(".story-ready-tv-pending");
+    const timer = panel.querySelector(".story-ready-tv-timer");
+    const bar = panel.querySelector(".story-ready-tv-bar span");
+    const remaining = getRemainingSeconds();
+    const totalMs = getReadyTimeoutMs();
+    const elapsed = readyWindowStartedAt ? Math.min(totalMs, Date.now() - readyWindowStartedAt) : 0;
+    const progress = totalMs ? Math.max(0, Math.min(100, (elapsed / totalMs) * 100)) : 0;
+
     if (count) count.textContent = `${ready.ready_count || 0}/${ready.total_players || 0}`;
+
     if (pending) {
       const pendingPlayers = ready.pending_players || [];
       pending.textContent = pendingPlayers.length
         ? `Faltan: ${pendingPlayers.map(escapeHTML).join(", ")}`
         : "Todos confirmaron. Avanzando...";
     }
+
+    if (timer) {
+      timer.textContent = ready.all_ready
+        ? "Avanzando ahora..."
+        : `Avanza automáticamente en ${remaining}s`;
+    }
+
+    if (bar) bar.style.width = `${progress}%`;
   }
 
   function hidePanel() {
@@ -174,7 +215,8 @@
   }
 
   async function advanceAfterReady(room, status, ready) {
-    if (!ready.all_ready || advancingKey === ready.ready_key) return;
+    const timedOut = isReadyTimedOut();
+    if ((!ready.all_ready && !timedOut) || advancingKey === ready.ready_key) return;
     advancingKey = ready.ready_key;
 
     window.setTimeout(async () => {
@@ -198,7 +240,7 @@
       } catch (error) {
         advancingKey = "";
       }
-    }, 1200);
+    }, ready.all_ready ? 800 : 1400);
   }
 
   function injectStyles() {
@@ -211,7 +253,7 @@
         right: clamp(12px, 2vw, 24px);
         top: 50%;
         z-index: 10020;
-        width: min(260px, 28vw);
+        width: min(280px, 30vw);
         transform: translateY(-50%) translateX(18px);
         opacity: 0;
         pointer-events: none;
@@ -241,12 +283,31 @@
         font-weight: 1000;
         line-height: 1;
       }
-      .story-ready-tv-pending {
+      .story-ready-tv-pending,
+      .story-ready-tv-timer {
         margin-top: 8px;
         color: rgba(255,248,221,.76);
         font-weight: 850;
         font-size: clamp(.72rem, 1vw, .9rem);
         line-height: 1.2;
+      }
+      .story-ready-tv-timer {
+        color: #bbf7d0;
+      }
+      .story-ready-tv-bar {
+        height: 7px;
+        margin-top: 10px;
+        border-radius: 999px;
+        background: rgba(255,255,255,.10);
+        overflow: hidden;
+      }
+      .story-ready-tv-bar span {
+        display: block;
+        width: 0%;
+        height: 100%;
+        border-radius: inherit;
+        background: linear-gradient(90deg, #bbf7d0, #facc15);
+        transition: width .35s linear;
       }
       @media (max-width: 900px) {
         #story-ready-tv-panel {
@@ -272,6 +333,7 @@
     const status = await fetchRoomStatus(room);
     if (!status || !shouldWaitForReady(status)) {
       hidePanel();
+      readyWindowStartedAt = 0;
       return;
     }
     recordTriviaResultLocally(status);
@@ -280,6 +342,7 @@
     if (ready.ready_key !== lastReadyKey) {
       lastReadyKey = ready.ready_key;
       advancingKey = "";
+      readyWindowStartedAt = Date.now();
     }
     showPanel(ready);
     await advanceAfterReady(room, status, ready);
