@@ -1,15 +1,7 @@
 """Motor narrativo para el modo Historia de Jackbox Mágico.
 
-Este módulo NO toca Supabase ni reemplaza los minijuegos existentes. Su objetivo es
-servir como capa neutral para que `api/main.py` pueda pedir: qué historia existe,
-qué bloque sigue, cuándo mandar a trivia, cuándo mandar a minijuego y cuándo cerrar
-con la Copa Final.
-
-La integración recomendada es:
-1. Crear sala con mode="story" y story_id.
-2. Guardar `story_state` dentro de rooms.game_state.
-3. Después de cada bloque o resultado, llamar `advance_story_state`.
-4. Cuando el step sea `minigame_random`, usar `pick_minigame_for_story`.
+Este módulo funciona como capa neutral para decidir qué bloque sigue: trivia,
+transición narrativa, minijuego o Copa Final.
 """
 
 from __future__ import annotations
@@ -23,7 +15,6 @@ DEFAULT_TRIVIA_GAME_ID = "trivia_magica"
 DEFAULT_FINAL_GAME_ID = "copa_final"
 
 # Minijuegos disponibles para alternar dentro del modo historia.
-# Se excluyen trivia_magica y copa_final porque son el eje y el cierre.
 STORY_MINIGAME_POOL = [
     "atrapa_snitch",
     "duelo_hechizos",
@@ -38,29 +29,31 @@ STORY_MINIGAME_POOL = [
 ]
 
 
+# Pacing pensado para partidas de 20 a 30 min:
+# intro breve → 3 preguntas → minijuego → 3 preguntas → minijuego → 2 preguntas → final.
+# Con timers cortos y resultados, esto suele caer en 18-28 min según ritmo del host.
 STORY_CATALOG: Dict[str, Dict[str, Any]] = {
     "copa_encantada_loca": {
         "title": "La Copa Encantada se volvió loca",
         "tone": "épico, absurdo y competitivo",
         "description": (
-            "La Copa de las Casas empieza normal, pero la copa empieza a cambiar "
-            "reglas, exigir pruebas ridículas y repartir drama como si fuera pastel de cumpleaños."
+            "La Copa empieza formal, pero se emociona de más, cambia reglas y activa pruebas "
+            "como si hubiera leído el reglamento al revés."
         ),
         "intro": [
-            "Bienvenidos a la Copa de las Casas. La copa está brillando, el Gran Comedor está listo y nadie ha leído el reglamento. Excelente señal.",
-            "La trivia iniciará de forma civilizada... hasta que la magia decida comportarse como WiFi de castillo antiguo.",
+            "Bienvenidos a la Copa de las Casas. La copa brilla, el Gran Comedor observa y nadie sabe quién autorizó este evento.",
+            "La primera ronda será de trivia. Si la Copa detecta exceso de confianza, activará pruebas mágicas sin pedir permiso.",
         ],
         "finale_intro": (
-            "La Copa ha hablado: ninguna casa merece ganar todavía. Qué fuerte. "
-            "Solo la Pregunta Final decidirá quién sale con gloria y quién con una excusa muy bien redactada."
+            "La Copa ya no confía en nadie. Solo la Pregunta Final decidirá quién se lleva la gloria y quién dirá que venía cansado."
         ),
         "steps": [
-            {"type": "dialogue", "lines": ["La Copa despierta y exige sabiduría. O mínimo que no contesten como muggles con sueño."]},
-            {"type": "trivia_block", "questions": 4},
-            {"type": "minigame_random", "reason": "La Copa detectó exceso de confianza y activó una prueba sorpresa."},
-            {"type": "trivia_block", "questions": 4},
-            {"type": "minigame_random", "reason": "Una chispa salió de la Copa y convirtió la siguiente ronda en caos académico."},
+            {"type": "dialogue", "lines": ["La Copa despierta y exige conocimiento. O mínimo respuestas con seguridad, aunque estén mal."]},
             {"type": "trivia_block", "questions": 3},
+            {"type": "minigame_random", "reason": "La Copa detectó exceso de confianza y activó una prueba sorpresa."},
+            {"type": "trivia_block", "questions": 3},
+            {"type": "minigame_random", "reason": "Una chispa salió de la Copa y convirtió la siguiente ronda en caos académico."},
+            {"type": "trivia_block", "questions": 2},
             {"type": "copa_final"},
         ],
     },
@@ -68,23 +61,22 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
         "title": "Peeves hackeó la trivia",
         "tone": "caos, bromas y sabotaje mágico",
         "description": (
-            "Peeves altera preguntas, roba turnos, activa minijuegos sin permiso y convierte "
-            "la Copa de las Casas en una auditoría de paciencia."
+            "Peeves altera preguntas, roba turnos y activa minijuegos porque alguien dejó el sistema sin contraseña mágica."
         ),
         "intro": [
-            "La trivia iba perfectamente... hasta que Peeves descubrió el botón de 'siguiente ronda'.",
-            "Si algo sale mal, no fue bug. Fue actividad paranormal con mala actitud.",
+            "La trivia iba a ser ordenada, pero Peeves descubrió el botón de siguiente ronda.",
+            "Si algo sale mal, no fue bug: fue actividad paranormal con mala actitud.",
         ],
         "finale_intro": (
-            "Peeves intentó arruinar la noche, pero olvidó algo: aquí hay casas con orgullo, hambre y acceso a celulares."
+            "Peeves intentó arruinar la noche, pero olvidó que aquí hay casas con orgullo, hambre y acceso a celulares."
         ),
         "steps": [
             {"type": "dialogue", "lines": ["Peeves aparece flotando con una libreta que claramente no es suya. Esto pinta ilegal."]},
             {"type": "trivia_block", "questions": 3},
             {"type": "minigame_random", "reason": "Peeves robó las respuestas y las escondió en una prueba absurda."},
-            {"type": "trivia_block", "questions": 4},
+            {"type": "trivia_block", "questions": 3},
             {"type": "minigame_random", "reason": "Peeves activó otra prueba porque nadie le puso contraseña al sistema."},
-            {"type": "trivia_block", "questions": 4},
+            {"type": "trivia_block", "questions": 2},
             {"type": "copa_final"},
         ],
     },
@@ -92,8 +84,7 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
         "title": "El Ministerio canceló la diversión",
         "tone": "burocracia mágica, sarcasmo y rebelión estudiantil",
         "description": (
-            "Un inspector del Ministerio llega a regular la Copa, prohibir la emoción y pedir formatos por triplicado. "
-            "Las casas deberán demostrar que la diversión también puede tener fundamento mágico."
+            "Un inspector del Ministerio llega a regular la Copa, prohibir la emoción y pedir formatos por triplicado."
         ),
         "intro": [
             "Atención: el Ministerio envió un inspector. Nadie haga contacto visual con el reglamento.",
@@ -104,11 +95,11 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
         ),
         "steps": [
             {"type": "dialogue", "lines": ["El inspector toma nota: 'demasiado entusiasmo'. Eso aquí cuenta como delito mágico menor."]},
-            {"type": "trivia_block", "questions": 4},
-            {"type": "minigame_random", "reason": "El Ministerio exige una evaluación práctica, porque arruinar fiestas también requiere metodología."},
-            {"type": "trivia_block", "questions": 4},
-            {"type": "minigame_random", "reason": "El inspector duda de sus capacidades. Grave error: ahora toca humillarlo con puntos."},
             {"type": "trivia_block", "questions": 3},
+            {"type": "minigame_random", "reason": "El Ministerio exige una evaluación práctica, porque arruinar fiestas también requiere metodología."},
+            {"type": "trivia_block", "questions": 3},
+            {"type": "minigame_random", "reason": "El inspector duda de sus capacidades. Grave error: ahora toca humillarlo con puntos."},
+            {"type": "trivia_block", "questions": 2},
             {"type": "copa_final"},
         ],
     },
@@ -119,19 +110,19 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
             "Las cuatro casas compiten en una versión formal de la Copa, con pruebas de conocimiento, reflejos, memoria, humor y valor."
         ),
         "intro": [
-            "Esta noche no gana quien grite más fuerte. Bueno, tal vez ayuda, pero oficialmente gana quien junte más puntos.",
             "Cuatro casas. Una copa. Cero garantías de que el narrador sea imparcial.",
+            "La primera prueba será de conocimiento. Respiren. O no. Eso ya es estrategia personal.",
         ],
         "finale_intro": (
             "La ceremonia final comienza. Las velas flotan, los escudos brillan y una casa ya está preparando discurso como si esto fuera graduación."
         ),
         "steps": [
-            {"type": "dialogue", "lines": ["La primera prueba será de conocimiento. Respiren. O no. Eso ya es estrategia personal."]},
-            {"type": "trivia_block", "questions": 5},
-            {"type": "minigame_random", "reason": "El torneo exige una prueba práctica para separar a los sabios de los confiados."},
-            {"type": "trivia_block", "questions": 4},
-            {"type": "minigame_random", "reason": "Las casas están demasiado parejas. Hora de ponerle chile mágico al asunto."},
+            {"type": "dialogue", "lines": ["El torneo comienza. Oficialmente gana quien junte más puntos; extraoficialmente, quien no se pelee con su propia casa."]},
             {"type": "trivia_block", "questions": 3},
+            {"type": "minigame_random", "reason": "El torneo exige una prueba práctica para separar a los sabios de los confiados."},
+            {"type": "trivia_block", "questions": 3},
+            {"type": "minigame_random", "reason": "Las casas están demasiado parejas. Hora de ponerle chile mágico al asunto."},
+            {"type": "trivia_block", "questions": 2},
             {"type": "copa_final"},
         ],
     },
@@ -139,23 +130,22 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
         "title": "El Grimorio de las Excusas Prohibidas",
         "tone": "misterio cómico, drama escolar y excusas imposibles",
         "description": (
-            "Aparece un libro maldito que inventa excusas para justificar respuestas equivocadas. "
-            "Cada casa deberá derrotar al Grimorio antes de que convenza a todos de que 'lo sabía, pero me distraje'."
+            "Un libro maldito inventa excusas para justificar respuestas equivocadas. Las casas deben vencerlo antes de que todos digan 'yo sí sabía'."
         ),
         "intro": [
             "Un libro apareció en la mesa principal. Dice 'Grimorio de las Excusas Prohibidas'. Ya empezamos mal.",
-            "El Grimorio promete justificar cualquier error. Incluso ese de confundir a un hipogrifo con un pollo con autoestima.",
+            "El Grimorio promete justificar cualquier error. Incluso confundir a un hipogrifo con un pollo con autoestima.",
         ],
         "finale_intro": (
             "El Grimorio abre su última página. Si fallan, dirá que fue por Mercurio retrógrado. Si aciertan, diremos que fue talento."
         ),
         "steps": [
             {"type": "dialogue", "lines": ["El Grimorio susurra: 'No fallaste, solo respondiste en una línea temporal alternativa'. Sospechoso."]},
-            {"type": "trivia_block", "questions": 4},
+            {"type": "trivia_block", "questions": 3},
             {"type": "minigame_random", "reason": "El Grimorio activó una excusa viviente y ahora hay que desmentirla jugando."},
             {"type": "trivia_block", "questions": 3},
             {"type": "minigame_random", "reason": "El Grimorio invocó una prueba para comprobar quién domina el arte de no improvisar tan feo."},
-            {"type": "trivia_block", "questions": 4},
+            {"type": "trivia_block", "questions": 2},
             {"type": "copa_final"},
         ],
     },
@@ -163,12 +153,11 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
         "title": "El Banquete de los Hechizos Descompuestos",
         "tone": "fiesta mágica, comida encantada y caos familiar",
         "description": (
-            "Durante el banquete, varios hechizos caen sobre la comida, los retratos y las mesas. "
-            "La única forma de salvar la noche es competir en trivia y pruebas mágicas antes de que todo el castillo pida la cuenta."
+            "Durante el banquete, varios hechizos caen sobre la comida, los retratos y las mesas. La noche se salva con trivia y pruebas mágicas."
         ),
         "intro": [
             "El banquete comenzó tranquilo: velas flotantes, comida mágica y una mesa que acaba de estornudar confeti. Normalísimo.",
-            "Alguien lanzó un hechizo mal pronunciado y ahora el postre exige derechos laborales. La Copa debe continuar."
+            "Alguien lanzó un hechizo mal pronunciado y ahora el postre exige derechos laborales. La Copa debe continuar.",
         ],
         "finale_intro": (
             "El banquete está al borde del desastre, pero todavía queda una oportunidad para salvar la noche y levantar la Copa."
@@ -177,9 +166,9 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
             {"type": "dialogue", "lines": ["Las mesas tiemblan. El jugo de calabaza burbujea. Una servilleta acaba de retar a duelo a un tenedor."]},
             {"type": "trivia_block", "questions": 3},
             {"type": "minigame_random", "reason": "La comida encantada exige una prueba antes de dejar que continúe la cena."},
-            {"type": "trivia_block", "questions": 4},
+            {"type": "trivia_block", "questions": 3},
             {"type": "minigame_random", "reason": "Un hechizo cayó sobre las mesas y ahora todo se resuelve con puntos, como debe ser."},
-            {"type": "trivia_block", "questions": 4},
+            {"type": "trivia_block", "questions": 2},
             {"type": "copa_final"},
         ],
     },
@@ -274,14 +263,7 @@ def pick_minigame_for_story(
     allowed_pool: Optional[Iterable[str]] = None,
     random_seed: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Elige minijuego evitando repeticiones obvias.
-
-    Reglas:
-    - No elegir trivia ni copa final.
-    - Evitar el último minijuego jugado.
-    - Evitar juegos usados 2 o más veces si todavía hay opciones frescas.
-    - Permitir semilla para reproducir una selección durante depuración.
-    """
+    """Elige minijuego evitando repeticiones obvias."""
     pool = list(allowed_pool or STORY_MINIGAME_POOL)
     used = list(used_minigames or [])
     recent = list(recent_minigames or [])
