@@ -1,8 +1,27 @@
 (function () {
+  let lastTvRenderKey = "";
+  let lastMobileRenderKey = "";
+  let lastResultsRenderKey = "";
+
   function phaseOf(dataOrState) {
     if (!dataOrState) return "";
     if (dataOrState.game_state) return dataOrState.game_state.phase || "";
     return dataOrState.phase || "";
+  }
+
+  function getMapaVisualStep(state) {
+    if (!window.MapaTravieso || !state) return "unknown";
+
+    const info = window.MapaTravieso.getPhaseInfo(state);
+    return info.step || "unknown";
+  }
+
+  function getRoundKey(state) {
+    return [
+      state.phase || "",
+      state.round_id || "",
+      getMapaVisualStep(state),
+    ].join("-");
   }
 
   function isMapaPlaying(phase) {
@@ -16,11 +35,6 @@
   function setText(id, value) {
     const element = document.getElementById(id);
     if (element) element.innerText = value;
-  }
-
-  function setHtml(id, value) {
-    const element = document.getElementById(id);
-    if (element) element.innerHTML = value;
   }
 
   function show(id) {
@@ -45,24 +59,55 @@
     } catch (error) {}
   }
 
+  function updateTvTimerOnly(data) {
+    const state = data.game_state || {};
+    if (!window.MapaTravieso) return;
+
+    const info = window.MapaTravieso.getPhaseInfo(state);
+    const timer = document.querySelector(".mapa-tv-timer strong");
+    const label = document.querySelector(".mapa-tv-timer span");
+
+    if (timer) timer.innerText = Math.ceil(info.left);
+    if (label) label.innerText = info.step === "observe" ? "Memoriza" : "Responde";
+  }
+
   function renderMapaTv(data) {
     show("view-game");
 
     const container = document.getElementById("game-container");
     if (!container || !window.MapaTravieso) return false;
 
+    const state = data.game_state || {};
+    const renderKey = getRoundKey(state);
+
+    if (lastTvRenderKey === renderKey && container.innerHTML.trim()) {
+      updateTvTimerOnly(data);
+      return true;
+    }
+
+    lastTvRenderKey = renderKey;
     container.innerHTML = window.MapaTravieso.renderTv(data);
+
     return true;
   }
 
   function renderMapaTvResults(data) {
     show("view-game");
-    play("reveal");
 
     const container = document.getElementById("game-container");
     if (!container || !window.MapaTravieso) return false;
 
+    const state = data.game_state || {};
+    const renderKey = `results-${state.round_id || ""}-${state.phase || ""}`;
+
+    if (lastResultsRenderKey === renderKey && container.innerHTML.trim()) {
+      return true;
+    }
+
+    lastResultsRenderKey = renderKey;
+    play("reveal");
     container.innerHTML = window.MapaTravieso.renderResults(data);
+
     return true;
   }
 
@@ -132,7 +177,13 @@
     }
 
     panel.classList.add("visible");
-    panel.innerHTML = window.MapaTravieso.renderMobile(state);
+
+    const renderKey = getRoundKey(state);
+
+    if (lastMobileRenderKey !== renderKey || !panel.innerHTML.trim()) {
+      lastMobileRenderKey = renderKey;
+      panel.innerHTML = window.MapaTravieso.renderMobile(state);
+    }
 
     return true;
   }
