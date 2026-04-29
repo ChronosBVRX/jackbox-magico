@@ -51,7 +51,6 @@
   function isSafeToAdvance(data) {
     const phase = data?.game_state?.phase || "lobby";
     const status = data?.status || "lobby";
-
     return status === "lobby" || phase === "lobby" || String(phase).startsWith("results_");
   }
 
@@ -153,30 +152,17 @@
     const state = data?.game_state || {};
 
     if (state.phase !== "results_trivia" || getStoryStepType(data) !== "trivia_block") {
-      return {
-        warn: false,
-        key: "",
-        progress: getTriviaProgressInfo(data),
-      };
+      return { warn: false, key: "", progress: getTriviaProgressInfo(data) };
     }
 
     const progress = getTriviaProgressInfo(data);
 
     if (!progress.hasTarget || progress.complete) {
-      return {
-        warn: false,
-        key: "",
-        progress,
-      };
+      return { warn: false, key: "", progress };
     }
 
     const key = `${getProgressStorageKey(data)}_${progress.count}_${progress.target}`;
-
-    return {
-      warn: true,
-      key,
-      progress,
-    };
+    return { warn: true, key, progress };
   }
 
   function shouldStoryTakeOverTriviaNext(data) {
@@ -193,10 +179,7 @@
     const room = getRoom();
     if (!room) return null;
 
-    const res = await fetch(`/api/room/${room}/status?storyHostTs=${Date.now()}`, {
-      cache: "no-store",
-    });
-
+    const res = await fetch(`/api/room/${room}/status?storyHostTs=${Date.now()}`, { cache: "no-store" });
     if (!res.ok) return null;
     const data = await res.json();
     lastStatusData = data;
@@ -205,19 +188,31 @@
 
   async function loadStories() {
     if (storiesLoaded) return stories;
-
     const res = await fetch("/api/story/catalog", { cache: "no-store" });
     const data = await res.json();
-
     stories = data.stories || [];
     storiesLoaded = true;
-
     return stories;
+  }
+
+  function getModeLabel(data) {
+    const state = data?.game_state || {};
+    const phase = state.phase || "lobby";
+    const stepType = getStoryStepType(data);
+    const progress = getTriviaProgressInfo(data);
+
+    if (!getStoryData(data)) return "Elige una historia para comenzar.";
+    if (phase === "lobby") return "Historia preparada. Inicia cuando todos estén listos.";
+    if (phase === "trivia") return progress.hasTarget ? `Trivia narrativa: bloque de ${progress.target} preguntas.` : "Trivia narrativa en curso.";
+    if (phase === "results_trivia" && stepType === "trivia_block") {
+      return progress.complete ? `Bloque completo ${progress.count}/${progress.target}. Sigue prueba mágica.` : `Progreso ${progress.count}/${progress.target}. Continúa trivia.`;
+    }
+    if (String(phase).startsWith("results_")) return "Resultados listos. Avanza a la siguiente etapa.";
+    return "Prueba mágica activa. Mira la TV y espera resultados.";
   }
 
   function removeDuplicateStoryPanels() {
     const panels = Array.from(document.querySelectorAll(".story-host-panel"));
-
     panels.forEach((panel, index) => {
       if (index > 0) panel.remove();
     });
@@ -233,7 +228,7 @@
 
     let panel = document.querySelector(".story-host-panel");
     if (panel) {
-      if (!hostPanel.contains(panel)) hostPanel.appendChild(panel);
+      if (!hostPanel.contains(panel)) hostPanel.prepend(panel);
       return panel;
     }
 
@@ -243,10 +238,11 @@
     panel.id = "story-host-panel";
     panel.className = "story-host-panel";
     panel.innerHTML = `
-      <div class="story-host-card">
+      <div class="story-host-card story-main-card">
+        <div class="story-host-kicker">Modo principal</div>
         <div class="story-host-title">📖 Modo Historia</div>
         <p class="story-host-copy">
-          Convierte esta sala en una aventura con trivia, transiciones y minijuegos alternados.
+          Trivia, transiciones, minijuegos y Copa Final en una partida guiada de 20 a 30 minutos.
         </p>
         <select id="story-select">
           ${stories.map((story) => `
@@ -261,15 +257,11 @@
       </div>
     `;
 
-    hostPanel.appendChild(panel);
+    hostPanel.prepend(panel);
 
-    const prepareBtn = document.getElementById("story-prepare-btn");
-    const startBtn = document.getElementById("story-start-btn");
-    const nextBtn = document.getElementById("story-next-btn");
-
-    if (prepareBtn) prepareBtn.addEventListener("click", prepareStoryMode);
-    if (startBtn) startBtn.addEventListener("click", startStoryMode);
-    if (nextBtn) nextBtn.addEventListener("click", nextStoryStep);
+    document.getElementById("story-prepare-btn")?.addEventListener("click", prepareStoryMode);
+    document.getElementById("story-start-btn")?.addEventListener("click", startStoryMode);
+    document.getElementById("story-next-btn")?.addEventListener("click", () => nextStoryStep());
 
     return panel;
   }
@@ -277,7 +269,6 @@
   function setStoryStatus(message, kind = "neutral") {
     const box = document.getElementById("story-host-status");
     if (!box) return;
-
     box.className = `story-host-status ${kind}`;
     box.textContent = message || "";
   }
@@ -305,6 +296,7 @@
     if (select) select.disabled = Boolean(data?.status !== "lobby");
 
     if (!storyState) {
+      box.className = "story-host-advice";
       box.innerHTML = "El modo Historia todavía no está preparado para esta sala.";
       return;
     }
@@ -315,27 +307,25 @@
 
     if (phase === "trivia") {
       label = "Trivia narrativa en curso";
-      detail = progress.hasTarget
-        ? `Bloque objetivo: ${progress.target} preguntas. No avances hasta revelar resultados.`
-        : "No avances mientras la pregunta esté activa. Primero revela resultados.";
+      detail = progress.hasTarget ? `Bloque objetivo: ${progress.target} preguntas. Revela resultados antes de avanzar.` : "Primero revela resultados.";
     } else if (phase === "results_trivia" && stepType === "trivia_block") {
       label = progress.complete ? "Bloque de trivia completado" : "Resultados de trivia";
       detail = progress.hasTarget
         ? progress.complete
-          ? `Van ${progress.count}/${progress.target}. Ahora toca una transición narrativa y prueba mágica.`
-          : `Van ${progress.count}/${progress.target}. Usa “Siguiente pregunta de trivia” para completar el bloque.`
-        : "Puedes ir a la siguiente pregunta normal o avanzar a la siguiente etapa de la historia.";
+          ? `Van ${progress.count}/${progress.target}. Ahora toca transición y prueba mágica.`
+          : `Van ${progress.count}/${progress.target}. Sigue con otra pregunta de trivia.`
+        : "Puedes continuar o avanzar de etapa.";
       className = progress.complete ? "story-host-advice ready" : "story-host-advice caution";
     } else if (String(phase).startsWith("results_")) {
       label = "Resultados listos";
-      detail = "Puedes avanzar a la siguiente etapa narrativa.";
+      detail = "Avanza a la siguiente etapa narrativa.";
       className = "story-host-advice ready";
     } else if (phase === "lobby") {
       label = "Lobby de historia";
-      detail = "Puedes iniciar la historia cuando estén todos los jugadores.";
+      detail = "Inicia la historia cuando estén todos los jugadores.";
     } else {
       label = "Prueba mágica activa";
-      detail = "Espera a revelar resultados antes de avanzar a la siguiente etapa.";
+      detail = "Los controles libres se ocultan para no romper la secuencia.";
     }
 
     box.className = className;
@@ -344,6 +334,40 @@
       <span>${escapeHTML(label)}</span><br>
       <small>${escapeHTML(detail)}</small>
     `;
+  }
+
+  function updateHostUiPriority(data) {
+    const hostPanel = document.getElementById("host-panel");
+    if (!hostPanel) return;
+
+    const state = data?.game_state || {};
+    const storyActive = Boolean(getStoryData(data));
+    const phase = state.phase || "lobby";
+    hostPanel.classList.toggle("story-mode-active", storyActive);
+
+    const genericControls = [
+      document.getElementById("host-game-select"),
+      document.getElementById("host-start-btn"),
+    ];
+
+    genericControls.forEach((el) => {
+      if (!el) return;
+      const wrapper = el;
+      wrapper.classList.toggle("story-secondary-control", storyActive);
+      wrapper.disabled = storyActive && phase !== "lobby";
+    });
+
+    const revealButtons = Array.from(hostPanel.querySelectorAll("button"))
+      .filter((btn) => btn.textContent.includes("Revelar resultados") || btn.textContent.includes("Volver al lobby"));
+    revealButtons.forEach((btn) => {
+      btn.classList.toggle("story-essential-control", storyActive);
+    });
+
+    const title = hostPanel.querySelector(".host-title");
+    if (title && storyActive) title.textContent = "👑 Host de la historia";
+
+    const help = hostPanel.querySelector(":scope > p");
+    if (help) help.textContent = storyActive ? getModeLabel(data) : "Cuando todos estén listos, inicia un minijuego.";
   }
 
   async function prepareStoryMode() {
@@ -363,18 +387,11 @@
       const res = await fetch(`/api/story-prepare/host/${room}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          player_name: playerName,
-          host_token: hostToken,
-          story_id: storyId,
-        }),
+        body: JSON.stringify({ player_name: playerName, host_token: hostToken, story_id: storyId }),
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(JSON.stringify(data.detail || data));
-      }
+      if (!res.ok) throw new Error(JSON.stringify(data.detail || data));
 
       storyPrepared = true;
       pendingForceAdvanceKey = "";
@@ -388,11 +405,8 @@
   function clearCurrentStoryProgressCache() {
     const room = getRoom();
     if (!room) return;
-
     Object.keys(localStorage).forEach((key) => {
-      if (key.startsWith(`jackbox_story_progress_${room}_`)) {
-        localStorage.removeItem(key);
-      }
+      if (key.startsWith(`jackbox_story_progress_${room}_`)) localStorage.removeItem(key);
     });
   }
 
@@ -412,9 +426,7 @@
       return;
     }
 
-    if (!storyPrepared) {
-      await prepareStoryMode();
-    }
+    if (!storyPrepared) await prepareStoryMode();
 
     setStoryStatus("Iniciando modo Historia...", "neutral");
 
@@ -422,17 +434,11 @@
       const res = await fetch(`/api/story/host/${room}/start`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          player_name: playerName,
-          host_token: hostToken,
-        }),
+        body: JSON.stringify({ player_name: playerName, host_token: hostToken }),
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(JSON.stringify(data.detail || data));
-      }
+      if (!res.ok) throw new Error(JSON.stringify(data.detail || data));
 
       pendingForceAdvanceKey = "";
       setStoryStatus(`Historia iniciada: ${data.game_name || data.game_id}`, "good");
@@ -464,13 +470,9 @@
     }
 
     const warning = shouldWarnBeforeAdvance(current);
-
     if (!force && warning.warn && pendingForceAdvanceKey !== warning.key) {
       pendingForceAdvanceKey = warning.key;
-      setStoryStatus(
-        `Aún faltan preguntas del bloque (${warning.progress.count}/${warning.progress.target}). Toca otra vez si de todos modos quieres forzar la siguiente etapa.`,
-        "bad"
-      );
+      setStoryStatus(`Aún faltan preguntas (${warning.progress.count}/${warning.progress.target}). Toca otra vez para forzar.`, "bad");
       return false;
     }
 
@@ -480,17 +482,11 @@
       const res = await fetch(`/api/story/host/${room}/next`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          player_name: playerName,
-          host_token: hostToken,
-        }),
+        body: JSON.stringify({ player_name: playerName, host_token: hostToken }),
       });
 
       const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(JSON.stringify(data.detail || data));
-      }
+      if (!res.ok) throw new Error(JSON.stringify(data.detail || data));
 
       pendingForceAdvanceKey = "";
       setStoryStatus(`Nueva etapa: ${data.game_name || data.game_id}`, "good");
@@ -511,22 +507,18 @@
 
   function installTriviaNextInterceptor() {
     captureOriginalTriviaNext();
-
     if (window.hostTriviaNext?.__storyWrapped) return;
 
     const wrapped = async function storyAwareTriviaNext(...args) {
       try {
         const current = await getRoomStatus();
-
         if (shouldStoryTakeOverTriviaNext(current)) {
           await nextStoryStep({ force: true });
           return;
         }
       } catch (error) {}
 
-      if (typeof originalHostTriviaNext === "function") {
-        return originalHostTriviaNext.apply(this, args);
-      }
+      if (typeof originalHostTriviaNext === "function") return originalHostTriviaNext.apply(this, args);
     };
 
     wrapped.__storyWrapped = true;
@@ -536,7 +528,6 @@
   function patchTriviaNextButtons(data) {
     const buttons = Array.from(document.querySelectorAll(".trivia-next-btn"));
     if (!buttons.length) return;
-
     const takeOver = shouldStoryTakeOverTriviaNext(data || lastStatusData);
 
     buttons.forEach((btn) => {
@@ -556,43 +547,52 @@
     const style = document.createElement("style");
     style.id = "story-host-controls-style";
     style.textContent = `
-      .story-host-panel { margin-top: 16px; }
+      .host-panel.story-mode-active {
+        border-color: rgba(255,216,121,.34) !important;
+        background: rgba(255,255,255,.055) !important;
+      }
+      .story-host-panel { margin: 0 0 16px; }
       .story-host-card {
-        padding: 14px;
-        border-radius: 20px;
-        background: rgba(255,255,255,.07);
-        border: 1px solid rgba(255,216,121,.18);
-        box-shadow: 0 12px 28px rgba(0,0,0,.18);
+        padding: 16px;
+        border-radius: 24px;
+        background:
+          radial-gradient(circle at 18% 0%, rgba(255,216,121,.20), transparent 36%),
+          rgba(255,255,255,.08);
+        border: 1px solid rgba(255,216,121,.25);
+        box-shadow: 0 16px 34px rgba(0,0,0,.20);
+      }
+      .story-host-kicker {
+        display: inline-flex;
+        margin-bottom: 7px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        color: #2a1700;
+        background: linear-gradient(135deg, #fff8d6, #facc15);
+        font-size: .72rem;
+        font-weight: 1000;
+        text-transform: uppercase;
+        letter-spacing: .08em;
       }
       .story-host-title {
         color: #ffe7a3;
         font-weight: 1000;
         margin-bottom: 6px;
+        font-size: 1.18rem;
       }
       .story-host-copy {
-        margin: 0 0 10px;
-        color: rgba(255,248,221,.70);
-        font-size: .88rem;
-        line-height: 1.25;
+        margin: 0 0 12px;
+        color: rgba(255,248,221,.76);
+        font-size: .9rem;
+        line-height: 1.28;
       }
-      #story-select {
-        width: 100%;
-        margin-bottom: 10px;
-      }
+      #story-select { width: 100%; margin-bottom: 10px; }
       #story-prepare-btn,
       #story-start-btn,
-      #story-next-btn {
-        width: 100%;
-        margin-top: 8px;
-      }
+      #story-next-btn { width: 100%; margin-top: 8px; }
       #story-prepare-btn:disabled,
       #story-start-btn:disabled,
       #story-next-btn:disabled,
-      #story-select:disabled {
-        opacity: .45;
-        cursor: not-allowed;
-        filter: grayscale(.2);
-      }
+      #story-select:disabled { opacity: .45; cursor: not-allowed; filter: grayscale(.2); }
       .story-host-advice {
         margin-top: 10px;
         padding: 10px;
@@ -603,24 +603,10 @@
         font-size: .82rem;
         line-height: 1.28;
       }
-      .story-host-advice.ready {
-        color: #bbf7d0;
-        background: rgba(34,197,94,.12);
-        border-color: rgba(74,222,128,.28);
-      }
-      .story-host-advice.caution {
-        color: #fde68a;
-        background: rgba(250,204,21,.10);
-        border-color: rgba(250,204,21,.26);
-      }
-      .story-host-advice strong {
-        color: #ffe7a3;
-      }
-      .story-host-advice small {
-        display: block;
-        margin-top: 3px;
-        color: rgba(255,248,221,.66);
-      }
+      .story-host-advice.ready { color: #bbf7d0; background: rgba(34,197,94,.12); border-color: rgba(74,222,128,.28); }
+      .story-host-advice.caution { color: #fde68a; background: rgba(250,204,21,.10); border-color: rgba(250,204,21,.26); }
+      .story-host-advice strong { color: #ffe7a3; }
+      .story-host-advice small { display: block; margin-top: 3px; color: rgba(255,248,221,.66); }
       .story-host-status {
         margin-top: 10px;
         min-height: 22px;
@@ -631,11 +617,26 @@
       }
       .story-host-status.good { color: #bbf7d0; }
       .story-host-status.bad { color: #fecaca; }
+      .host-panel.story-mode-active .story-secondary-control {
+        opacity: .42;
+        transform: scale(.98);
+      }
+      .host-panel.story-mode-active #host-game-select,
+      .host-panel.story-mode-active #host-start-btn {
+        font-size: .82rem !important;
+        min-height: 42px !important;
+        margin-top: 8px !important;
+      }
+      .host-panel.story-mode-active #host-game-select::before {
+        content: "Modo libre";
+      }
+      .host-panel.story-mode-active .story-essential-control {
+        opacity: 1;
+      }
       .trivia-next-btn[data-story-takeover="true"] {
         background: linear-gradient(135deg, #bbf7d0, #facc15) !important;
       }
     `;
-
     document.head.appendChild(style);
   }
 
@@ -645,11 +646,11 @@
 
     if (isHost()) {
       await ensureStoryPanel();
-
       try {
         const data = await getRoomStatus();
         if (data) {
           setStoryAdvice(data);
+          updateHostUiPriority(data);
           patchTriviaNextButtons(data);
         }
       } catch (error) {}
