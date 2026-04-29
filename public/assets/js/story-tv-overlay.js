@@ -10,6 +10,7 @@
 
   let lastRoom = "";
   let lastStoryKey = "";
+  let cinematicUntil = 0;
 
   function safeText(value) {
     return String(value ?? "");
@@ -68,14 +69,14 @@
       .story-tv-overlay {
         position: fixed;
         left: 50%;
-        bottom: 22px;
+        bottom: clamp(12px, 2vh, 22px);
         z-index: 9999;
-        width: min(1180px, calc(100vw - 44px));
+        width: min(1040px, calc(100vw - 40px));
         transform: translateX(-50%);
         pointer-events: none;
         opacity: 0;
-        translate: 0 18px;
-        transition: opacity .28s ease, translate .28s ease;
+        translate: 0 14px;
+        transition: opacity .28s ease, translate .28s ease, width .28s ease;
       }
 
       .story-tv-overlay.visible {
@@ -87,21 +88,21 @@
         position: relative;
         overflow: hidden;
         display: grid;
-        grid-template-columns: minmax(0, 1fr) auto;
-        gap: 16px;
-        align-items: stretch;
-        padding: 16px;
-        border-radius: 28px;
+        grid-template-columns: minmax(0, 1fr) minmax(190px, 250px);
+        gap: 12px;
+        align-items: center;
+        padding: clamp(10px, 1.5vh, 16px);
+        border-radius: clamp(18px, 2vw, 28px);
         color: #fff7dc;
         background:
-          radial-gradient(circle at 8% 0%, rgba(255,216,121,.22), transparent 34%),
-          radial-gradient(circle at 86% 0%, rgba(96,165,250,.16), transparent 30%),
-          rgba(5, 10, 24, .86);
-        border: 1px solid rgba(255,216,121,.28);
+          radial-gradient(circle at 8% 0%, rgba(255,216,121,.18), transparent 34%),
+          radial-gradient(circle at 86% 0%, rgba(96,165,250,.14), transparent 30%),
+          rgba(5, 10, 24, .82);
+        border: 1px solid rgba(255,216,121,.24);
         box-shadow:
-          0 24px 80px rgba(0,0,0,.54),
+          0 18px 56px rgba(0,0,0,.44),
           inset 0 0 0 1px rgba(255,255,255,.05);
-        backdrop-filter: blur(18px);
+        backdrop-filter: blur(16px);
       }
 
       .story-tv-card::before {
@@ -109,10 +110,10 @@
         position: absolute;
         inset: 0;
         background:
-          linear-gradient(90deg, rgba(255,255,255,.04) 1px, transparent 1px),
-          linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px);
-        background-size: 48px 48px;
-        opacity: .30;
+          linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+          linear-gradient(rgba(255,255,255,.03) 1px, transparent 1px);
+        background-size: 44px 44px;
+        opacity: .24;
         pointer-events: none;
       }
 
@@ -125,98 +126,184 @@
       .story-tv-pill-row {
         display: flex;
         flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 8px;
+        gap: 6px;
+        margin-bottom: 6px;
       }
 
       .story-tv-pill {
         display: inline-flex;
         align-items: center;
-        gap: 7px;
-        padding: 7px 11px;
+        gap: 6px;
+        padding: 5px 9px;
         border-radius: 999px;
         color: #ffe7a3;
-        background: rgba(255,216,121,.12);
-        border: 1px solid rgba(255,216,121,.24);
-        font-size: .76rem;
+        background: rgba(255,216,121,.11);
+        border: 1px solid rgba(255,216,121,.22);
+        font-size: clamp(.58rem, 1vw, .72rem);
         font-weight: 1000;
         text-transform: uppercase;
-        letter-spacing: .08em;
+        letter-spacing: .07em;
       }
 
       .story-tv-pill.blue {
         color: #d8ecff;
-        background: rgba(96,165,250,.13);
-        border-color: rgba(125,211,252,.26);
+        background: rgba(96,165,250,.12);
+        border-color: rgba(125,211,252,.22);
       }
 
       .story-tv-title {
-        margin: 0 0 5px;
+        margin: 0 0 4px;
         color: #fff;
-        font-size: clamp(1.5rem, 2.5vw, 2.5rem);
-        line-height: .96;
-        letter-spacing: -.055em;
+        font-size: clamp(1.05rem, 2vw, 1.8rem);
+        line-height: .98;
+        letter-spacing: -.05em;
         font-weight: 1000;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .story-tv-dialogue {
         margin: 0;
         color: rgba(255,248,221,.86);
-        font-size: clamp(.96rem, 1.35vw, 1.22rem);
-        line-height: 1.18;
+        font-size: clamp(.72rem, 1.15vw, .98rem);
+        line-height: 1.15;
         font-weight: 850;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        overflow: hidden;
       }
 
       .story-tv-reason {
-        margin-top: 8px;
-        padding: 9px 11px;
-        border-radius: 16px;
+        margin-top: 6px;
+        padding: 7px 9px;
+        border-radius: 13px;
         color: rgba(255,248,221,.78);
-        background: rgba(255,255,255,.065);
+        background: rgba(255,255,255,.06);
         border: 1px solid rgba(255,255,255,.10);
-        font-size: .92rem;
-        line-height: 1.2;
+        font-size: clamp(.64rem, 1vw, .82rem);
+        line-height: 1.15;
         font-weight: 800;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
       }
 
       .story-tv-scoreboard {
-        min-width: 310px;
         display: grid;
-        gap: 7px;
+        gap: 5px;
         align-content: center;
       }
 
       .story-tv-score-row {
         display: grid;
         grid-template-columns: 1fr auto;
-        gap: 12px;
+        gap: 8px;
         align-items: center;
-        padding: 8px 10px;
-        border-radius: 15px;
+        padding: 6px 8px;
+        border-radius: 12px;
         color: #fff;
-        background: rgba(255,255,255,.06);
-        border: 1px solid rgba(255,255,255,.09);
+        background: rgba(255,255,255,.055);
+        border: 1px solid rgba(255,255,255,.08);
       }
 
       .story-tv-score-name {
         display: flex;
         align-items: center;
-        gap: 7px;
+        gap: 5px;
         font-weight: 950;
-        font-size: .92rem;
+        font-size: clamp(.62rem, 1vw, .82rem);
+        min-width: 0;
+      }
+
+      .story-tv-score-name span:last-child {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
       }
 
       .story-tv-score-points {
         color: #ffe089;
         font-weight: 1000;
-        font-size: 1.08rem;
+        font-size: clamp(.72rem, 1vw, .95rem);
+      }
+
+      .story-tv-overlay.compact {
+        width: min(860px, calc(100vw - 36px));
+      }
+
+      .story-tv-overlay.compact .story-tv-card {
+        grid-template-columns: minmax(0, 1fr) auto;
+        padding: 10px 12px;
+        border-radius: 20px;
+      }
+
+      .story-tv-overlay.compact .story-tv-title {
+        font-size: clamp(.98rem, 1.6vw, 1.35rem);
+      }
+
+      .story-tv-overlay.compact .story-tv-dialogue {
+        -webkit-line-clamp: 1;
+      }
+
+      .story-tv-overlay.compact .story-tv-reason {
+        display: none;
+      }
+
+      .story-tv-overlay.compact .story-tv-scoreboard {
+        grid-template-columns: repeat(2, minmax(82px, 1fr));
+        min-width: 210px;
+      }
+
+      .story-tv-overlay.cinematic {
+        width: min(1100px, calc(100vw - 46px));
+      }
+
+      .story-tv-overlay.cinematic .story-tv-card {
+        padding: clamp(14px, 2vh, 22px);
+        border-color: rgba(255,216,121,.34);
+        box-shadow:
+          0 28px 100px rgba(0,0,0,.58),
+          0 0 36px rgba(255,216,121,.10),
+          inset 0 0 0 1px rgba(255,255,255,.05);
+      }
+
+      .story-tv-overlay.cinematic .story-tv-title {
+        font-size: clamp(1.45rem, 2.7vw, 2.8rem);
+      }
+
+      .story-tv-overlay.cinematic .story-tv-dialogue {
+        font-size: clamp(.9rem, 1.5vw, 1.25rem);
+        -webkit-line-clamp: 3;
+      }
+
+      @media (max-height: 760px) {
+        .story-tv-overlay {
+          bottom: 10px;
+          width: min(860px, calc(100vw - 28px));
+        }
+        .story-tv-card {
+          grid-template-columns: minmax(0, 1fr) auto;
+          padding: 9px 11px;
+          border-radius: 18px;
+        }
+        .story-tv-dialogue {
+          -webkit-line-clamp: 1;
+        }
+        .story-tv-reason {
+          display: none;
+        }
+        .story-tv-scoreboard {
+          grid-template-columns: repeat(2, minmax(76px, 1fr));
+          min-width: 190px;
+        }
       }
 
       @media (max-width: 860px) {
         .story-tv-card {
           grid-template-columns: 1fr;
         }
-
         .story-tv-scoreboard {
           min-width: 0;
           grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -277,10 +364,17 @@
     }
 
     if (state.phase && state.phase !== "lobby") {
-      return "La historia acaba de abrir una prueba inesperada. Nadie dijo que la Copa de las Casas fuera estable emocionalmente.";
+      return "La historia abrió una prueba inesperada. La Copa de las Casas no está emocionalmente estable.";
     }
 
     return "El modo Historia está preparado. Cuando el host lo indique, la aventura comienza.";
+  }
+
+  function isCinematicState(state = {}) {
+    const phase = state.phase || "";
+    const lines = Array.isArray(state.story_dialogue) ? state.story_dialogue : [];
+    const justChanged = Date.now() < cinematicUntil;
+    return justChanged && !String(phase).startsWith("results_") && lines.length > 0;
   }
 
   function renderScores(players = []) {
@@ -290,7 +384,7 @@
       .sort((a, b) => Number(scores[b] || 0) - Number(scores[a] || 0))
       .map((house) => `
         <div class="story-tv-score-row">
-          <div class="story-tv-score-name">${HOUSE_ICONS[house] || "✨"} ${escapeHTML(house)}</div>
+          <div class="story-tv-score-name"><span>${HOUSE_ICONS[house] || "✨"}</span><span>${escapeHTML(house)}</span></div>
           <div class="story-tv-score-points">${Number(scores[house] || 0)}</div>
         </div>
       `)
@@ -302,7 +396,7 @@
     const overlay = ensureOverlay();
 
     if (state.mode !== "story") {
-      overlay.classList.remove("visible");
+      overlay.classList.remove("visible", "compact", "cinematic");
       overlay.innerHTML = "";
       return;
     }
@@ -312,10 +406,12 @@
     const dialogue = getDialogue(state);
     const reason = state.story_transition_reason || "";
     const storyStep = Number(state.story_public?.story_step_index ?? state.story?.story_step_index ?? 0) + 1;
-    const key = `${title}-${stepLabel}-${dialogue}-${reason}-${state.phase}-${storyStep}`;
+    const phase = state.phase || "";
+    const key = `${title}-${stepLabel}-${dialogue}-${reason}-${phase}-${storyStep}-${state.current_game_id || ""}`;
 
     if (key !== lastStoryKey) {
       lastStoryKey = key;
+      cinematicUntil = Date.now() + 8500;
       try {
         if (window.MagicSound?.play) {
           window.MagicSound.play("sparkle");
@@ -323,13 +419,19 @@
       } catch (error) {}
     }
 
+    const cinematic = isCinematicState(state);
+    const compact = !cinematic || String(phase).startsWith("results_") || window.innerHeight < 760;
+
+    overlay.classList.toggle("cinematic", cinematic && !compact);
+    overlay.classList.toggle("compact", compact);
+
     overlay.innerHTML = `
       <div class="story-tv-card">
         <div class="story-tv-main">
           <div class="story-tv-pill-row">
             <span class="story-tv-pill">📖 ${escapeHTML(stepLabel)}</span>
             <span class="story-tv-pill blue">Capítulo ${storyStep}</span>
-            <span class="story-tv-pill blue">${escapeHTML(state.current_game_id || state.phase || "lobby")}</span>
+            <span class="story-tv-pill blue">${escapeHTML(state.story_selected_minigame_name || state.current_game_id || phase || "lobby")}</span>
           </div>
           <h2 class="story-tv-title">${escapeHTML(title)}</h2>
           <p class="story-tv-dialogue">${escapeHTML(dialogue)}</p>
