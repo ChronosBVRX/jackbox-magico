@@ -1,0 +1,135 @@
+/* ============================================================
+   Mapa Travieso - Anti parpadeo y animaciones suaves
+   ============================================================ */
+
+.mapa-tv-stage,
+.mapa-parchment,
+.mapa-question-card,
+.mapa-hidden-overlay,
+.mapa-object,
+.mapa-zone,
+.mapa-info-card,
+.mapa-side-card {
+  backface-visibility: hidden;
+  transform-style: preserve-3d;
+  will-change: auto;
+}
+
+/* Transición suave cuando el mapa pasa de observar a responder */
+.mapa-hidden-overlay,
+.mapa-question-card {
+  animation: mapaFadeInSuave .28s ease-out both !important;
+}
+
+@keyframes mapaFadeInSuave {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+
+  to {
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+/* Tinta mucho más discreta */
+.mapa-ink-line {
+  animation: mapaInkPulseSuave 8s ease-in-out infinite !important;
+}
+
+@keyframes mapaInkPulseSuave {
+  0%, 100% {
+    opacity: .24;
+    filter: blur(.25px);
+  }
+
+  50% {
+    opacity: .42;
+    filter: blur(.15px);
+  }
+}
+
+/* Huellas más lentas y menos intensas */
+.mapa-footprint {
+  opacity: .34 !important;
+  animation-duration: 9s !important;
+}
+
+/* Los objetos flotan menos para que no se sienta nervioso */
+.mapa-object {
+  animation:
+    mapaObjectAppearSuave .42s ease-out both,
+    mapaFloatSuave 4.8s ease-in-out infinite alternate !important;
+}
+
+@keyframes mapaObjectAppearSuave {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.92);
+  }
+
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
+  }
+}
+
+@keyframes mapaFloatSuave {
+  from {
+    margin-top: -2px;
+  }
+
+  to {
+    margin-top: 2px;
+  }
+}
+
+/* Cuando ya terminó la fase de memorizar, nada debe estar parpadeando fuerte */
+.mapa-question-card .mapa-options-tv,
+.mapa-question-card h2,
+.mapa-question-card p,
+.mapa-hidden-overlay h2,
+.mapa-hidden-overlay p {
+  animation: none !important;
+}
+
+/* Evita que el contenedor parezca reconstruirse visualmente */
+#game-container .mapa-tv-stage {
+  contain: layout paint;
+}
+
+/* Suaviza las tarjetas laterales */
+.mapa-info-card,
+.trivia-side-card {
+  animation: none !important;
+}
+
+/* Menos brillo en objetos */
+.mapa-object {
+  box-shadow:
+    0 10px 24px rgba(54, 27, 8, .20),
+    0 0 18px rgba(255, 222, 129, .24) !important;
+}
+
+/* Overlay más estable al esconder el mapa */
+.mapa-question-card {
+  background: rgba(38, 19, 7, .93) !important;
+}
+
+.mapa-hidden-overlay {
+  background:
+    radial-gradient(circle at center, rgba(48, 25, 10, .78), rgba(33, 15, 4, .96)),
+    linear-gradient(135deg, rgba(56, 29, 10, .94), rgba(13, 7, 4, .97)) !important;
+}
+
+/* Respeta usuarios/dispositivos con reducción de movimiento */
+@media (prefers-reduced-motion: reduce) {
+  .mapa-ink-line,
+  .mapa-footprint,
+  .mapa-object,
+  .mapa-hidden-overlay,
+  .mapa-question-card {
+    animation: none !important;
+  }
+}
