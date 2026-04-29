@@ -1,1 +1,63 @@
-PLACEHOLDER
+{
+  "version": "1.0.0",
+  "project": "jackbox-magico",
+  "description": "Catálogo central de frases y referencias de audio para ElevenLabs. Genera cada mp3 con el nombre exacto indicado y súbelo a assets/audio/voice_lines/.",
+  "safety_note": "Usa voces originales o inspiradas en arquetipos mágicos. Evita clonar voces reales sin autorización.",
+  "characters": {
+    "dumbledore": {
+      "display_name": "Dumbledore",
+      "direction": "anciano sabio, cálido, juguetón, solemne pero pícaro"
+    },
+    "sombrero": {
+      "display_name": "Sombrero Seleccionador",
+      "direction": "narrador teatral, burlón, misterioso, con humor seco"
+    },
+    "harry": {
+      "display_name": "Harry Potter",
+      "direction": "joven héroe, cercano, valiente, ligeramente confundido por el caos"
+    },
+    "luna": {
+      "display_name": "Luna Lovegood",
+      "direction": "soñadora, rara, tranquila, tierna y accidentalmente graciosa"
+    },
+    "mcgonagall": {
+      "display_name": "Profesora McGonagall",
+      "direction": "profesora estricta, elegante, seca, sarcástica y disciplinada"
+    }
+  },
+  "voice_lines": [
+    {
+      "id": "boot.dumbledore.bienvenida",
+      "event": "boot",
+      "character": "Dumbledore",
+      "voice_key": "dumbledore",
+      "audio_file": "boot_dumbledore_bienvenida.mp3",
+      "asset_path": "assets/audio/voice_lines/boot_dumbledore_bienvenida.mp3",
+      "text": "Bienvenidos a la Copa de las Casas. Esta noche no gana el más sabio: gana quien conteste rápido y no haga el ridículo en público.",
+      "usage": "Al iniciar la app en pantalla principal",
+      "mood": "humor mágico"
+    },
+    {
+      "id": "boot.mcgonagall.orden",
+      "event": "boot",
+      "character": "Profesora McGonagall",
+      "voice_key": "mcgonagall",
+      "audio_file": "boot_mcgonagall_orden.mp3",
+      "asset_path": "assets/audio/voice_lines/boot_mcgonagall_orden.mp3",
+      "text": "Varitas abajo, celulares arriba. Y por favor, que nadie intente copiarse con un encantamiento barato.",
+      "usage": "Al iniciar la sala",
+      "mood": "humor mágico"
+    },
+    {
+      "id": "boot.sombrero.casas",
+      "event": "boot",
+      "character": "Sombrero Seleccionador",
+      "voice_key": "sombrero",
+      "audio_file": "boot_sombrero_casas.mp3",
+      "asset_path": "assets/audio/voice_lines/boot_sombrero_casas.mp3",
+      "text": "Veamos qué casa tiene más valor, más astucia, más inteligencia… o al menos mejor señal de Wi-Fi.",
+      "usage": "Cuando aparece el código QR",
+      "mood": "humor mágico"
+    }
+  ]
+}
