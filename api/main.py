@@ -285,6 +285,7 @@ def sanitize_game_state(state: dict):
         public_state.pop("trivia_result", None)
         public_state.pop("retratos_result", None)
         public_state.pop("mapa_result", None)
+        public_state.pop("hechizo_result", None)
         public_state.pop("votes_by_voter", None)
         public_state.pop("votes_by_target", None)
 
@@ -376,7 +377,9 @@ def build_game_state(room_code: str, game_id: str, previous_state: dict):
         return mapa_travieso.build_state()
 
     if game_id == "hechizo_incompleto":
-        return hechizo_incompleto.build_state()
+        return hechizo_incompleto.build_state(
+            previous_state=previous_state,
+        )
 
     if game_id == "artes_ridiculas":
         return artes_ridiculas.build_state(
@@ -961,6 +964,37 @@ async def submit_answer(request: Request):
             "correct": result.get("correct", False),
         }
 
+    elif phase == "hechizo_incompleto":
+        player_house = get_player_house(
+            room_id=room_id,
+            player_name=player_name,
+        )
+
+        result = hechizo_incompleto.score_answer(
+            state=state,
+            player_name=player_name,
+            answer=answer,
+            player_house=player_house,
+            client_elapsed_ms=client_elapsed_ms,
+        )
+
+        if result.get("accepted"):
+            add_points(room_id, player_name, result.get("points", 0))
+
+        supabase.table("rooms").update({
+            "game_state": result["state"],
+        }).eq("room_code", room_code).execute()
+
+        return {
+            "message": result.get("message", "Respuesta guardada"),
+            "accepted": result.get("accepted", False),
+            "points": result.get("points", 0),
+            "correct": result.get("correct", False),
+            "late": result.get("late", False),
+            "elapsed_seconds": result.get("elapsed_seconds"),
+            "labels": result.get("labels", []),
+        }
+
     elif phase == "artes_ridiculas":
         result = artes_ridiculas.score_answer(
             state=state,
@@ -1168,6 +1202,24 @@ async def reveal_results(room_code: str):
             "is_final": is_final,
         }
 
+    if state.get("phase") == "hechizo_incompleto":
+        state, point_events, is_final = hechizo_incompleto.resolve_for_reveal(
+            state=state,
+            players=players,
+        )
+
+        if is_final:
+            apply_point_events(room_id, point_events)
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "Hechizo Incompleto revelado",
+            "is_final": is_final,
+        }
+
     if state.get("phase") in {"patronus_personalizado"}:
         votes = state.get("votes", {})
 
@@ -1244,6 +1296,12 @@ async def return_lobby(room_code: str):
 
         if old_state.get("phase") == "results_artes_ridiculas":
             lobby_state["artes_streaks"] = old_state.get("streaks", {})
+
+        if old_state.get("phase") in {"hechizo_incompleto", "results_hechizo_incompleto"}:
+            lobby_state["hechizo_streaks"] = old_state.get(
+                "hechizo_streaks",
+                old_state.get("streaks", {}),
+            )
 
         if old_state.get("phase") in {"trivia", "results_trivia"}:
             lobby_state["trivia_session"] = old_state.get("trivia_session", {})
