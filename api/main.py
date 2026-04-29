@@ -897,17 +897,221 @@ async def submit_answer(request: Request):
         return format_snitch_response(result)
 
     elif phase in {"patronus_personalizado"}:
-        votes = state.get("votes", {})
-        votes[answer] = votes.get(answer, 0) + 1
-        state["votes"] = votes
+        event = patronus_personalizado.decode_event_key(str(answer))
 
-        supabase.table("rooms").update({
-            "game_state": state,
-        }).eq("room_code", room_code).execute()
+        if not event:
+            return {
+                "message": "Evento de Patronus inválido.",
+                "accepted": False,
+            }
+
+        if event.get("round_id") != state.get("round_id"):
+            return {
+                "message": "Este evento pertenece a otra ronda de Patronus.",
+                "accepted": False,
+            }
+
+        players = state.get("players") or get_players(room_id)
+        state["players"] = players
+
+        player_map = {
+            player.get("name"): player
+            for player in players
+            if player.get("name")
+        }
+
+        if player_name not in player_map:
+            return {
+                "message": "No perteneces a esta sala de Patronus.",
+                "accepted": False,
+            }
+
+        votes = state.get("votes", {}) or {}
+        round_id = state.get("round_id")
+        parsed = patronus_personalizado.parse_event_log(votes, round_id)
+
+        event_type = event.get("type")
+
+        if event_type == "answer":
+            if event.get("player_name") != player_name:
+                return {
+                    "message": "No puedes enviar una respuesta a nombre de otro jugador.",
+                    "accepted": False,
+                }
+
+            if player_name in parsed.get("submissions", {}):
+                return {
+                    "message": "Ya habías invocado tu Patronus.",
+                    "accepted": True,
+                }
+
+            mode = (state.get("settings") or {}).get("mode", "family")
+
+            validation = patronus_personalizado.validate_answer(
+                event.get("answer", ""),
+                mode=mode,
+            )
+
+            if not validation.get("accepted"):
+                return {
+                    "message": validation.get("message", "Respuesta no aceptada."),
+                    "accepted": False,
+                }
+
+            player_house = player_map[player_name].get("house")
+
+            event_key = patronus_personalizado.encode_answer_event(
+                round_id=round_id,
+                player_name=player_name,
+                house=player_house,
+                answer=validation.get("answer"),
+            )
+
+            votes[event_key] = 1
+            state["votes"] = votes
+
+            parsed = patronus_personalizado.parse_event_log(votes, round_id)
+            state["submitted_count"] = len(parsed.get("submissions", {}))
+            state["answers"] = {
+                name: True
+                for name in parsed.get("submissions", {}).keys()
+            }
+
+            supabase.table("rooms").update({
+                "game_state": state,
+            }).eq("room_code", room_code).execute()
+
+            return {
+                "message": "Respuesta invocada por el Patronus.",
+                "accepted": True,
+            }
+
+        if event_type == "vote":
+            if event.get("voter_name") != player_name:
+                return {
+                    "message": "No puedes votar a nombre de otro jugador.",
+                    "accepted": False,
+                }
+
+            target_player = event.get("target_player")
+
+            if target_player == player_name:
+                return {
+                    "message": "No puedes votar por tu propia respuesta, mago sospechoso.",
+                    "accepted": False,
+                }
+
+            submissions = parsed.get("submissions", {})
+
+            if target_player not in submissions:
+                return {
+                    "message": "Esa respuesta no está disponible para votar.",
+                    "accepted": False,
+                }
+
+            if player_name in parsed.get("vote_by_voter", {}):
+                return {
+                    "message": "Ya habías votado. El Patronus no acepta doble voto.",
+                    "accepted": True,
+                }
+
+            event_key = patronus_personalizado.encode_vote_event(
+                round_id=round_id,
+                voter_name=player_name,
+                target_player=target_player,
+            )
+
+            votes[event_key] = 1
+            state["votes"] = votes
+
+            parsed = patronus_personalizado.parse_event_log(votes, round_id)
+            state["voted_count"] = len(parsed.get("vote_by_voter", {}))
+
+            supabase.table("rooms").update({
+                "game_state": state,
+            }).eq("room_code", room_code).execute()
+
+            return {
+                "message": "Voto registrado por el Patronus.",
+                "accepted": True,
+            }
+
+        if event_type == "control":
+            host = get_host_from_state(state)
+
+            if not host or host.get("name") != player_name:
+                return {
+                    "message": "Solo el host puede controlar esta fase de Patronus.",
+                    "accepted": False,
+                }
+
+            action = event.get("action")
+
+            if action not in {"VOTING", "RESULTS"}:
+                return {
+                    "message": "Acción de Patronus no reconocida.",
+                    "accepted": False,
+                }
+
+            event_key = patronus_personalizado.encode_control_event(
+                round_id=round_id,
+                action=action,
+                host_name=player_name,
+            )
+
+            votes[event_key] = 1
+            state["votes"] = votes
+
+            if action == "VOTING":
+                state["patronus_stage"] = "voting"
+
+                supabase.table("rooms").update({
+                    "game_state": state,
+                }).eq("room_code", room_code).execute()
+
+                return {
+                    "message": "Votación de Patronus abierta.",
+                    "accepted": True,
+                }
+
+            if action == "RESULTS":
+                if not state.get("scored"):
+                    result = patronus_personalizado.calculate_results(state)
+                    point_events = result.get("point_events", [])
+
+                    apply_point_events(room_id, point_events)
+
+                    state["point_events"] = point_events
+                    state["patronus_result"] = result
+                    state["votes_by_target"] = result.get("votes_by_target", {})
+                    state["votes_by_voter"] = result.get("votes_by_voter", {})
+                    state["scored"] = True
+
+                    ranking = result.get("ranking", [])
+
+                    if ranking:
+                        winner = ranking[0]
+                        state["correct"] = (
+                            f"{winner.get('player_name')} "
+                            f"({winner.get('votes', 0)} votos)"
+                        )
+                    else:
+                        state["correct"] = "Sin ganador"
+
+                state["phase"] = "results_patronus_personalizado"
+
+                supabase.table("rooms").update({
+                    "game_state": state,
+                }).eq("room_code", room_code).execute()
+
+                return {
+                    "message": "Resultados de Patronus revelados.",
+                    "accepted": True,
+                }
 
         return {
-            "message": "Voto registrado",
-            "accepted": True,
+            "message": "Evento de Patronus no aceptado.",
+            "accepted": False,
         }
 
     elif phase == "retratos_chismosos":
@@ -1220,32 +1424,42 @@ async def reveal_results(room_code: str):
             "is_final": is_final,
         }
 
-    if state.get("phase") in {"patronus_personalizado"}:
-        votes = state.get("votes", {})
+    if state.get("phase") in {"patronus_personalizado", "results_patronus_personalizado"}:
+        state["players"] = players
 
-        if votes:
-            winner = max(votes, key=votes.get)
-            state["correct"] = f"{winner} ({votes[winner]} votos)"
+        if not state.get("scored"):
+            result = patronus_personalizado.calculate_results(state)
+            point_events = result.get("point_events", [])
 
-            players_query = (
-                supabase.table("players")
-                .select("id, name, score")
-                .eq("room_id", room_id)
-                .execute()
-            )
+            apply_point_events(room_id, point_events)
 
-            for player in players_query.data:
-                if player["name"] in votes:
-                    pts = votes[player["name"]] * 10
+            state["point_events"] = point_events
+            state["patronus_result"] = result
+            state["votes_by_target"] = result.get("votes_by_target", {})
+            state["votes_by_voter"] = result.get("votes_by_voter", {})
+            state["scored"] = True
 
-                    if player["name"] == winner:
-                        pts += 120
+            ranking = result.get("ranking", [])
 
-                    current_score = player.get("score") or 0
+            if ranking:
+                winner = ranking[0]
+                state["correct"] = (
+                    f"{winner.get('player_name')} "
+                    f"({winner.get('votes', 0)} votos)"
+                )
+            else:
+                state["correct"] = "Sin ganador"
 
-                    supabase.table("players").update({
-                        "score": current_score + pts,
-                    }).eq("id", player["id"]).execute()
+        state["phase"] = "results_patronus_personalizado"
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "Patronus Personalizado revelado",
+            "is_final": True,
+        }
 
     if not str(state.get("phase", "")).startswith("results_"):
         state["phase"] = f"results_{state.get('phase', 'juego')}"
