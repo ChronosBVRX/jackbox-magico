@@ -136,14 +136,6 @@
 
     show("view-game");
 
-    if (typeof window.showHostPanels === "function") {
-      window.showHostPanels(Boolean(window.myIsHost));
-    }
-
-    if (typeof window.hideGamePanels === "function") {
-      window.hideGamePanels();
-    }
-
     const buttons = document.getElementById("m-botones");
     if (buttons) buttons.innerHTML = "";
 
@@ -186,20 +178,6 @@
     if (lastMobileRenderKey !== renderKey || !panel.innerHTML.trim()) {
       lastMobileRenderKey = renderKey;
       panel.innerHTML = window.MapaTravieso.renderMobile(state);
-    }
-
-    return true;
-  }
-
-  function renderMapaMobileResults(state) {
-    show("view-wait");
-
-    setText("wait-pill", "🏆 Mapa Travieso");
-    setText("wait-msg", "¡Mira la TV!");
-    setText("wait-subtitle", "La tinta del mapa ya reveló la respuesta correcta.");
-
-    if (typeof window.showHostPanels === "function") {
-      window.showHostPanels(Boolean(window.myIsHost));
     }
 
     return true;
@@ -261,24 +239,6 @@
 
       wrappedRenderMobileGame.__mapaTraviesoWrapped = true;
       window.renderMobileGame = wrappedRenderMobileGame;
-      installedSomething = true;
-    }
-
-    if (typeof window.renderResultsWait === "function" && !window.renderResultsWait.__mapaTraviesoWrapped) {
-      const originalRenderResultsWait = window.renderResultsWait;
-
-      const wrappedRenderResultsWait = function (state) {
-        const phase = phaseOf(state);
-
-        if (isMapaResults(phase)) {
-          return renderMapaMobileResults(state);
-        }
-
-        return originalRenderResultsWait.apply(this, arguments);
-      };
-
-      wrappedRenderResultsWait.__mapaTraviesoWrapped = true;
-      window.renderResultsWait = wrappedRenderResultsWait;
       installedSomething = true;
     }
 
