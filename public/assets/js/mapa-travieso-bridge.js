@@ -150,7 +150,10 @@
     const info = window.MapaTravieso.getPhaseInfo(state);
 
     setText("game-pill", "🗺️ Mapa Travieso");
-    setText("m-pregunta-aviso", info.step === "observe" ? "¡Memoriza el mapa!" : "¡El mapa se cerró!");
+    setText(
+      "m-pregunta-aviso",
+      info.step === "observe" ? "¡Memoriza el mapa!" : "¡El mapa se cerró!"
+    );
     setText(
       "m-question-small",
       info.step === "observe"
@@ -190,6 +193,7 @@
 
   function renderMapaMobileResults(state) {
     show("view-wait");
+
     setText("wait-pill", "🏆 Mapa Travieso");
     setText("wait-msg", "¡Mira la TV!");
     setText("wait-subtitle", "La tinta del mapa ya reveló la respuesta correcta.");
@@ -282,6 +286,7 @@
   }
 
   let attempts = 0;
+
   const bridgeTimer = setInterval(() => {
     attempts += 1;
 
