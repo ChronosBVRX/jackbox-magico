@@ -3,6 +3,9 @@
   let stories = [];
   let storyPrepared = false;
   let pendingForceAdvanceKey = "";
+  let lastStatusData = null;
+  let originalHostTriviaNext = null;
+  let originalHostTriviaNextCaptured = false;
 
   function escapeHTML(value) {
     return String(value ?? "")
@@ -176,6 +179,16 @@
     };
   }
 
+  function shouldStoryTakeOverTriviaNext(data) {
+    const state = data?.game_state || {};
+    if (state.phase !== "results_trivia") return false;
+    if (!getStoryData(data)) return false;
+    if (getStoryStepType(data) !== "trivia_block") return false;
+
+    const progress = getTriviaProgressInfo(data);
+    return Boolean(progress.hasTarget && progress.complete);
+  }
+
   async function getRoomStatus() {
     const room = getRoom();
     if (!room) return null;
@@ -185,7 +198,9 @@
     });
 
     if (!res.ok) return null;
-    return await res.json();
+    const data = await res.json();
+    lastStatusData = data;
+    return data;
   }
 
   async function loadStories() {
@@ -200,14 +215,27 @@
     return stories;
   }
 
+  function removeDuplicateStoryPanels() {
+    const panels = Array.from(document.querySelectorAll(".story-host-panel"));
+
+    panels.forEach((panel, index) => {
+      if (index > 0) panel.remove();
+    });
+  }
+
   async function ensureStoryPanel() {
     if (!isHost()) return null;
+
+    removeDuplicateStoryPanels();
 
     const hostPanel = document.getElementById("host-panel");
     if (!hostPanel) return null;
 
-    let panel = document.getElementById("story-host-panel");
-    if (panel) return panel;
+    let panel = document.querySelector(".story-host-panel");
+    if (panel) {
+      if (!hostPanel.contains(panel)) hostPanel.appendChild(panel);
+      return panel;
+    }
 
     await loadStories();
 
@@ -294,8 +322,8 @@
       label = progress.complete ? "Bloque de trivia completado" : "Resultados de trivia";
       detail = progress.hasTarget
         ? progress.complete
-          ? `Van ${progress.count}/${progress.target}. Ya conviene avanzar a la siguiente prueba narrativa.`
-          : `Van ${progress.count}/${progress.target}. Lo recomendado es continuar con otra pregunta de trivia antes de avanzar.`
+          ? `Van ${progress.count}/${progress.target}. Ahora toca una transición narrativa y prueba mágica.`
+          : `Van ${progress.count}/${progress.target}. Usa “Siguiente pregunta de trivia” para completar el bloque.`
         : "Puedes ir a la siguiente pregunta normal o avanzar a la siguiente etapa de la historia.";
       className = progress.complete ? "story-host-advice ready" : "story-host-advice caution";
     } else if (String(phase).startsWith("results_")) {
@@ -350,10 +378,22 @@
 
       storyPrepared = true;
       pendingForceAdvanceKey = "";
+      clearCurrentStoryProgressCache();
       setStoryStatus(`Historia lista: ${data.story_title || storyId}`, "good");
     } catch (error) {
       setStoryStatus(`No se pudo preparar: ${error.message || error}`, "bad");
     }
+  }
+
+  function clearCurrentStoryProgressCache() {
+    const room = getRoom();
+    if (!room) return;
+
+    Object.keys(localStorage).forEach((key) => {
+      if (key.startsWith(`jackbox_story_progress_${room}_`)) {
+        localStorage.removeItem(key);
+      }
+    });
   }
 
   async function startStoryMode() {
@@ -401,40 +441,40 @@
     }
   }
 
-  async function nextStoryStep() {
+  async function nextStoryStep({ force = false } = {}) {
     const room = getRoom();
     const playerName = getPlayerName();
     const hostToken = getHostToken(room);
 
     if (!room || !playerName || !hostToken) {
       setStoryStatus("Faltan datos para avanzar historia.", "bad");
-      return;
+      return false;
     }
 
     const current = await getRoomStatus();
 
     if (!current || !getStoryData(current)) {
       setStoryStatus("Esta sala todavía no está en modo Historia.", "bad");
-      return;
+      return false;
     }
 
     if (!isSafeToAdvance(current)) {
       setStoryStatus("No avances todavía: primero termina la ronda y revela resultados.", "bad");
-      return;
+      return false;
     }
 
     const warning = shouldWarnBeforeAdvance(current);
 
-    if (warning.warn && pendingForceAdvanceKey !== warning.key) {
+    if (!force && warning.warn && pendingForceAdvanceKey !== warning.key) {
       pendingForceAdvanceKey = warning.key;
       setStoryStatus(
         `Aún faltan preguntas del bloque (${warning.progress.count}/${warning.progress.target}). Toca otra vez si de todos modos quieres forzar la siguiente etapa.`,
         "bad"
       );
-      return;
+      return false;
     }
 
-    setStoryStatus("Avanzando etapa...", "neutral");
+    setStoryStatus("Avanzando etapa narrativa...", "neutral");
 
     try {
       const res = await fetch(`/api/story/host/${room}/next`, {
@@ -454,9 +494,60 @@
 
       pendingForceAdvanceKey = "";
       setStoryStatus(`Nueva etapa: ${data.game_name || data.game_id}`, "good");
+      return true;
     } catch (error) {
       setStoryStatus(`No se pudo avanzar: ${error.message || error}`, "bad");
+      return false;
     }
+  }
+
+  function captureOriginalTriviaNext() {
+    if (originalHostTriviaNextCaptured) return;
+    if (typeof window.hostTriviaNext === "function") {
+      originalHostTriviaNext = window.hostTriviaNext;
+      originalHostTriviaNextCaptured = true;
+    }
+  }
+
+  function installTriviaNextInterceptor() {
+    captureOriginalTriviaNext();
+
+    if (window.hostTriviaNext?.__storyWrapped) return;
+
+    const wrapped = async function storyAwareTriviaNext(...args) {
+      try {
+        const current = await getRoomStatus();
+
+        if (shouldStoryTakeOverTriviaNext(current)) {
+          await nextStoryStep({ force: true });
+          return;
+        }
+      } catch (error) {}
+
+      if (typeof originalHostTriviaNext === "function") {
+        return originalHostTriviaNext.apply(this, args);
+      }
+    };
+
+    wrapped.__storyWrapped = true;
+    window.hostTriviaNext = wrapped;
+  }
+
+  function patchTriviaNextButtons(data) {
+    const buttons = Array.from(document.querySelectorAll(".trivia-next-btn"));
+    if (!buttons.length) return;
+
+    const takeOver = shouldStoryTakeOverTriviaNext(data || lastStatusData);
+
+    buttons.forEach((btn) => {
+      if (takeOver) {
+        btn.textContent = "Avanzar a prueba mágica";
+        btn.setAttribute("data-story-takeover", "true");
+      } else {
+        btn.textContent = "Siguiente pregunta de trivia";
+        btn.removeAttribute("data-story-takeover");
+      }
+    });
   }
 
   function injectStyles() {
@@ -540,6 +631,9 @@
       }
       .story-host-status.good { color: #bbf7d0; }
       .story-host-status.bad { color: #fecaca; }
+      .trivia-next-btn[data-story-takeover="true"] {
+        background: linear-gradient(135deg, #bbf7d0, #facc15) !important;
+      }
     `;
 
     document.head.appendChild(style);
@@ -547,21 +641,26 @@
 
   const interval = setInterval(async () => {
     injectStyles();
+    installTriviaNextInterceptor();
 
     if (isHost()) {
       await ensureStoryPanel();
 
       try {
         const data = await getRoomStatus();
-        if (data) setStoryAdvice(data);
+        if (data) {
+          setStoryAdvice(data);
+          patchTriviaNextButtons(data);
+        }
       } catch (error) {}
     }
-  }, 900);
+  }, 700);
 
   window.StoryHostControls = {
     loadStories,
     prepareStoryMode,
     startStoryMode,
     nextStoryStep,
+    getRoomStatus,
   };
 })();
