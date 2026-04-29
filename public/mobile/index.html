@@ -5,14 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
   <title>Control Mágico</title>
 
-  <link rel="stylesheet" href="/mobile/styles.css?v=mapa-travieso-1">
-  <link rel="stylesheet" href="/assets/css/duelo.css?v=mapa-travieso-1">
-  <link rel="stylesheet" href="/assets/css/sombrero.css?v=mapa-travieso-1">
-  <link rel="stylesheet" href="/assets/css/pociones.css?v=mapa-travieso-1">
-  <link rel="stylesheet" href="/assets/css/snitch.css?v=mapa-travieso-1">
-  <link rel="stylesheet" href="/assets/css/retratos.css?v=mapa-travieso-1">
-  <link rel="stylesheet" href="/assets/css/mapa-travieso.css?v=mapa-travieso-1">
-  <link rel="stylesheet" href="/assets/css/hechizo-incompleto.css?v=hechizo-incompleto-1">
+  <link rel="stylesheet" href="/mobile/styles.css?v=mapa-travieso-2">
+  <link rel="stylesheet" href="/assets/css/duelo.css?v=mapa-travieso-2">
+  <link rel="stylesheet" href="/assets/css/sombrero.css?v=mapa-travieso-2">
+  <link rel="stylesheet" href="/assets/css/pociones.css?v=mapa-travieso-2">
+  <link rel="stylesheet" href="/assets/css/snitch.css?v=mapa-travieso-2">
+  <link rel="stylesheet" href="/assets/css/retratos.css?v=mapa-travieso-2">
+  <link rel="stylesheet" href="/assets/css/mapa-travieso.css?v=mapa-travieso-2">
 </head>
 
 <body>
@@ -33,6 +32,7 @@
         id="m-room"
         placeholder="Código de la sala"
         autocomplete="off"
+        maxlength="4"
       >
 
       <input
@@ -126,8 +126,6 @@
 
       <div id="mapa-mobile-panel" class="trivia-mobile-panel"></div>
 
-      <div id="hechizo-mobile-panel" class="trivia-mobile-panel"></div>
-
       <div id="host-game-panel" class="host-panel mini">
         <div class="host-title">👑 Controles de host</div>
 
@@ -142,15 +140,18 @@
     </section>
   </div>
 
-  <script src="/assets/js/mobile-room-guard.js?v=mapa-travieso-1"></script>
-  <script src="/assets/js/magic-sounds.js?v=mapa-travieso-1"></script>
-  <script src="/assets/js/sombrero-prompts.js?v=mapa-travieso-1"></script>
-  <script src="/assets/js/snitch-mobile.js?v=mapa-travieso-1"></script>
-  <script src="/assets/js/mapa-travieso.js?v=mapa-travieso-1"></script>
-  <script src="/assets/js/hechizo-incompleto.js?v=hechizo-incompleto-1"></script>
-  <script src="/mobile/app.js?v=mapa-travieso-1"></script>
-  <script src="/assets/js/mapa-travieso-bridge.js?v=mapa-travieso-1"></script>
-  <script src="/assets/js/trivia-mobile-fix.js?v=mapa-travieso-1"></script>
-  <script src="/assets/js/retratos-mobile.js?v=mapa-travieso-1"></script>
+  <script src="/assets/js/mobile-room-guard.js?v=mapa-travieso-2"></script>
+  <script src="/assets/js/magic-sounds.js?v=mapa-travieso-2"></script>
+  <script src="/assets/js/sombrero-prompts.js?v=mapa-travieso-2"></script>
+  <script src="/assets/js/snitch-mobile.js?v=mapa-travieso-2"></script>
+  <script src="/assets/js/mapa-travieso.js?v=mapa-travieso-2"></script>
+
+  <script src="/assets/js/room-code-fix.js?v=room-fix-1"></script>
+
+  <script src="/mobile/app.js?v=mapa-travieso-2"></script>
+
+  <script src="/assets/js/mapa-travieso-bridge.js?v=mapa-travieso-2"></script>
+  <script src="/assets/js/trivia-mobile-fix.js?v=mapa-travieso-2"></script>
+  <script src="/assets/js/retratos-mobile.js?v=mapa-travieso-2"></script>
 </body>
 </html>
