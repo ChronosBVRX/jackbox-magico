@@ -68,16 +68,28 @@
     return fromInput || fromStorage || "Gryffindor";
   }
 
+  function loadLifecycleCleanup() {
+    if (document.getElementById("room-lifecycle-mobile-script")) return;
+
+    const script = document.createElement("script");
+    script.id = "room-lifecycle-mobile-script";
+    script.src = "/assets/js/room-lifecycle-mobile.js?v=lifecycle-1";
+    script.defer = true;
+    document.body.appendChild(script);
+  }
+
   window.MobileRoomGuard = {
     syncMobileIdentity,
     getSafeRoomCode,
     getSafePlayerName,
     getSafeHouse,
+    loadLifecycleCleanup,
   };
 
   syncMobileIdentity();
 
   document.addEventListener("DOMContentLoaded", () => {
     syncMobileIdentity();
+    loadLifecycleCleanup();
   });
 })();
