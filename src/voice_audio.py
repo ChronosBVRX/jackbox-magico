@@ -12,6 +12,11 @@ Coloca los audios generados en:
     assets/audio/voice_lines/
 
 El nombre del archivo debe coincidir exactamente con audio_file.
+
+Fuentes de texto para ElevenLabs:
+    - data/voice_lines.json
+    - data/voice_lines_extra.json
+    - tools/generate_voice_lines.py, dentro de RAW_LINES
 """
 
 from __future__ import annotations
@@ -22,14 +27,38 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any, Optional
 
-CATALOG_PATH = Path(__file__).resolve().parents[1] / "data" / "voice_lines.json"
+ROOT = Path(__file__).resolve().parents[1]
+CATALOG_PATHS = [
+    ROOT / "data" / "voice_lines.json",
+    ROOT / "data" / "voice_lines_extra.json",
+]
 
 
 @lru_cache(maxsize=1)
 def load_voice_catalog() -> dict[str, Any]:
-    """Carga el catálogo JSON de frases y audios."""
-    with CATALOG_PATH.open("r", encoding="utf-8") as file:
-        return json.load(file)
+    """Carga y combina el catálogo base con líneas extra si existen."""
+    combined: dict[str, Any] = {
+        "version": "combined",
+        "characters": {},
+        "voice_lines": [],
+    }
+
+    seen_ids: set[str] = set()
+    for catalog_path in CATALOG_PATHS:
+        if not catalog_path.exists():
+            continue
+        with catalog_path.open("r", encoding="utf-8") as file:
+            catalog = json.load(file)
+
+        combined["characters"].update(catalog.get("characters", {}))
+        for line in catalog.get("voice_lines", []):
+            line_id = line.get("id")
+            if not line_id or line_id in seen_ids:
+                continue
+            combined["voice_lines"].append(line)
+            seen_ids.add(line_id)
+
+    return combined
 
 
 def get_voice_lines(
@@ -96,7 +125,7 @@ def validate_audio_files(base_path: str | Path = "assets/audio/voice_lines") -> 
     """
     catalog = load_voice_catalog()
     expected = {line["audio_file"] for line in catalog.get("voice_lines", [])}
-    audio_dir = Path(base_path)
+    audio_dir = ROOT / base_path if not Path(base_path).is_absolute() else Path(base_path)
 
     existing = set()
     if audio_dir.exists():
@@ -108,7 +137,31 @@ def validate_audio_files(base_path: str | Path = "assets/audio/voice_lines") -> 
     }
 
 
+def export_elevenlabs_manifest(output_path: str | Path = "data/voice_lines_manifest.md") -> Path:
+    """Exporta una tabla Markdown con personaje, archivo y texto para grabar en ElevenLabs."""
+    catalog = load_voice_catalog()
+    output = ROOT / output_path if not Path(output_path).is_absolute() else Path(output_path)
+    output.parent.mkdir(parents=True, exist_ok=True)
+
+    rows = [
+        "# Manifest de audios para ElevenLabs",
+        "",
+        "Copia el texto de la columna `text` y exporta cada audio con el nombre exacto de `audio_file`.",
+        "",
+        "| event | character | audio_file | text |",
+        "|---|---|---|---|",
+    ]
+    for line in catalog.get("voice_lines", []):
+        text = line.get("text", "").replace("|", "\\|")
+        rows.append(f"| {line.get('event')} | {line.get('character')} | `{line.get('audio_file')}` | {text} |")
+
+    output.write_text("\n".join(rows) + "\n", encoding="utf-8")
+    return output
+
+
 if __name__ == "__main__":
     catalog = load_voice_catalog()
     print(f"Frases registradas: {len(catalog.get('voice_lines', []))}")
     print("Ejemplo correct:", get_random_voice_line("correct"))
+    print("Manifest:", export_elevenlabs_manifest())
+    print("Validación:", validate_audio_files())
