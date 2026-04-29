@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "default_mode": "family",
+  "narrator_lines": [
+    "Tu Patronus ha aparecido… y necesita terapia.",
+    "El hechizo funcionó, pero el animal espiritual salió con dudas existenciales.",
+    "La luz plateada brilló… aunque el resultado parece salido de un grupo de WhatsApp.",
+    "Un dementor acaba de arrepentirse de haber venido.",
+    "Eso no estaba en el libro de Encantamientos, pero sí en el lore del desmadre mágico.",
+    "Expecto Patronum… versión presupuesto limitado, dignidad opcional.",
+    "El bosque se iluminó. Nadie sabe si de magia o de pena ajena.",
+    "El Ministerio pide discreción, pero la risa ya se salió de control."
+  ],
+  "moderation": {
+    "blocked_words_family": [
+      "groseria_fuerte",
+      "contenido_adulto",
+      "insulto_directo"
+    ],
+    "blocked_words_adults": [
+      "odio",
+      "violencia_sexual",
+      "discriminacion"
+    ]
+  },
+  "prompts": [
+    {"id": "p001", "mode": "family", "text": "Tu Patronus aparece, pero viene raro. ¿Qué forma tiene?", "tags": ["patronus", "criaturas"]},
+    {"id": "p002", "mode": "family", "text": "¿Qué diría un dementor después de revisar tu cuenta bancaria?", "tags": ["dementores", "vida adulta"]},
+    {"id": "p003", "mode": "family", "text": "¿Qué hechizo usarías para evitar mensajes de tu ex?", "tags": ["hechizos", "ex"]},
+    {"id": "p004", "mode": "family", "text": "Si tu capa invisible tuviera un defecto, ¿cuál sería?", "tags": ["objetos", "capa invisible"]},
+    {"id": "p005", "mode": "family", "text": "Un profesor te descubre llegando tarde. ¿Qué excusa mágica inventas?", "tags": ["profesores", "escuela"]},
+    {"id": "p006", "mode": "family", "text": "¿Qué poción venderían en la tiendita de la escuela de magia?", "tags": ["pociones", "escuela"]},
+    {"id": "p007", "mode": "family", "text": "Tu varita solo hace un hechizo inútil. ¿Cuál es?", "tags": ["varitas", "hechizos"]},
+    {"id": "p008", "mode": "family", "text": "¿Qué objeto encantado sería un peligro en manos de tu grupo?", "tags": ["objetos", "caos"]},
+    {"id": "p009", "mode": "family", "text": "Un fantasma te quiere asustar, pero se pone nervioso. ¿Qué dice?", "tags": ["fantasmas", "humor"]},
+    {"id": "p010", "mode": "family", "text": "¿Cuál sería la materia más absurda en una escuela de hechicería?", "tags": ["clases", "escuela"]},
+    {"id": "p011", "mode": "family", "text": "Tu Patronus llegó tarde. ¿Qué excusa trae?", "tags": ["patronus", "puntualidad"]},
+    {"id": "p012", "mode": "family", "text": "¿Qué frase pondría un mago dramático en su estado de WhatsApp?", "tags": ["magos", "drama"]},
+    {"id": "p013", "mode": "family", "text": "Un cuadro del castillo vio todo tu fin de semana. ¿Qué chisme cuenta?", "tags": ["retratos", "chisme"]},
+    {"id": "p014", "mode": "family", "text": "¿Qué contraseña absurda pondrías para entrar a la sala común?", "tags": ["sala común", "contraseñas"]},
+    {"id": "p015", "mode": "family", "text": "¿Qué criatura mágica sería pésima cuidando niños?", "tags": ["criaturas", "familia"]},
+    {"id": "p016", "mode": "family", "text": "Si un elfo doméstico fuera influencer, ¿qué promocionaría?", "tags": ["elfos", "redes"]},
+    {"id": "p017", "mode": "family", "text": "Tu escoba se niega a despegar. ¿Cuál es su reclamo laboral?", "tags": ["quidditch", "escobas"]},
+    {"id": "p018", "mode": "family", "text": "¿Qué hechizo usaría alguien para evitar formarse en la fila?", "tags": ["hechizos", "vida diaria"]},
+    {"id": "p019", "mode": "family", "text": "El espejo mágico te muestra tu verdadero deseo. ¿Qué cosa ridícula aparece?", "tags": ["objetos", "deseos"]},
+    {"id": "p020", "mode": "family", "text": "¿Qué diría un profesor si viera tu historial de búsquedas mágicas?", "tags": ["profesores", "internet"]},
+    {"id": "a001", "mode": "adults", "text": "¿Qué Patronus invocarías para sobrevivir a una cruda mágica?", "tags": ["patronus", "adultos"]},
+    {"id": "a002", "mode": "adults", "text": "¿Qué diría un dementor si trabajara cobrando deudas?", "tags": ["dementores", "adultos"]},
+    {"id": "a003", "mode": "adults", "text": "¿Qué poción necesitarías después de una reunión familiar incómoda?", "tags": ["pociones", "adultos"]},
+    {"id": "a004", "mode": "adults", "text": "¿Qué hechizo usarías para desaparecer de un compromiso social?", "tags": ["hechizos", "adultos"]},
+    {"id": "a005", "mode": "adults", "text": "Si tu Patronus fuera tu estado emocional del lunes, ¿qué sería?", "tags": ["patronus", "adultos"]},
+    {"id": "a006", "mode": "adults", "text": "¿Qué objeto encantado llevarías a una cita que va mal?", "tags": ["objetos", "adultos"]}
+  ]
+}
