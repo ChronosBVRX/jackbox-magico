@@ -1,10 +1,7 @@
 (() => {
   const AUTO_REVEAL_BUFFER_SECONDS = 1.8;
-  const RESULTS_PAUSE_MS = 5200;
-  const MINIGAME_RESULTS_PAUSE_MS = 6500;
   const TRANSITION_POLL_MS = 700;
 
-  let lastStatus = null;
   let pendingActionKey = "";
   let lastActionAt = 0;
   let autopilotEnabled = true;
@@ -37,84 +34,6 @@
     return data?.game_state?.phase || data?.status || "lobby";
   }
 
-  function getStep(data) {
-    const state = data?.game_state || {};
-    return state.story_public?.current_story_step || state.story?.current_story_step || state.story_step || null;
-  }
-
-  function getStepType(data) {
-    const state = data?.game_state || {};
-    const step = getStep(data);
-    return step?.type || state.story_step_type || "";
-  }
-
-  function getStepIndex(data) {
-    const state = data?.game_state || {};
-    return Number(state.story_public?.story_step_index ?? state.story?.story_step_index ?? 0);
-  }
-
-  function getTargetQuestions(data) {
-    const state = data?.game_state || {};
-    const step = getStep(data);
-    return Number(state.story_trivia_target_questions || step?.questions || 0);
-  }
-
-  function progressKey(data) {
-    const room = getRoom();
-    const state = data?.game_state || {};
-    const storyId = state.story_public?.story_id || state.story?.story_id || "story";
-    return `jackbox_story_progress_${room}_${storyId}_${getStepIndex(data)}`;
-  }
-
-  function readProgress(data) {
-    try {
-      const raw = localStorage.getItem(progressKey(data));
-      const parsed = raw ? JSON.parse(raw) : [];
-      return Array.isArray(parsed) ? parsed : [];
-    } catch (error) {
-      return [];
-    }
-  }
-
-  function writeProgress(data, list) {
-    try {
-      localStorage.setItem(progressKey(data), JSON.stringify(Array.from(new Set(list)).slice(-30)));
-    } catch (error) {}
-  }
-
-  function resultIdentity(data) {
-    const state = data?.game_state || {};
-    return [
-      state.round_id,
-      state.question_id,
-      state.current_question_id,
-      state.question,
-      state.question_text,
-      state.correct_label,
-      state.correct,
-    ].map((value) => String(value || "").trim()).filter(Boolean).join("|") || `${Date.now()}`;
-  }
-
-  function recordTriviaResult(data) {
-    if (getPhase(data) !== "results_trivia" || getStepType(data) !== "trivia_block") {
-      return readProgress(data).length;
-    }
-
-    const id = resultIdentity(data);
-    const list = readProgress(data);
-    if (!list.includes(id)) {
-      list.push(id);
-      writeProgress(data, list);
-    }
-    return list.length;
-  }
-
-  function triviaBlockComplete(data) {
-    const target = getTargetQuestions(data);
-    const count = recordTriviaResult(data);
-    return Boolean(target && count >= target);
-  }
-
   async function fetchStatus() {
     const room = getRoom();
     if (!room) return null;
@@ -122,9 +41,7 @@
     try {
       const res = await fetch(`/api/room/${room}/status?storyAutoTs=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return null;
-      const data = await res.json();
-      lastStatus = data;
-      return data;
+      return await res.json();
     } catch (error) {
       return null;
     }
@@ -162,18 +79,6 @@
     }
   }
 
-  async function callTriviaNext() {
-    if (typeof window.hostTriviaNext === "function") {
-      window.hostTriviaNext();
-    }
-  }
-
-  async function callStoryNext() {
-    if (window.StoryHostControls?.nextStoryStep) {
-      await window.StoryHostControls.nextStoryStep({ force: true });
-    }
-  }
-
   function updateMobileUi(data) {
     const story = isStoryState(data);
     const tvControlled = story && isTvControlled(data);
@@ -198,98 +103,27 @@
 
       if (waitPill) waitPill.innerText = "📖 Historia";
       if (waitMsg && running) waitMsg.innerText = "¡Mira la TV!";
-      if (waitSubtitle && running) waitSubtitle.innerText = "La historia avanza automáticamente. Tu celular solo será tu control para responder.";
+      if (waitSubtitle && running) waitSubtitle.innerText = "La historia avanza cuando todos confirman que están listos.";
       if (waitMsg && prepared) waitMsg.innerText = "Historia preparada";
       if (waitSubtitle && prepared) waitSubtitle.innerText = "La TV iniciará la aventura cuando todos estén listos.";
-      return;
-    }
-
-    if (!hostPanel) return;
-
-    const freeControls = [
-      document.getElementById("host-game-select"),
-      document.getElementById("host-start-btn"),
-    ];
-
-    freeControls.forEach((el) => {
-      if (!el) return;
-      el.disabled = running;
-      el.setAttribute("aria-hidden", running ? "true" : "false");
-    });
-
-    if (running) {
-      const help = hostPanel.querySelector(":scope > p");
-      if (help) help.textContent = "Modo Historia en piloto automático. Mira la TV y deja que la secuencia avance sola.";
-    }
-
-    const status = document.getElementById("story-host-status");
-    if (status && running) {
-      const phase = getPhase(data);
-      const label = phase === "trivia"
-        ? "Piloto automático: la trivia se revelará al terminar el tiempo."
-        : String(phase).startsWith("results_")
-          ? "Piloto automático: avanzando después de mostrar resultados."
-          : "Piloto automático: prueba mágica en curso.";
-      status.textContent = label;
-      status.className = "story-host-status good";
     }
   }
 
   async function runAutopilot(data) {
-    if (!autopilotEnabled || !isHost() || !isStoryState(data)) {
-      updateMobileUi(data);
-      return;
-    }
-
     updateMobileUi(data);
+
+    if (!autopilotEnabled || !isHost() || !isStoryState(data)) return;
 
     const state = data.game_state || {};
     const phase = getPhase(data);
 
     if (data.status !== "playing") return;
 
-    if (phase === "trivia") {
+    // El avance posterior a resultados lo controla story-ready-tv.js.
+    // Este script solo revela resultados cuando termina el tiempo de la ronda.
+    if (phase && !String(phase).startsWith("results_") && phase !== "lobby") {
       const delay = secondsUntilAutoReveal(state) * 1000;
-      const key = `reveal:${phase}:${state.round_id || state.question || getStepIndex(data)}`;
-      debounceAction(key, delay, async () => {
-        const fresh = await fetchStatus();
-        if (fresh && getPhase(fresh) === "trivia") await callRevealResults();
-      });
-      return;
-    }
-
-    if (phase === "results_trivia") {
-      recordTriviaResult(data);
-      const complete = triviaBlockComplete(data);
-      const key = complete
-        ? `story-next:${getStepIndex(data)}:${recordTriviaResult(data)}`
-        : `trivia-next:${getStepIndex(data)}:${recordTriviaResult(data)}`;
-
-      debounceAction(key, RESULTS_PAUSE_MS, async () => {
-        const fresh = await fetchStatus();
-        if (!fresh || getPhase(fresh) !== "results_trivia") return;
-
-        if (triviaBlockComplete(fresh)) {
-          await callStoryNext();
-        } else {
-          await callTriviaNext();
-        }
-      });
-      return;
-    }
-
-    if (String(phase).startsWith("results_")) {
-      const key = `story-next-after-minigame:${phase}:${getStepIndex(data)}:${state.round_id || state.current_game_id || "game"}`;
-      debounceAction(key, MINIGAME_RESULTS_PAUSE_MS, async () => {
-        const fresh = await fetchStatus();
-        if (fresh && String(getPhase(fresh)).startsWith("results_")) await callStoryNext();
-      });
-      return;
-    }
-
-    if (phase && phase !== "lobby") {
-      const delay = secondsUntilAutoReveal(state) * 1000;
-      const key = `reveal-minigame:${phase}:${state.round_id || state.current_game_id || getStepIndex(data)}`;
+      const key = `reveal:${phase}:${state.round_id || state.question || state.current_game_id || "round"}`;
       debounceAction(key, delay, async () => {
         const fresh = await fetchStatus();
         const freshPhase = getPhase(fresh);
@@ -318,8 +152,11 @@
       body.story-tv-controlled #host-panel,
       body.story-tv-controlled #host-game-panel,
       body.story-tv-controlled .story-host-panel,
-      body.story-tv-controlled .trivia-mobile-host-extra {
+      body.story-tv-controlled .trivia-mobile-host-extra,
+      body.story-tv-controlled .host-panel {
         display: none !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
       }
 
       body.story-tv-controlled #wait-pill {
@@ -329,15 +166,6 @@
 
       body.story-tv-controlled #wait-subtitle {
         color: rgba(255,248,221,.78) !important;
-      }
-
-      body.story-mode-running #host-panel > p {
-        padding: 12px;
-        border-radius: 16px;
-        color: #bbf7d0 !important;
-        background: rgba(34,197,94,.10);
-        border: 1px solid rgba(74,222,128,.22);
-        font-weight: 900;
       }
     `;
 
