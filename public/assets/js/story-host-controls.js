@@ -2,7 +2,7 @@
   let storiesLoaded = false;
   let stories = [];
   let storyPrepared = false;
-  let lastStoryStatusKey = "";
+  let pendingForceAdvanceKey = "";
 
   function escapeHTML(value) {
     return String(value ?? "")
@@ -55,6 +55,125 @@
   function getStoryData(data) {
     const state = data?.game_state || {};
     return state.mode === "story" ? state : null;
+  }
+
+  function getStoryStep(data) {
+    const state = data?.game_state || {};
+    return state.story_public?.current_story_step || state.story?.current_story_step || state.story_step || null;
+  }
+
+  function getStoryStepIndex(data) {
+    const state = data?.game_state || {};
+    return Number(state.story_public?.story_step_index ?? state.story?.story_step_index ?? 0);
+  }
+
+  function getStoryStepType(data) {
+    const state = data?.game_state || {};
+    const step = getStoryStep(data);
+    return step?.type || state.story_step_type || "";
+  }
+
+  function getTriviaTargetQuestions(data) {
+    const state = data?.game_state || {};
+    const step = getStoryStep(data);
+    return Number(state.story_trivia_target_questions || step?.questions || 0);
+  }
+
+  function getProgressStorageKey(data) {
+    const room = getRoom();
+    const state = data?.game_state || {};
+    const storyId = state.story_public?.story_id || state.story?.story_id || "story";
+    const stepIndex = getStoryStepIndex(data);
+    return `jackbox_story_progress_${room}_${storyId}_${stepIndex}`;
+  }
+
+  function readProgressList(data) {
+    try {
+      const raw = localStorage.getItem(getProgressStorageKey(data));
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function writeProgressList(data, list) {
+    try {
+      localStorage.setItem(getProgressStorageKey(data), JSON.stringify(Array.from(new Set(list)).slice(-30)));
+    } catch (error) {}
+  }
+
+  function getTriviaResultIdentity(data) {
+    const state = data?.game_state || {};
+    const question = state.question || state.question_text || state.attack_msg || "";
+    const round = state.round_id || state.question_id || state.current_question_id || "";
+    const correct = state.correct_label || state.correct || "";
+
+    return [round, question, correct]
+      .map((value) => String(value || "").trim())
+      .filter(Boolean)
+      .join("|") || `result-${Date.now()}`;
+  }
+
+  function recordTriviaProgressIfNeeded(data) {
+    const state = data?.game_state || {};
+    const phase = state.phase || "lobby";
+
+    if (phase !== "results_trivia" || getStoryStepType(data) !== "trivia_block") {
+      return readProgressList(data).length;
+    }
+
+    const identity = getTriviaResultIdentity(data);
+    const list = readProgressList(data);
+
+    if (!list.includes(identity)) {
+      list.push(identity);
+      writeProgressList(data, list);
+    }
+
+    return list.length;
+  }
+
+  function getTriviaProgressInfo(data) {
+    const target = getTriviaTargetQuestions(data);
+    const count = recordTriviaProgressIfNeeded(data);
+
+    return {
+      count,
+      target,
+      complete: Boolean(target && count >= target),
+      hasTarget: Boolean(target),
+    };
+  }
+
+  function shouldWarnBeforeAdvance(data) {
+    const state = data?.game_state || {};
+
+    if (state.phase !== "results_trivia" || getStoryStepType(data) !== "trivia_block") {
+      return {
+        warn: false,
+        key: "",
+        progress: getTriviaProgressInfo(data),
+      };
+    }
+
+    const progress = getTriviaProgressInfo(data);
+
+    if (!progress.hasTarget || progress.complete) {
+      return {
+        warn: false,
+        key: "",
+        progress,
+      };
+    }
+
+    const key = `${getProgressStorageKey(data)}_${progress.count}_${progress.target}`;
+
+    return {
+      warn: true,
+      key,
+      progress,
+    };
   }
 
   async function getRoomStatus() {
@@ -149,9 +268,8 @@
     const safe = isSafeToAdvance(data);
     const phase = state.phase || "lobby";
     const storyTitle = state.story_public?.story_title || state.story?.story_title || "Modo Historia";
-    const step = state.story_public?.current_story_step || state.story?.current_story_step || state.story_step || null;
-    const stepType = step?.type || state.story_step_type || "";
-    const targetQuestions = Number(state.story_trivia_target_questions || step?.questions || 0);
+    const stepType = getStoryStepType(data);
+    const progress = getTriviaProgressInfo(data);
 
     if (nextBtn) nextBtn.disabled = !storyState || !safe;
     if (startBtn) startBtn.disabled = Boolean(storyState && data?.status === "playing" && phase !== "lobby");
@@ -165,17 +283,25 @@
 
     let label = "Historia preparada";
     let detail = "Cuando todos estén listos, inicia la historia.";
+    let className = "story-host-advice";
 
     if (phase === "trivia") {
       label = "Trivia narrativa en curso";
-      detail = targetQuestions
-        ? `Bloque objetivo: ${targetQuestions} preguntas. No avances hasta revelar resultados.`
+      detail = progress.hasTarget
+        ? `Bloque objetivo: ${progress.target} preguntas. No avances hasta revelar resultados.`
         : "No avances mientras la pregunta esté activa. Primero revela resultados.";
+    } else if (phase === "results_trivia" && stepType === "trivia_block") {
+      label = progress.complete ? "Bloque de trivia completado" : "Resultados de trivia";
+      detail = progress.hasTarget
+        ? progress.complete
+          ? `Van ${progress.count}/${progress.target}. Ya conviene avanzar a la siguiente prueba narrativa.`
+          : `Van ${progress.count}/${progress.target}. Lo recomendado es continuar con otra pregunta de trivia antes de avanzar.`
+        : "Puedes ir a la siguiente pregunta normal o avanzar a la siguiente etapa de la historia.";
+      className = progress.complete ? "story-host-advice ready" : "story-host-advice caution";
     } else if (String(phase).startsWith("results_")) {
       label = "Resultados listos";
-      detail = stepType === "trivia_block"
-        ? "Puedes ir a la siguiente pregunta normal o avanzar a la siguiente etapa de la historia."
-        : "Puedes avanzar a la siguiente etapa narrativa.";
+      detail = "Puedes avanzar a la siguiente etapa narrativa.";
+      className = "story-host-advice ready";
     } else if (phase === "lobby") {
       label = "Lobby de historia";
       detail = "Puedes iniciar la historia cuando estén todos los jugadores.";
@@ -184,6 +310,7 @@
       detail = "Espera a revelar resultados antes de avanzar a la siguiente etapa.";
     }
 
+    box.className = className;
     box.innerHTML = `
       <strong>${escapeHTML(storyTitle)}</strong><br>
       <span>${escapeHTML(label)}</span><br>
@@ -222,6 +349,7 @@
       }
 
       storyPrepared = true;
+      pendingForceAdvanceKey = "";
       setStoryStatus(`Historia lista: ${data.story_title || storyId}`, "good");
     } catch (error) {
       setStoryStatus(`No se pudo preparar: ${error.message || error}`, "bad");
@@ -266,6 +394,7 @@
         throw new Error(JSON.stringify(data.detail || data));
       }
 
+      pendingForceAdvanceKey = "";
       setStoryStatus(`Historia iniciada: ${data.game_name || data.game_id}`, "good");
     } catch (error) {
       setStoryStatus(`No se pudo iniciar: ${error.message || error}`, "bad");
@@ -294,6 +423,17 @@
       return;
     }
 
+    const warning = shouldWarnBeforeAdvance(current);
+
+    if (warning.warn && pendingForceAdvanceKey !== warning.key) {
+      pendingForceAdvanceKey = warning.key;
+      setStoryStatus(
+        `Aún faltan preguntas del bloque (${warning.progress.count}/${warning.progress.target}). Toca otra vez si de todos modos quieres forzar la siguiente etapa.`,
+        "bad"
+      );
+      return;
+    }
+
     setStoryStatus("Avanzando etapa...", "neutral");
 
     try {
@@ -312,6 +452,7 @@
         throw new Error(JSON.stringify(data.detail || data));
       }
 
+      pendingForceAdvanceKey = "";
       setStoryStatus(`Nueva etapa: ${data.game_name || data.game_id}`, "good");
     } catch (error) {
       setStoryStatus(`No se pudo avanzar: ${error.message || error}`, "bad");
@@ -371,13 +512,23 @@
         font-size: .82rem;
         line-height: 1.28;
       }
+      .story-host-advice.ready {
+        color: #bbf7d0;
+        background: rgba(34,197,94,.12);
+        border-color: rgba(74,222,128,.28);
+      }
+      .story-host-advice.caution {
+        color: #fde68a;
+        background: rgba(250,204,21,.10);
+        border-color: rgba(250,204,21,.26);
+      }
       .story-host-advice strong {
         color: #ffe7a3;
       }
       .story-host-advice small {
         display: block;
         margin-top: 3px;
-        color: rgba(255,248,221,.62);
+        color: rgba(255,248,221,.66);
       }
       .story-host-status {
         margin-top: 10px;
