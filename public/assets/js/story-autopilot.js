@@ -28,6 +28,11 @@
     return data?.game_state?.mode === "story";
   }
 
+  function isTvControlled(data) {
+    const state = data?.game_state || {};
+    return state.story_controlled_by === "tv" || state.managed_by === "tv";
+  }
+
   function getPhase(data) {
     return data?.game_state?.phase || data?.status || "lobby";
   }
@@ -154,14 +159,12 @@
   async function callRevealResults() {
     if (typeof window.hostRevealResults === "function") {
       window.hostRevealResults();
-      return;
     }
   }
 
   async function callTriviaNext() {
     if (typeof window.hostTriviaNext === "function") {
       window.hostTriviaNext();
-      return;
     }
   }
 
@@ -173,14 +176,34 @@
 
   function updateMobileUi(data) {
     const story = isStoryState(data);
+    const tvControlled = story && isTvControlled(data);
     const running = story && data?.status === "playing" && getPhase(data) !== "lobby";
     const prepared = story && !running;
 
     document.body.classList.toggle("story-mode-prepared", prepared);
     document.body.classList.toggle("story-mode-running", running);
     document.body.classList.toggle("story-mode-any", story);
+    document.body.classList.toggle("story-tv-controlled", tvControlled);
 
     const hostPanel = document.getElementById("host-panel");
+    const hostGamePanel = document.getElementById("host-game-panel");
+
+    if (tvControlled) {
+      if (hostPanel) hostPanel.classList.remove("visible");
+      if (hostGamePanel) hostGamePanel.classList.remove("visible");
+
+      const waitMsg = document.getElementById("wait-msg");
+      const waitSubtitle = document.getElementById("wait-subtitle");
+      const waitPill = document.getElementById("wait-pill");
+
+      if (waitPill) waitPill.innerText = "📖 Historia";
+      if (waitMsg && running) waitMsg.innerText = "¡Mira la TV!";
+      if (waitSubtitle && running) waitSubtitle.innerText = "La historia avanza automáticamente. Tu celular solo será tu control para responder.";
+      if (waitMsg && prepared) waitMsg.innerText = "Historia preparada";
+      if (waitSubtitle && prepared) waitSubtitle.innerText = "La TV iniciará la aventura cuando todos estén listos.";
+      return;
+    }
+
     if (!hostPanel) return;
 
     const freeControls = [
@@ -213,7 +236,10 @@
   }
 
   async function runAutopilot(data) {
-    if (!autopilotEnabled || !isHost() || !isStoryState(data)) return;
+    if (!autopilotEnabled || !isHost() || !isStoryState(data)) {
+      updateMobileUi(data);
+      return;
+    }
 
     updateMobileUi(data);
 
@@ -281,15 +307,28 @@
     style.id = "story-autopilot-style";
     style.textContent = `
       body.story-mode-running #host-game-select,
-      body.story-mode-running #host-start-btn {
-        display: none !important;
-      }
-
+      body.story-mode-running #host-start-btn,
       body.story-mode-running #story-select,
       body.story-mode-running #story-prepare-btn,
       body.story-mode-running #story-start-btn,
       body.story-mode-running #story-next-btn {
         display: none !important;
+      }
+
+      body.story-tv-controlled #host-panel,
+      body.story-tv-controlled #host-game-panel,
+      body.story-tv-controlled .story-host-panel,
+      body.story-tv-controlled .trivia-mobile-host-extra {
+        display: none !important;
+      }
+
+      body.story-tv-controlled #wait-pill {
+        color: #271600 !important;
+        background: linear-gradient(135deg, #fff8d6, #facc15) !important;
+      }
+
+      body.story-tv-controlled #wait-subtitle {
+        color: rgba(255,248,221,.78) !important;
       }
 
       body.story-mode-running #host-panel > p {
@@ -299,12 +338,6 @@
         background: rgba(34,197,94,.10);
         border: 1px solid rgba(74,222,128,.22);
         font-weight: 900;
-      }
-
-      body.story-mode-running .story-host-copy::after {
-        content: " Piloto automático activo.";
-        color: #bbf7d0;
-        font-weight: 1000;
       }
     `;
 
