@@ -25,6 +25,10 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/story_ready_api.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "api/room_lifecycle_api.py",
       "use": "@vercel/python"
     },
@@ -41,6 +45,10 @@
     {
       "src": "/api/copa-final/(.*)",
       "dest": "api/copa_final_api.py"
+    },
+    {
+      "src": "/api/story-ready/(.*)",
+      "dest": "api/story_ready_api.py"
     },
     {
       "src": "/api/story-tv/(.*)",
