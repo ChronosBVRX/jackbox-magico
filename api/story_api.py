@@ -1,16 +1,16 @@
 """Endpoints del modo Historia.
 
-Para activarlo en `api/main.py`, agregar:
+Este archivo puede funcionar de dos formas:
+1. Como router importable desde `api/main.py`.
+2. Como app serverless independiente en Vercel para `/api/story/...`.
 
-    from api import story_api
-    app.include_router(story_api.router)
-
-Este archivo se mantiene separado para no mezclar todavía el orquestador con la
-lógica actual de trivia/minijuegos.
+Esto permite probar catálogo, inicio, avance y selección de minijuegos sin tocar
+todavía el flujo principal de trivia/minijuegos.
 """
 
-from fastapi import APIRouter, HTTPException
-from pydantic import BaseModel
+from fastapi import APIRouter, FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel, Field
 
 from api.story_orchestrator import (
     STORY_MINIGAME_POOL,
@@ -24,6 +24,16 @@ from api.story_orchestrator import (
 )
 
 
+app = FastAPI(title="Jackbox Mágico Story API")
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 router = APIRouter(prefix="/api/story", tags=["story"])
 
 
@@ -36,10 +46,18 @@ class StoryAdvanceInfo(BaseModel):
 
 
 class MinigamePickInfo(BaseModel):
-    used_minigames: list[str] = []
-    recent_minigames: list[str] = []
+    used_minigames: list[str] = Field(default_factory=list)
+    recent_minigames: list[str] = Field(default_factory=list)
     allowed_pool: list[str] | None = None
     random_seed: str | None = None
+
+
+@router.get("/health")
+async def story_health():
+    return {
+        "status": "ok",
+        "message": "Motor narrativo listo.",
+    }
 
 
 @router.get("/catalog")
@@ -103,3 +121,6 @@ async def story_pick_minigame(info: MinigamePickInfo):
         "message": "Minijuego seleccionado",
         **result,
     }
+
+
+app.include_router(router)
