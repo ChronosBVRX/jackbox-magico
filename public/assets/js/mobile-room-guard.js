@@ -86,6 +86,10 @@
     loadScriptOnce("story-ready-mobile-script", "/assets/js/story-ready-mobile.js?v=story-ready-1");
   }
 
+  function loadStoryBetControls() {
+    loadScriptOnce("story-bet-mobile-script", "/assets/js/story-bet-mobile.js?v=story-bet-1");
+  }
+
   window.MobileRoomGuard = {
     syncMobileIdentity,
     getSafeRoomCode,
@@ -94,6 +98,7 @@
     loadLifecycleCleanup,
     loadStoryAutopilot,
     loadStoryReadyButton,
+    loadStoryBetControls,
   };
 
   syncMobileIdentity();
@@ -103,5 +108,6 @@
     loadLifecycleCleanup();
     loadStoryAutopilot();
     loadStoryReadyButton();
+    loadStoryBetControls();
   });
 })();
