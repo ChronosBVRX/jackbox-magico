@@ -79,7 +79,11 @@
   }
 
   function loadStoryAutopilot() {
-    loadScriptOnce("story-autopilot-script", "/assets/js/story-autopilot.js?v=story-auto-1");
+    loadScriptOnce("story-autopilot-script", "/assets/js/story-autopilot.js?v=story-auto-2");
+  }
+
+  function loadStoryReadyButton() {
+    loadScriptOnce("story-ready-mobile-script", "/assets/js/story-ready-mobile.js?v=story-ready-1");
   }
 
   window.MobileRoomGuard = {
@@ -89,6 +93,7 @@
     getSafeHouse,
     loadLifecycleCleanup,
     loadStoryAutopilot,
+    loadStoryReadyButton,
   };
 
   syncMobileIdentity();
@@ -97,5 +102,6 @@
     syncMobileIdentity();
     loadLifecycleCleanup();
     loadStoryAutopilot();
+    loadStoryReadyButton();
   });
 })();
