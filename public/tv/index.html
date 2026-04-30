@@ -23,17 +23,14 @@
   <audio
     id="tv-bg-music"
     src="/assets/audio/fondo-tv.mp3"
-    autoplay
     loop
     preload="auto">
   </audio>
 
-  <button id="music-toggle" class="music-toggle" onclick="toggleBackgroundMusic()">
-    ▶️ Activar música
-  </button>
 
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
+  <div id="lottie-overlay" class="lottie-overlay" aria-hidden="true"></div>
 
   <div class="floating-candles" aria-hidden="true">
     <span></span>
@@ -50,11 +47,11 @@
       <h1>Jackbox Mágico</h1>
 
       <p>
-        Preparando sala mágica...
+        Pulsa iniciar partida para desbloquear audio y generar el QR automáticamente.
       </p>
 
-      <button class="primary-btn giant" onclick="crearSala()">
-        Crear sala manualmente
+      <button id="start-match-btn" class="primary-btn giant" onclick="startMatchFlow()">
+        Iniciar partida
       </button>
     </section>
   </div>
@@ -110,6 +107,7 @@
   </div>
 
   <script src="/assets/js/magic-sounds.js?v=hechizo-incompleto-1"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/bodymovin/5.12.2/lottie.min.js" defer></script>
   <script src="/assets/js/snitch-tv.js?v=hechizo-incompleto-1"></script>
   <script src="/assets/js/mapa-travieso.js?v=hechizo-incompleto-1"></script>
   <script src="/assets/js/hechizo-incompleto.js?v=hechizo-incompleto-1"></script>
