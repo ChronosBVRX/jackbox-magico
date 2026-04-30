@@ -41,24 +41,29 @@
   </div>
 
   <div id="view-inicio" class="screen visible">
-    <section class="hero-card">
-      <div class="badge">⚡ Copa de las Casas</div>
+    <div class="jackbox-header">
+      <div class="badge">⚡ MODO HISTORIA</div>
+      <h1>JACKBOX MÁGICO</h1>
+    </div>
 
-      <h1>Jackbox Mágico</h1>
+    <!-- Carrusel de historias -->
+    <div id="tv-story-carousel" class="story-carousel">
+      <!-- Los items se cargarán por JS -->
+      <div class="spinner">Cargando historias mágicas...</div>
+    </div>
 
-      <p>
-        Pulsa iniciar partida para desbloquear audio y generar el QR automáticamente.
-      </p>
-
-      <button id="start-match-btn" class="primary-btn giant" onclick="startMatchFlow()">
-        Iniciar partida
-      </button>
-    </section>
+    <div class="tv-controls-hint">
+      <span class="key-hint">◀</span>
+      <span class="key-hint">▶</span> Navegar
+      <span class="key-spacer"></span>
+      <span class="key-hint">OK</span> Elegir
+    </div>
   </div>
 
   <div id="view-lobby" class="screen">
     <section class="lobby-card">
       <div class="badge">📱 Únete desde tu celular</div>
+      <h2 id="lobby-story-title" class="lobby-story-title">Esperando jugadores...</h2>
 
       <div class="room-code" id="tv-code">----</div>
 
@@ -69,14 +74,14 @@
       <p class="join-url" id="join-url"></p>
 
       <div id="host-status" class="host-status">
-        La TV controla la partida. Los celulares solo serán controles de jugador.
+        La TV controla la partida. Los celulares solo responden.
       </div>
 
       <div id="lista-jugadores" class="players-list"></div>
 
-      <div id="controles-host" class="host-controls" hidden aria-hidden="true">
-        <div class="host-help">
-          Selecciona una historia desde la TV para iniciar la partida guiada.
+      <div id="controles-host" class="host-controls">
+        <div class="tv-controls-hint large">
+          <span class="key-hint">OK</span> INICIAR PARTIDA
         </div>
       </div>
     </section>
@@ -101,7 +106,9 @@
       <div id="tv-marcadores" class="score-grid"></div>
 
       <div class="host-help">
-        La historia avanzará cuando todos confirmen que están listos.
+        <div class="tv-controls-hint large">
+          <span class="key-hint">OK</span> CONTINUAR HISTORIA
+        </div>
       </div>
     </section>
   </div>
@@ -112,14 +119,13 @@
   <script src="/assets/js/mapa-travieso.js?v=hechizo-incompleto-1"></script>
   <script src="/assets/js/hechizo-incompleto.js?v=hechizo-incompleto-1"></script>
 
-  <script src="/tv/app.js?v=hechizo-incompleto-1"></script>
+  <script src="/tv/app.js?v=jackbox-pro-1"></script>
 
   <script src="/assets/js/mapa-travieso-bridge.js?v=hechizo-incompleto-1"></script>
   <script src="/assets/js/retratos-tv.js?v=hechizo-incompleto-1"></script>
   <script src="/assets/js/caldero-tv.js?v=caldero-mentiroso-1"></script>
   <script src="/assets/js/patronus-tv.js?v=patronus-1"></script>
   <script src="/assets/js/copa-final-tv.js?v=copa-final-1"></script>
-  <script src="/assets/js/story-tv-controls.js?v=story-tv-control-2"></script>
   <script src="/assets/js/story-ready-tv.js?v=story-ready-tv-2"></script>
   <script src="/assets/js/story-party-polish-tv.js?v=party-polish-1"></script>
   <script src="/assets/js/story-show-tv.js?v=story-show-1"></script>

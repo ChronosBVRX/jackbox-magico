@@ -715,6 +715,10 @@ function showScreen(id) {
   if (target) {
     target.classList.add("visible");
   }
+  
+  tvCarouselActive = (id === "view-inicio");
+  tvLobbyActive = (id === "view-lobby");
+  tvResultsActive = (id === "view-results");
 
   playLottieTransition(id);
 }
@@ -832,7 +836,142 @@ function renderCandles() {
   `;
 }
 
-async function startMatchFlow() {
+let stories = [];
+let currentStoryIndex = 0;
+let tvCarouselActive = true;
+let tvLobbyActive = false;
+let tvResultsActive = false;
+let selectedStoryId = "";
+
+async function loadTvStories() {
+  try {
+    const res = await fetch("/api/story/catalog", { cache: "no-store" });
+    const data = await res.json();
+    stories = data.stories || [];
+    renderCarousel();
+  } catch (error) {
+    console.error("Failed to load stories", error);
+  }
+}
+
+function renderCarousel() {
+  const container = document.getElementById("tv-story-carousel");
+  if (!container) return;
+  container.innerHTML = "";
+  if (!stories.length) {
+    container.innerHTML = "<div class='spinner'>No hay historias disponibles.</div>";
+    return;
+  }
+  stories.forEach((story, idx) => {
+    const card = document.createElement("div");
+    card.className = "story-card" + (idx === currentStoryIndex ? " selected" : "");
+    card.id = `story-card-${idx}`;
+    card.innerHTML = `
+      <h3>${escapeHTML(story.title)}</h3>
+      <p>${escapeHTML(story.description || "Una aventura mágica interactiva.")}</p>
+    `;
+    container.appendChild(card);
+  });
+  updateCarouselScroll();
+}
+
+function updateCarouselScroll() {
+  const container = document.getElementById("tv-story-carousel");
+  if (!container || !stories.length) return;
+  
+  for (let i = 0; i < stories.length; i++) {
+    const card = document.getElementById(`story-card-${i}`);
+    if (card) {
+      if (i === currentStoryIndex) {
+        card.classList.add("selected");
+        card.scrollIntoView({ behavior: "smooth", inline: "center", block: "nearest" });
+      } else {
+        card.classList.remove("selected");
+      }
+    }
+  }
+}
+
+document.addEventListener("keydown", (e) => {
+  if (tvCarouselActive) {
+    if (e.key === "ArrowLeft") {
+      e.preventDefault();
+      if (currentStoryIndex > 0) {
+        currentStoryIndex--;
+        updateCarouselScroll();
+      }
+    } else if (e.key === "ArrowRight") {
+      e.preventDefault();
+      if (currentStoryIndex < stories.length - 1) {
+        currentStoryIndex++;
+        updateCarouselScroll();
+      }
+    } else if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      const selectedStory = stories[currentStoryIndex];
+      if (selectedStory && !roomCreating && !currentRoom) {
+        tvCarouselActive = false;
+        startMatchFlow(selectedStory.story_id, selectedStory.title);
+      }
+    }
+  } else if (tvLobbyActive) {
+    if (e.key === "Enter" || e.key === " ") {
+       e.preventDefault();
+       startStoryFromLobby();
+    }
+  } else if (tvResultsActive) {
+    if (e.key === "Enter" || e.key === " ") {
+       e.preventDefault();
+       nextStoryStep();
+    }
+  }
+});
+
+document.addEventListener("DOMContentLoaded", () => {
+  loadTvStories();
+});
+
+function getTvToken() {
+  if (window.RoomLifecycleTv?.getTvToken) return window.RoomLifecycleTv.getTvToken();
+  let token = localStorage.getItem("jackbox_magico_tv_token");
+  if (!token) {
+    token = crypto?.randomUUID ? crypto.randomUUID() : \`tv-\${Date.now()}-\${Math.random().toString(16).slice(2)}\`;
+    localStorage.setItem("jackbox_magico_tv_token", token);
+  }
+  return token;
+}
+
+async function startStoryFromLobby() {
+  if (!currentRoom) return;
+  try {
+    const res = await fetch(\`/api/story-tv/\${currentRoom}/start\`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tv_token: getTvToken() }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data.detail || data));
+  } catch (error) {
+    console.error("No se pudo iniciar historia desde lobby:", error);
+  }
+}
+
+async function nextStoryStep() {
+  if (!currentRoom) return;
+  try {
+    const res = await fetch(\`/api/story-tv/\${currentRoom}/next-step\`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tv_token: getTvToken() }),
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(JSON.stringify(data.detail || data));
+  } catch (error) {
+    console.error("No se pudo avanzar historia:", error);
+  }
+}
+
+async function startMatchFlow(storyId, storyTitle) {
   if (roomCreating || currentRoom) return;
 
   const btn = document.getElementById("start-match-btn");
@@ -840,6 +979,8 @@ async function startMatchFlow() {
     btn.disabled = true;
     btn.textContent = "Iniciando magia...";
   }
+
+  selectedStoryId = storyId;
 
   unlockMagicSound();
   playMagicSound("start");
@@ -853,18 +994,12 @@ async function startMatchFlow() {
 
   await startBackgroundMusic();
   await crearSala();
-
-  if (!currentRoom && btn) {
-    btn.disabled = false;
-    btn.textContent = "Iniciar partida";
-  }
 }
 
 async function crearSala() {
   if (currentRoom || roomCreating) return;
 
   roomCreating = true;
-
 
   try {
     const res = await fetch("/api/host/create_room", {
@@ -875,6 +1010,19 @@ async function crearSala() {
 
     currentRoom = data.room_code;
     roomCreating = false;
+    
+    // Auto-prepare story for this room
+    if (selectedStoryId) {
+      try {
+        await fetch(\`/api/story-tv/\${currentRoom}/prepare\`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tv_token: getTvToken(), story_id: selectedStoryId }),
+        });
+      } catch (err) {
+        console.error("Failed to prepare story", err);
+      }
+    }
 
     showScreen("view-lobby");
 
