@@ -4,6 +4,12 @@
   let lastRoom = "";
   let creatingPanel = false;
 
+  const FALLBACK_STORIES = [
+    { story_id: "copa_encantada_loca", title: "La Copa Encantada se volvió loca" },
+    { story_id: "torneo_cuatro_casas", title: "El Torneo de las Cuatro Casas" },
+    { story_id: "peeves_hackeo_trivia", title: "Peeves hackeó la trivia" },
+  ];
+
   function getRoomCode() {
     const domCode = document.getElementById("tv-code")?.textContent?.trim();
     if (domCode && domCode !== "----") {
@@ -46,11 +52,26 @@
 
   async function loadStories() {
     if (storiesLoaded) return stories;
-    const res = await fetch("/api/story/catalog", { cache: "no-store" });
-    const data = await res.json();
-    stories = data.stories || [];
+
+    try {
+      const res = await fetch("/api/story/catalog", { cache: "no-store" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
+      stories = Array.isArray(data.stories) && data.stories.length ? data.stories : FALLBACK_STORIES;
+    } catch (error) {
+      stories = FALLBACK_STORIES;
+    }
+
     storiesLoaded = true;
     return stories;
+  }
+
+  function getAnchorElement() {
+    return (
+      document.getElementById("host-status") ||
+      document.getElementById("lista-jugadores") ||
+      document.querySelector("#view-lobby .lobby-card")
+    );
   }
 
   async function ensurePanel() {
@@ -61,7 +82,10 @@
     if (!lobbyCard) return;
 
     let panel = document.getElementById("story-tv-controls");
-    if (panel) return;
+    if (panel) {
+      keepPanelVisible(panel);
+      return;
+    }
 
     creatingPanel = true;
 
@@ -74,29 +98,29 @@
       panel.id = "story-tv-controls";
       panel.innerHTML = `
         <div class="story-tv-control-card" tabindex="0">
-          <div class="story-tv-kicker">Modo principal</div>
-          <h2>Elige una historia</h2>
-          <p>La TV controla la partida. Usa ◀ ▶ y Enter/OK. Los celulares solo responden.</p>
+          <div class="story-tv-kicker">Control desde TV</div>
+          <h2>Iniciar partida</h2>
+          <p>Selecciona una historia y presiona iniciar. La TV manda; los celulares solo responden.</p>
           <select id="story-tv-select">
             ${stories.map((story) => `
               <option value="${escapeHTML(story.story_id)}">${escapeHTML(story.title)}</option>
             `).join("")}
           </select>
           <div class="story-tv-remote-line">
-            <button type="button" id="story-tv-prev-btn">◀ Anterior</button>
-            <button type="button" id="story-tv-start-btn">OK / Iniciar historia</button>
-            <button type="button" id="story-tv-next-btn">Siguiente ▶</button>
+            <button type="button" id="story-tv-prev-btn">◀</button>
+            <button type="button" id="story-tv-start-btn">▶ Iniciar historia</button>
+            <button type="button" id="story-tv-next-btn">▶</button>
           </div>
           <div class="story-tv-actions">
-            <button type="button" id="story-tv-prepare-btn">Preparar historia</button>
+            <button type="button" id="story-tv-prepare-btn">Preparar sin iniciar</button>
           </div>
-          <div id="story-tv-status"></div>
+          <div id="story-tv-status">Listo para iniciar desde esta pantalla.</div>
         </div>
       `;
 
-      const players = document.getElementById("lista-jugadores");
-      if (players && players.parentElement) {
-        players.parentElement.insertBefore(panel, players.nextSibling);
+      const anchor = getAnchorElement();
+      if (anchor && anchor.parentElement && anchor !== lobbyCard) {
+        anchor.parentElement.insertBefore(panel, anchor);
       } else {
         lobbyCard.appendChild(panel);
       }
@@ -106,10 +130,18 @@
       document.getElementById("story-tv-prev-btn")?.addEventListener("click", () => moveStory(-1));
       document.getElementById("story-tv-next-btn")?.addEventListener("click", () => moveStory(1));
       panel.querySelector(".story-tv-control-card")?.focus({ preventScroll: true });
+      keepPanelVisible(panel);
     } finally {
       creatingPanel = false;
       removeDuplicatePanels();
     }
+  }
+
+  function keepPanelVisible(panel = document.getElementById("story-tv-controls")) {
+    if (!panel) return;
+    panel.hidden = false;
+    panel.removeAttribute("aria-hidden");
+    panel.style.display = "block";
   }
 
   function moveStory(delta) {
@@ -128,8 +160,11 @@
 
   async function prepareStory() {
     const room = getRoomCode();
-    const storyId = document.getElementById("story-tv-select")?.value;
-    if (!room || !storyId) return;
+    const storyId = document.getElementById("story-tv-select")?.value || FALLBACK_STORIES[0].story_id;
+    if (!room || !storyId) {
+      setStatus("No hay sala activa todavía.", "bad");
+      return null;
+    }
 
     setStatus("Preparando historia desde la TV...");
 
@@ -151,10 +186,13 @@
 
   async function startStory() {
     const room = getRoomCode();
-    const storyId = document.getElementById("story-tv-select")?.value;
-    if (!room || !storyId) return;
+    const storyId = document.getElementById("story-tv-select")?.value || FALLBACK_STORIES[0].story_id;
+    if (!room || !storyId) {
+      setStatus("No hay sala activa todavía.", "bad");
+      return;
+    }
 
-    setStatus("Iniciando historia... los celulares quedan en modo jugador.");
+    setStatus("Iniciando historia desde la TV...");
 
     try {
       const prepared = await prepareStory();
@@ -166,7 +204,7 @@
       });
       const data = await res.json();
       if (!res.ok) throw new Error(JSON.stringify(data.detail || data));
-      setStatus(`Historia iniciada: ${data.game_id}`, "good");
+      setStatus(`Historia iniciada: ${data.game_id || "ronda"}`, "good");
     } catch (error) {
       setStatus(`No se pudo iniciar: ${error.message || error}`, "bad");
     }
@@ -197,21 +235,92 @@
     const style = document.createElement("style");
     style.id = "story-tv-controls-style";
     style.textContent = `
-      #story-tv-controls { width: min(880px, 92vw); margin: 24px auto 0; }
+      #story-tv-controls {
+        display: block !important;
+        width: min(820px, 92vw);
+        margin: 18px auto 10px;
+        position: relative;
+        z-index: 30;
+      }
       #story-tv-controls ~ #story-tv-controls { display: none !important; }
-      .story-tv-control-card { padding: 22px; border-radius: 28px; background: radial-gradient(circle at 18% 0%, rgba(255,216,121,.20), transparent 34%), rgba(255,255,255,.075); border: 1px solid rgba(255,216,121,.28); box-shadow: 0 24px 70px rgba(0,0,0,.32); outline: none; }
-      .story-tv-kicker { display: inline-flex; padding: 7px 12px; border-radius: 999px; color: #271600; background: linear-gradient(135deg, #fff8d6, #facc15); font-size: .75rem; font-weight: 1000; text-transform: uppercase; letter-spacing: .1em; }
-      .story-tv-control-card h2 { margin: 10px 0 6px; font-size: clamp(2rem, 4vw, 3.8rem); }
-      .story-tv-control-card p { max-width: 760px; margin: 0 auto 16px; }
-      #story-tv-select { width: min(560px, 90%); padding: 16px; border-radius: 18px; color: #fff; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16); font-size: 1.05rem; font-weight: 900; outline: none; }
+      .story-tv-control-card {
+        padding: 18px;
+        border-radius: 24px;
+        background: radial-gradient(circle at 18% 0%, rgba(255,216,121,.24), transparent 34%), rgba(255,255,255,.09);
+        border: 1px solid rgba(255,216,121,.34);
+        box-shadow: 0 18px 55px rgba(0,0,0,.34);
+        outline: none;
+      }
+      .story-tv-kicker {
+        display: inline-flex;
+        padding: 7px 12px;
+        border-radius: 999px;
+        color: #271600;
+        background: linear-gradient(135deg, #fff8d6, #facc15);
+        font-size: .72rem;
+        font-weight: 1000;
+        text-transform: uppercase;
+        letter-spacing: .1em;
+      }
+      .story-tv-control-card h2 {
+        margin: 8px 0 4px;
+        color: #fff;
+        font-size: clamp(1.7rem, 3.4vw, 3rem);
+        line-height: .95;
+      }
+      .story-tv-control-card p {
+        max-width: 720px;
+        margin: 0 auto 12px;
+        font-size: 1rem;
+        color: rgba(255,248,221,.78);
+      }
+      #story-tv-select {
+        width: min(540px, 90%);
+        padding: 13px;
+        border-radius: 16px;
+        color: #fff;
+        background: rgba(255,255,255,.12);
+        border: 1px solid rgba(255,255,255,.18);
+        font-size: 1rem;
+        font-weight: 900;
+        outline: none;
+      }
       #story-tv-select option { color: #111; }
-      .story-tv-actions, .story-tv-remote-line { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
-      .story-tv-actions button, .story-tv-remote-line button { border: 0; border-radius: 18px; padding: 15px 20px; color: #271600; background: linear-gradient(135deg, #fff8d6, #facc15); font-size: 1rem; font-weight: 1000; cursor: pointer; }
-      .story-tv-actions button { color: #fff7dc; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14); }
-      #story-tv-status { min-height: 24px; margin-top: 12px; color: rgba(255,248,221,.78); font-weight: 900; }
+      .story-tv-actions, .story-tv-remote-line {
+        display: flex;
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 12px;
+      }
+      .story-tv-actions button, .story-tv-remote-line button {
+        border: 0;
+        border-radius: 16px;
+        padding: 13px 18px;
+        color: #271600;
+        background: linear-gradient(135deg, #fff8d6, #facc15);
+        font-size: 1rem;
+        font-weight: 1000;
+        cursor: pointer;
+      }
+      #story-tv-start-btn {
+        min-width: 230px;
+        transform: scale(1.04);
+      }
+      .story-tv-actions button {
+        color: #fff7dc;
+        background: rgba(255,255,255,.10);
+        border: 1px solid rgba(255,255,255,.14);
+      }
+      #story-tv-status {
+        min-height: 22px;
+        margin-top: 10px;
+        color: rgba(255,248,221,.78);
+        font-weight: 900;
+      }
       #story-tv-status.good { color: #bbf7d0; }
       #story-tv-status.bad { color: #fecaca; }
-      body.tv-story-mode #story-tv-controls { display: none; }
+      body.tv-story-mode #story-tv-controls { display: none !important; }
     `;
     document.head.appendChild(style);
   }
@@ -221,15 +330,18 @@
     removeDuplicatePanels();
     const room = getRoomCode();
     if (room) await ensurePanel();
+    keepPanelVisible();
   }
 
   document.addEventListener("keydown", handleKeys, true);
   document.addEventListener("DOMContentLoaded", () => {
     injectStyles();
     tick();
-    setInterval(tick, 1000);
+    setInterval(tick, 700);
   });
-  setTimeout(tick, 700);
+  setTimeout(tick, 500);
+  setTimeout(tick, 1200);
+  setTimeout(tick, 2500);
 
   window.StoryTvControls = { prepareStory, startStory, moveStory, cleanup: removeDuplicatePanels };
 })();
