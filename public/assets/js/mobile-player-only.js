@@ -8,8 +8,64 @@
   const PLAYER_RESULTS = {
     pill: "🏆 Resultados",
     title: "¡Mira la TV!",
-    subtitle: "Cuando aparezca el botón, confirma que estás listo para continuar.",
+    subtitle: "La TV controla los resultados y el avance de la partida.",
   };
+
+  function purgeHostTokens() {
+    try {
+      Object.keys(localStorage)
+        .filter((key) => key.startsWith("jackbox_magico_host_token_"))
+        .forEach((key) => localStorage.removeItem(key));
+    } catch (error) {}
+
+    try { window.myIsHost = false; } catch (error) {}
+    try { window.myHostToken = ""; } catch (error) {}
+  }
+
+  function patchFetch() {
+    if (window.__mobilePlayerOnlyFetchPatched) return;
+    window.__mobilePlayerOnlyFetchPatched = true;
+
+    const originalFetch = window.fetch.bind(window);
+
+    window.fetch = async function patchedFetch(input, init = {}) {
+      const url = typeof input === "string" ? input : String(input?.url || "");
+
+      if (url.includes("/api/mobile/host/")) {
+        purgeHostTokens();
+        return new Response(JSON.stringify({
+          detail: "Los celulares no pueden ser host. La TV controla la partida.",
+        }), {
+          status: 403,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+
+      const response = await originalFetch(input, init);
+
+      if (url.includes("/api/player/join")) {
+        purgeHostTokens();
+
+        try {
+          const cloned = response.clone();
+          const data = await cloned.json();
+          data.is_host = false;
+          data.host_token = null;
+          data.host_name = "TV";
+
+          return new Response(JSON.stringify(data), {
+            status: response.status,
+            statusText: response.statusText,
+            headers: { "Content-Type": "application/json" },
+          });
+        } catch (error) {
+          return response;
+        }
+      }
+
+      return response;
+    };
+  }
 
   function setText(id, value) {
     const el = document.getElementById(id);
@@ -46,7 +102,6 @@
       .join(" ")
       .toLowerCase();
 
-    const isHostText = text.includes("host") || text.includes("controlas") || text.includes("inicia un minijuego");
     const isResults = text.includes("resultado") || text.includes("mira la tv") || text.includes("ronda terminó");
 
     if (isResults) {
@@ -56,11 +111,9 @@
       return;
     }
 
-    if (isHostText) {
-      setText("wait-pill", PLAYER_WAIT.pill);
-      setText("wait-msg", PLAYER_WAIT.title);
-      setText("wait-subtitle", PLAYER_WAIT.subtitle);
-    }
+    setText("wait-pill", PLAYER_WAIT.pill);
+    setText("wait-msg", PLAYER_WAIT.title);
+    setText("wait-subtitle", PLAYER_WAIT.subtitle);
   }
 
   function patchHostFunctions() {
@@ -73,37 +126,16 @@
         if (typeof originalShowHostPanels === "function") originalShowHostPanels(false);
       } catch (error) {}
       hideLegacyHostUi();
+      purgeHostTokens();
     };
 
-    const originalRenderLobbyWait = window.renderLobbyWait;
-    if (typeof originalRenderLobbyWait === "function") {
-      window.renderLobbyWait = function patchedRenderLobbyWait(...args) {
-        const result = originalRenderLobbyWait.apply(this, args);
+    ["hostStartSelectedGame", "hostRevealResults", "hostReturnLobby", "hostTriviaNext"].forEach((name) => {
+      window[name] = function blockedMobileHostAction() {
+        purgeHostTokens();
         hideLegacyHostUi();
-        normalizeWaitingCopy();
-        return result;
+        alert("La TV controla la partida. Tu celular es solo control de jugador.");
       };
-    }
-
-    const originalRenderAnsweredWait = window.renderAnsweredWait;
-    if (typeof originalRenderAnsweredWait === "function") {
-      window.renderAnsweredWait = function patchedRenderAnsweredWait(...args) {
-        const result = originalRenderAnsweredWait.apply(this, args);
-        hideLegacyHostUi();
-        normalizeWaitingCopy();
-        return result;
-      };
-    }
-
-    const originalRenderResultsWait = window.renderResultsWait;
-    if (typeof originalRenderResultsWait === "function") {
-      window.renderResultsWait = function patchedRenderResultsWait(...args) {
-        const result = originalRenderResultsWait.apply(this, args);
-        hideLegacyHostUi();
-        normalizeWaitingCopy();
-        return result;
-      };
-    }
+    });
   }
 
   function injectStyles() {
@@ -133,7 +165,9 @@
   function tick() {
     document.body.classList.add("player-only-mode");
     injectStyles();
+    patchFetch();
     patchHostFunctions();
+    purgeHostTokens();
     hideLegacyHostUi();
     normalizeWaitingCopy();
   }
@@ -143,5 +177,6 @@
     setInterval(tick, 300);
   });
 
-  setTimeout(tick, 200);
+  setTimeout(tick, 100);
+  setTimeout(tick, 700);
 })();
