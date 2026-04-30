@@ -3,13 +3,15 @@
   window.__VoiceLinesTvLoaded = true;
 
   const CATALOG_URL = "/data/voice_lines.json";
-  const VOICE_BASE = "/assets/audio/voice_lines/";
+  const VOICE_BASE = "/voice-assets/audio/voice_lines/";
 
   let catalog = null;
   let unlocked = false;
   let currentAudio = null;
+  let playbackChain = Promise.resolve();
   const failed = new Set();
   const recentlyPlayed = [];
+  const preloadCache = new Map();
 
   function log(event, payload = {}) {
     try {
@@ -31,6 +33,8 @@
     const raw = line?.asset_path || file;
 
     if (raw.startsWith("http")) return raw;
+    if (raw.startsWith("/assets/audio/voice_lines/")) return raw.replace("/assets/audio/voice_lines/", "/voice-assets/audio/voice_lines/");
+    if (raw.startsWith("assets/audio/voice_lines/")) return `/${raw}`.replace("/assets/audio/voice_lines/", "/voice-assets/audio/voice_lines/");
     if (raw.startsWith("/assets/")) return raw;
     if (raw.startsWith("assets/")) return `/${raw}`;
     if (file) return `${VOICE_BASE}${file}`;
@@ -67,21 +71,41 @@
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
+  function buildPreloadCache() {
+    const lines = catalog?.voice_lines || [];
+    for (const line of lines) {
+      for (const path of candidatePaths(line)) {
+        if (preloadCache.has(path) || failed.has(path)) continue;
+        const audio = new Audio(path);
+        audio.preload = "auto";
+        preloadCache.set(path, audio);
+      }
+    }
+    log("preload_cache_ready", { count: preloadCache.size });
+  }
+
   async function playPath(path, volume = 1) {
     if (!path || failed.has(path)) return false;
 
     try {
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-      }
+      const cached = preloadCache.get(path);
+      const audio = cached || new Audio(path);
 
-      const audio = new Audio(path);
       audio.preload = "auto";
       audio.volume = Math.max(0, Math.min(1, volume));
+      audio.currentTime = 0;
       currentAudio = audio;
 
       await audio.play();
+      await new Promise((resolve) => {
+        const done = () => {
+          audio.removeEventListener("ended", done);
+          audio.removeEventListener("error", done);
+          resolve();
+        };
+        audio.addEventListener("ended", done, { once: true });
+        audio.addEventListener("error", done, { once: true });
+      });
       log("playing", { path });
       return true;
     } catch (error) {
@@ -91,7 +115,7 @@
     }
   }
 
-  async function play(event, options = {}) {
+  async function playNow(event, options = {}) {
     try {
       await loadCatalog();
       const line = pickLine(event, options.voice_key || "");
@@ -116,10 +140,16 @@
     }
   }
 
+  function play(event, options = {}) {
+    playbackChain = playbackChain
+      .then(() => playNow(event, options))
+      .catch(() => playNow(event, options));
+    return playbackChain;
+  }
+
   function unlock() {
     if (unlocked) return;
     unlocked = true;
-    play("boot", { volume: 0.95 });
   }
 
   function bindLifecycleHooks() {
@@ -181,47 +211,10 @@
     if (phase === "game") play("round_start", { volume: 0.75 });
   }
 
-  function addDebugButton() {
-    if (document.getElementById("voice-lines-debug-btn")) return;
-    const btn = document.createElement("button");
-    btn.id = "voice-lines-debug-btn";
-    btn.type = "button";
-    btn.textContent = "🔊 Voz";
-    btn.title = "Probar voz de narración";
-    btn.addEventListener("click", () => play("boot"));
-    document.body.appendChild(btn);
-  }
-
-  function injectStyles() {
-    if (document.getElementById("voice-lines-tv-style")) return;
-    const style = document.createElement("style");
-    style.id = "voice-lines-tv-style";
-    style.textContent = `
-      #voice-lines-debug-btn {
-        position: fixed;
-        right: 18px;
-        bottom: 18px;
-        z-index: 9999;
-        border: 0;
-        border-radius: 999px;
-        padding: 12px 15px;
-        color: #271600;
-        background: linear-gradient(135deg, #fff8d6, #facc15);
-        font-weight: 1000;
-        box-shadow: 0 12px 28px rgba(0,0,0,.28);
-        cursor: pointer;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
   function init() {
-    injectStyles();
-    addDebugButton();
-    loadCatalog().catch((error) => log("catalog_error", { error: String(error?.message || error) }));
-    ["click", "touchstart", "keydown"].forEach((event) => {
-      document.addEventListener(event, unlock, { once: true, passive: true });
-    });
+    loadCatalog()
+      .then(() => buildPreloadCache())
+      .catch((error) => log("catalog_error", { error: String(error?.message || error) }));
     setInterval(bindLifecycleHooks, 1000);
     setInterval(observePhase, 1800);
   }
@@ -233,5 +226,6 @@
     play,
     loadCatalog,
     unlock,
+    isUnlocked: () => unlocked,
   };
 })();
