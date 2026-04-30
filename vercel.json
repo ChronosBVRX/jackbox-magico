@@ -5,6 +5,18 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/host_room_api.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/player_join_api.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "api/mobile_host_guard_api.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "api/caldero_api.py",
       "use": "@vercel/python"
     },
@@ -42,6 +54,18 @@
     }
   ],
   "routes": [
+    {
+      "src": "/api/host/create_room",
+      "dest": "api/host_room_api.py"
+    },
+    {
+      "src": "/api/player/join",
+      "dest": "api/player_join_api.py"
+    },
+    {
+      "src": "/api/mobile/host/(.*)",
+      "dest": "api/mobile_host_guard_api.py"
+    },
     {
       "src": "/api/caldero/(.*)",
       "dest": "api/caldero_api.py"
