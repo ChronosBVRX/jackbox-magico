@@ -8,6 +8,11 @@ let roomCreating = false;
 let lastResultsKey = "";
 let triviaSparklesInterval = null;
 let lottieFx = null;
+codex/fix-jackbox-party-game-logic-and-audio-wf4bq1
+let roomSocket = null;
+let roomSocketRetryTimer = null;
+
+main
 
 const houseIcons = {
   Gryffindor: "🦁",
@@ -895,47 +900,73 @@ async function crearSala() {
 }
 
 function iniciarRadar() {
-  if (radarInterval) {
-    clearInterval(radarInterval);
-  }
+  if (roomSocket) roomSocket.close();
+  if (roomSocketRetryTimer) clearTimeout(roomSocketRetryTimer);
 
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  roomSocket = new WebSocket(`${protocol}://${window.location.host}/api/ws/room/${currentRoom}`);
+
+  roomSocket.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data || "{}");
+      if (msg.type !== "room_status" || !msg.payload) return;
+      renderRoomPayload(msg.payload);
+    } catch (error) {
+      console.error("Error parseando mensaje WS", error);
+    }
+  };
+
+  roomSocket.onopen = () => {
+    if (radarInterval) clearInterval(radarInterval);
+  };
+
+  roomSocket.onclose = () => {
+    roomSocket = null;
+    startPollingFallback();
+    roomSocketRetryTimer = setTimeout(() => {
+      if (currentRoom) iniciarRadar();
+    }, 1300);
+  };
+
+  roomSocket.onerror = () => {
+    if (roomSocket) roomSocket.close();
+  };
+}
+
+function startPollingFallback() {
+  if (radarInterval) clearInterval(radarInterval);
   radarInterval = setInterval(async () => {
     if (!currentRoom) return;
-
     try {
-      const res = await fetch(`/api/room/${currentRoom}/status?ts=${Date.now()}`, {
-        cache: "no-store",
-      });
-
+      const res = await fetch(`/api/room/${currentRoom}/status?ts=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
-
       const data = await res.json();
-
-      if (data.status === "lobby") {
-        if (typeof window.destroySnitchTv === "function") {
-          window.destroySnitchTv();
-        }
-
-        renderLobby(data);
-        return;
-      }
-
-      if (data.status === "playing") {
-        const phase = data.game_state?.phase || "lobby";
-
-        if (phase !== "lobby" && !phase.includes("results_")) {
-          renderPlaying(data);
-          return;
-        }
-
-        if (phase.includes("results_")) {
-          renderResults(data);
-        }
-      }
+      renderRoomPayload(data);
     } catch (error) {
-      console.error("Buscando radar...", error);
+      console.error("Polling fallback error", error);
     }
-  }, 650);
+  }, 900);
+}
+
+function renderRoomPayload(data) {
+  if (data.status === "lobby") {
+    if (typeof window.destroySnitchTv === "function") {
+      window.destroySnitchTv();
+    }
+    renderLobby(data);
+    return;
+  }
+
+  if (data.status === "playing") {
+    const phase = data.game_state?.phase || "lobby";
+    if (phase !== "lobby" && !phase.includes("results_")) {
+      renderPlaying(data);
+      return;
+    }
+    if (phase.includes("results_")) {
+      renderResults(data);
+    }
+  }
 }
 
 function renderLobby(data) {
