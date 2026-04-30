@@ -224,6 +224,10 @@ body::after {
   opacity: 0;
   transform: translateY(18px) scale(.985);
   transition: opacity .45s ease, transform .45s cubic-bezier(.2,.8,.2,1);
+ codex/fix-jackbox-party-game-logic-and-audio-nde22r
+
+codex/fix-jackbox-party-game-logic-and-audio-puosgj
+ main
 }
 
 #view-lobby .lobby-card {
@@ -237,6 +241,11 @@ body::after {
 #view-lobby .players-list {
   max-height: 150px;
   overflow: auto;
+ codex/fix-jackbox-party-game-logic-and-audio-nde22r
+
+
+ main
+ main
 }
 
 .screen.visible {

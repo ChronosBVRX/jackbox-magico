@@ -8,8 +8,21 @@ let roomCreating = false;
 let lastResultsKey = "";
 let triviaSparklesInterval = null;
 let lottieFx = null;
+ codex/fix-jackbox-party-game-logic-and-audio-nde22r
 let roomSocket = null;
 let roomSocketRetryTimer = null;
+
+ codex/fix-jackbox-party-game-logic-and-audio-puosgj
+let roomSocket = null;
+let roomSocketRetryTimer = null;
+
+codex/fix-jackbox-party-game-logic-and-audio-wf4bq1
+let roomSocket = null;
+let roomSocketRetryTimer = null;
+
+main
+ main
+ main
 
 const houseIcons = {
   Gryffindor: "🦁",
@@ -846,9 +859,18 @@ async function startMatchFlow() {
 
   if (window.VoiceLinesTv && typeof window.VoiceLinesTv.unlock === "function") {
     window.VoiceLinesTv.unlock();
+ codex/fix-jackbox-party-game-logic-and-audio-nde22r
     if (typeof window.VoiceLinesTv.play === "function") {
       window.VoiceLinesTv.play("boot", { volume: 0.95 });
     }
+
+ codex/fix-jackbox-party-game-logic-and-audio-puosgj
+    if (typeof window.VoiceLinesTv.play === "function") {
+      window.VoiceLinesTv.play("boot", { volume: 0.95 });
+    }
+
+ main
+ main
   }
 
   await startBackgroundMusic();
