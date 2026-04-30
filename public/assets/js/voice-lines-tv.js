@@ -3,7 +3,7 @@
   window.__VoiceLinesTvLoaded = true;
 
   const CATALOG_URL = "/data/voice_lines.json";
-  const VOICE_BASE = "/voice-assets/audio/voice_lines/";
+  const VOICE_BASE = "/assets/audio/voice_lines/";
 
   let catalog = null;
   let unlocked = false;
@@ -33,8 +33,6 @@
     const raw = line?.asset_path || file;
 
     if (raw.startsWith("http")) return raw;
-    if (raw.startsWith("/assets/audio/voice_lines/")) return raw.replace("/assets/audio/voice_lines/", "/voice-assets/audio/voice_lines/");
-    if (raw.startsWith("assets/audio/voice_lines/")) return `/${raw}`.replace("/assets/audio/voice_lines/", "/voice-assets/audio/voice_lines/");
     if (raw.startsWith("/assets/")) return raw;
     if (raw.startsWith("assets/")) return `/${raw}`;
     if (file) return `${VOICE_BASE}${file}`;
