@@ -9,7 +9,15 @@
 
     document.querySelectorAll(".host-status, .host-help").forEach((el) => {
       const text = (el.innerText || "").toLowerCase();
-      if (text.includes("primer celular") || text.includes("será el host") || text.includes("host inicie")) {
+      if (
+        text.includes("primer celular") ||
+        text.includes("será el host") ||
+        text.includes("sera el host") ||
+        text.includes("host inicie") ||
+        text.includes("puede iniciar desde su celular") ||
+        text.includes("desde su celular") ||
+        text.includes("celular host")
+      ) {
         el.innerText = CLEAN_HOST_COPY;
       }
     });
@@ -23,6 +31,12 @@
       #controles-host {
         display: none !important;
       }
+      #story-tv-controls {
+        display: block !important;
+      }
+      body.tv-story-mode #story-tv-controls {
+        display: none !important;
+      }
     `;
     document.head.appendChild(style);
   }
@@ -30,11 +44,11 @@
   document.addEventListener("DOMContentLoaded", () => {
     injectStyles();
     cleanCopy();
-    setInterval(cleanCopy, 500);
+    setInterval(cleanCopy, 400);
   });
 
   setTimeout(() => {
     injectStyles();
     cleanCopy();
-  }, 300);
+  }, 250);
 })();
