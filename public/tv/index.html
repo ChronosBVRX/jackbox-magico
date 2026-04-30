@@ -5,28 +5,22 @@
   <title>Jackbox Mágico - TV</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="/tv/styles.css?v=hechizo-incompleto-1">
-  <link rel="stylesheet" href="/assets/css/duelo.css?v=hechizo-incompleto-1">
-  <link rel="stylesheet" href="/assets/css/sombrero.css?v=hechizo-incompleto-1">
-  <link rel="stylesheet" href="/assets/css/pociones.css?v=hechizo-incompleto-1">
-  <link rel="stylesheet" href="/assets/css/snitch.css?v=hechizo-incompleto-1">
-  <link rel="stylesheet" href="/assets/css/retratos.css?v=hechizo-incompleto-1">
-  <link rel="stylesheet" href="/assets/css/mapa-travieso.css?v=hechizo-incompleto-1">
-  <link rel="stylesheet" href="/assets/css/mapa-travieso-anti-flicker.css?v=hechizo-incompleto-1">
-  <link rel="stylesheet" href="/assets/css/hechizo-incompleto.css?v=hechizo-incompleto-1">
-  <link rel="stylesheet" href="/assets/css/caldero-mentiroso.css?v=caldero-mentiroso-1">
-  <link rel="stylesheet" href="/assets/css/patronus-personalizado.css?v=patronus-1">
-  <link rel="stylesheet" href="/assets/css/copa-final.css?v=copa-final-1">
+  <link rel="stylesheet" href="/tv/styles.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/duelo.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/sombrero.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/pociones.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/snitch.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/retratos.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/mapa-travieso.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/mapa-travieso-anti-flicker.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/hechizo-incompleto.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/caldero-mentiroso.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/patronus-personalizado.css?v=safe-tv-2">
+  <link rel="stylesheet" href="/assets/css/copa-final.css?v=safe-tv-2">
 </head>
 
 <body>
-  <audio
-    id="tv-bg-music"
-    src="/assets/audio/fondo-tv.mp3"
-    autoplay
-    loop
-    preload="auto">
-  </audio>
+  <audio id="tv-bg-music" src="/assets/audio/fondo-tv.mp3" loop preload="none"></audio>
 
   <button id="music-toggle" class="music-toggle" onclick="toggleBackgroundMusic()">
     ▶️ Activar música
@@ -46,42 +40,25 @@
   <div id="view-inicio" class="screen visible">
     <section class="hero-card">
       <div class="badge">⚡ Copa de las Casas</div>
-
       <h1>Jackbox Mágico</h1>
-
-      <p>
-        Preparando sala mágica...
-      </p>
-
-      <button class="primary-btn giant" onclick="crearSala()">
-        Crear sala manualmente
-      </button>
+      <p>Preparando sala mágica...</p>
+      <button class="primary-btn giant" onclick="crearSala()">Crear sala manualmente</button>
     </section>
   </div>
 
   <div id="view-lobby" class="screen">
     <section class="lobby-card">
       <div class="badge">📱 Únete desde tu celular</div>
-
       <div class="room-code" id="tv-code">----</div>
-
       <div class="qr-wrap">
         <img id="tv-qr" src="" alt="Código QR para unirse">
       </div>
-
       <p class="join-url" id="join-url"></p>
-
       <div id="host-status" class="host-status">
         La TV controla la partida. Los celulares solo serán controles de jugador.
       </div>
-
       <div id="lista-jugadores" class="players-list"></div>
-
-      <div id="controles-host" class="host-controls" hidden aria-hidden="true">
-        <div class="host-help">
-          Selecciona una historia desde la TV para iniciar la partida guiada.
-        </div>
-      </div>
+      <div id="controles-host" class="host-controls" hidden aria-hidden="true"></div>
     </section>
   </div>
 
@@ -92,47 +69,27 @@
   <div id="view-results" class="screen">
     <section class="results-card">
       <div class="badge">🏆 Resultados</div>
-
       <h2 id="titulo-resultados">Resultado de la ronda</h2>
-
       <div id="tv-correcta" class="correct-answer"></div>
-
       <p id="tv-explicacion" class="result-explanation"></p>
-
       <div id="tv-extra-results" class="result-list"></div>
-
       <div id="tv-marcadores" class="score-grid"></div>
-
-      <div class="host-help">
-        La historia avanzará cuando todos confirmen que están listos.
-      </div>
+      <div class="host-help">La historia avanzará desde la TV.</div>
     </section>
   </div>
 
-  <script src="/assets/js/magic-sounds.js?v=hechizo-incompleto-1"></script>
-  <script src="/assets/js/snitch-tv.js?v=hechizo-incompleto-1"></script>
-  <script src="/assets/js/mapa-travieso.js?v=hechizo-incompleto-1"></script>
-  <script src="/assets/js/hechizo-incompleto.js?v=hechizo-incompleto-1"></script>
-
-  <script src="/tv/app.js?v=hechizo-incompleto-1"></script>
-
-  <script src="/assets/js/mapa-travieso-bridge.js?v=hechizo-incompleto-1"></script>
-  <script src="/assets/js/retratos-tv.js?v=hechizo-incompleto-1"></script>
-  <script src="/assets/js/caldero-tv.js?v=caldero-mentiroso-1"></script>
-  <script src="/assets/js/patronus-tv.js?v=patronus-1"></script>
-  <script src="/assets/js/copa-final-tv.js?v=copa-final-1"></script>
-  <script src="/assets/js/story-tv-controls.js?v=story-tv-control-3"></script>
-  <script src="/assets/js/story-ready-tv.js?v=story-ready-tv-2"></script>
-  <script src="/assets/js/story-party-polish-tv.js?v=party-polish-1"></script>
-  <script src="/assets/js/story-show-tv.js?v=story-show-1"></script>
-  <script src="/assets/js/story-bet-tv.js?v=story-bet-1"></script>
-  <script src="/assets/js/story-emergency-tv.js?v=emergency-1"></script>
-  <script src="/assets/js/story-tv-overlay.js?v=story-1"></script>
-  <script src="/assets/js/story-tv-compactor.js?v=story-compact-1"></script>
-  <script src="/assets/js/room-lifecycle-tv.js?v=lifecycle-1"></script>
-  <script src="/assets/js/tv-host-authority.js?v=tv-host-authority-1"></script>
-  <script src="/assets/js/voice-lines-tv.js?v=voice-lines-tv-1"></script>
-  <script src="/assets/js/tv-host-copy-cleanup.js?v=tv-host-clean-2"></script>
-  <script src="/assets/js/tv-authority-final.js?v=tv-authority-final-1"></script>
+  <script src="/assets/js/magic-sounds.js?v=safe-tv-2"></script>
+  <script src="/assets/js/snitch-tv.js?v=safe-tv-2"></script>
+  <script src="/assets/js/mapa-travieso.js?v=safe-tv-2"></script>
+  <script src="/assets/js/hechizo-incompleto.js?v=safe-tv-2"></script>
+  <script src="/tv/app.js?v=safe-tv-2"></script>
+  <script src="/assets/js/mapa-travieso-bridge.js?v=safe-tv-2"></script>
+  <script src="/assets/js/retratos-tv.js?v=safe-tv-2"></script>
+  <script src="/assets/js/caldero-tv.js?v=safe-tv-2"></script>
+  <script src="/assets/js/patronus-tv.js?v=safe-tv-2"></script>
+  <script src="/assets/js/copa-final-tv.js?v=safe-tv-2"></script>
+  <script src="/assets/js/story-tv-controls.js?v=safe-tv-2"></script>
+  <script src="/assets/js/tv-host-copy-cleanup.js?v=safe-tv-2"></script>
+  <script src="/assets/js/tv-authority-final.js?v=safe-tv-2"></script>
 </body>
 </html>
