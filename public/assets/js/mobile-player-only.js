@@ -72,7 +72,7 @@
     if (el && el.innerText !== value) el.innerText = value;
   }
 
-  function hideLegacyHostUi() {
+  function removeLegacyHostUi() {
     const selectors = [
       "#host-panel",
       "#host-game-panel",
@@ -84,11 +84,9 @@
 
     selectors.forEach((selector) => {
       document.querySelectorAll(selector).forEach((el) => {
-        el.classList.remove("visible");
-        el.setAttribute("aria-hidden", "true");
-        el.style.setProperty("display", "none", "important");
-        el.style.setProperty("visibility", "hidden", "important");
-        el.style.setProperty("pointer-events", "none", "important");
+        if (el && el.parentElement) {
+          el.remove();
+        }
       });
     });
   }
@@ -120,20 +118,15 @@
     if (window.__mobilePlayerOnlyPatched) return;
     window.__mobilePlayerOnlyPatched = true;
 
-    const originalShowHostPanels = window.showHostPanels;
     window.showHostPanels = function playerOnlyShowHostPanels() {
-      try {
-        if (typeof originalShowHostPanels === "function") originalShowHostPanels(false);
-      } catch (error) {}
-      hideLegacyHostUi();
+      removeLegacyHostUi();
       purgeHostTokens();
     };
 
     ["hostStartSelectedGame", "hostRevealResults", "hostReturnLobby", "hostTriviaNext"].forEach((name) => {
-      window[name] = function blockedMobileHostAction() {
+      window[name] = function mobilePlayerOnlyAction() {
         purgeHostTokens();
-        hideLegacyHostUi();
-        alert("La TV controla la partida. Tu celular es solo control de jugador.");
+        removeLegacyHostUi();
       };
     });
   }
@@ -168,13 +161,13 @@
     patchFetch();
     patchHostFunctions();
     purgeHostTokens();
-    hideLegacyHostUi();
+    removeLegacyHostUi();
     normalizeWaitingCopy();
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     tick();
-    setInterval(tick, 300);
+    setInterval(tick, 250);
   });
 
   setTimeout(tick, 100);
