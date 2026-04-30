@@ -657,65 +657,20 @@ function getBgMusic() {
   return audio;
 }
 
-function updateMusicButton(isPlaying, text = null) {
-  const btn = document.getElementById("music-toggle");
-
-  if (!btn) return;
-
-  if (isPlaying) {
-    btn.innerText = text || "🔊 Música";
-    btn.classList.add("playing");
-  } else {
-    btn.innerText = text || "▶️ Activar música";
-    btn.classList.remove("playing");
-  }
-}
-
 async function startBackgroundMusic() {
   const audio = getBgMusic();
 
-  if (!audio) {
-    updateMusicButton(false, "⚠️ Sin audio");
-    return;
-  }
+  if (!audio) return false;
 
   try {
     audio.muted = false;
     audio.volume = 0.35;
-
     await audio.play();
-
     bgMusicStarted = true;
-    updateMusicButton(true, "🔊 Música");
+    return true;
   } catch (error) {
     bgMusicStarted = false;
-    updateMusicButton(false, "▶️ Activar música");
-  }
-}
-
-function pauseBackgroundMusic() {
-  const audio = getBgMusic();
-
-  if (!audio) return;
-
-  audio.pause();
-
-  bgMusicStarted = false;
-  updateMusicButton(false, "🔇 Música");
-}
-
-function toggleBackgroundMusic() {
-  const audio = getBgMusic();
-
-  if (!audio) {
-    updateMusicButton(false, "⚠️ Sin audio");
-    return;
-  }
-
-  if (audio.paused) {
-    startBackgroundMusic();
-  } else {
-    pauseBackgroundMusic();
+    return false;
   }
 }
 
@@ -741,22 +696,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const audio = getBgMusic();
 
   if (audio) {
-    audio.addEventListener("canplaythrough", () => {
-      if (!bgMusicStarted) {
-        updateMusicButton(false, "▶️ Activar música");
-      }
-    });
-
     audio.addEventListener("error", () => {
-      updateMusicButton(false, "⚠️ Audio no encontrado");
+      console.error("Audio de fondo no encontrado o inválido.");
     });
-
-    startBackgroundMusic();
   }
-
-  setTimeout(() => {
-    crearSala();
-  }, 450);
 });
 
 function showScreen(id) {
@@ -863,14 +806,36 @@ function renderCandles() {
   `;
 }
 
+async function startMatchFlow() {
+  if (roomCreating || currentRoom) return;
+
+  const btn = document.getElementById("start-match-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Iniciando magia...";
+  }
+
+  unlockMagicSound();
+  playMagicSound("start");
+
+  if (window.VoiceLinesTv && typeof window.VoiceLinesTv.unlock === "function") {
+    window.VoiceLinesTv.unlock();
+  }
+
+  await startBackgroundMusic();
+  await crearSala();
+
+  if (!currentRoom && btn) {
+    btn.disabled = false;
+    btn.textContent = "Iniciar partida";
+  }
+}
+
 async function crearSala() {
   if (currentRoom || roomCreating) return;
 
   roomCreating = true;
 
-  unlockMagicSound();
-  playMagicSound("start");
-  startBackgroundMusic();
 
   try {
     const res = await fetch("/api/host/create_room", {

@@ -181,47 +181,8 @@
     if (phase === "game") play("round_start", { volume: 0.75 });
   }
 
-  function addDebugButton() {
-    if (document.getElementById("voice-lines-debug-btn")) return;
-    const btn = document.createElement("button");
-    btn.id = "voice-lines-debug-btn";
-    btn.type = "button";
-    btn.textContent = "🔊 Voz";
-    btn.title = "Probar voz de narración";
-    btn.addEventListener("click", () => play("boot"));
-    document.body.appendChild(btn);
-  }
-
-  function injectStyles() {
-    if (document.getElementById("voice-lines-tv-style")) return;
-    const style = document.createElement("style");
-    style.id = "voice-lines-tv-style";
-    style.textContent = `
-      #voice-lines-debug-btn {
-        position: fixed;
-        right: 18px;
-        bottom: 18px;
-        z-index: 9999;
-        border: 0;
-        border-radius: 999px;
-        padding: 12px 15px;
-        color: #271600;
-        background: linear-gradient(135deg, #fff8d6, #facc15);
-        font-weight: 1000;
-        box-shadow: 0 12px 28px rgba(0,0,0,.28);
-        cursor: pointer;
-      }
-    `;
-    document.head.appendChild(style);
-  }
-
   function init() {
-    injectStyles();
-    addDebugButton();
     loadCatalog().catch((error) => log("catalog_error", { error: String(error?.message || error) }));
-    ["click", "touchstart", "keydown"].forEach((event) => {
-      document.addEventListener(event, unlock, { once: true, passive: true });
-    });
     setInterval(bindLifecycleHooks, 1000);
     setInterval(observePhase, 1800);
   }

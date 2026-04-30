@@ -23,14 +23,10 @@
   <audio
     id="tv-bg-music"
     src="/assets/audio/fondo-tv.mp3"
-    autoplay
     loop
     preload="auto">
   </audio>
 
-  <button id="music-toggle" class="music-toggle" onclick="toggleBackgroundMusic()">
-    ▶️ Activar música
-  </button>
 
   <div class="ambient ambient-one"></div>
   <div class="ambient ambient-two"></div>
@@ -50,11 +46,11 @@
       <h1>Jackbox Mágico</h1>
 
       <p>
-        Preparando sala mágica...
+        Pulsa iniciar partida para desbloquear audio y generar el QR automáticamente.
       </p>
 
-      <button class="primary-btn giant" onclick="crearSala()">
-        Crear sala manualmente
+      <button id="start-match-btn" class="primary-btn giant" onclick="startMatchFlow()">
+        Iniciar partida
       </button>
     </section>
   </div>
