@@ -7,6 +7,9 @@ let autoRevealLock = false;
 let roomCreating = false;
 let lastResultsKey = "";
 let triviaSparklesInterval = null;
+let lottieFx = null;
+let roomSocket = null;
+let roomSocketRetryTimer = null;
 
 const houseIcons = {
   Gryffindor: "🦁",
@@ -657,65 +660,20 @@ function getBgMusic() {
   return audio;
 }
 
-function updateMusicButton(isPlaying, text = null) {
-  const btn = document.getElementById("music-toggle");
-
-  if (!btn) return;
-
-  if (isPlaying) {
-    btn.innerText = text || "🔊 Música";
-    btn.classList.add("playing");
-  } else {
-    btn.innerText = text || "▶️ Activar música";
-    btn.classList.remove("playing");
-  }
-}
-
 async function startBackgroundMusic() {
   const audio = getBgMusic();
 
-  if (!audio) {
-    updateMusicButton(false, "⚠️ Sin audio");
-    return;
-  }
+  if (!audio) return false;
 
   try {
     audio.muted = false;
     audio.volume = 0.35;
-
     await audio.play();
-
     bgMusicStarted = true;
-    updateMusicButton(true, "🔊 Música");
+    return true;
   } catch (error) {
     bgMusicStarted = false;
-    updateMusicButton(false, "▶️ Activar música");
-  }
-}
-
-function pauseBackgroundMusic() {
-  const audio = getBgMusic();
-
-  if (!audio) return;
-
-  audio.pause();
-
-  bgMusicStarted = false;
-  updateMusicButton(false, "🔇 Música");
-}
-
-function toggleBackgroundMusic() {
-  const audio = getBgMusic();
-
-  if (!audio) {
-    updateMusicButton(false, "⚠️ Sin audio");
-    return;
-  }
-
-  if (audio.paused) {
-    startBackgroundMusic();
-  } else {
-    pauseBackgroundMusic();
+    return false;
   }
 }
 
@@ -741,22 +699,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const audio = getBgMusic();
 
   if (audio) {
-    audio.addEventListener("canplaythrough", () => {
-      if (!bgMusicStarted) {
-        updateMusicButton(false, "▶️ Activar música");
-      }
-    });
-
     audio.addEventListener("error", () => {
-      updateMusicButton(false, "⚠️ Audio no encontrado");
+      console.error("Audio de fondo no encontrado o inválido.");
     });
-
-    startBackgroundMusic();
   }
-
-  setTimeout(() => {
-    crearSala();
-  }, 450);
 });
 
 function showScreen(id) {
@@ -768,6 +714,29 @@ function showScreen(id) {
 
   if (target) {
     target.classList.add("visible");
+  }
+
+  playLottieTransition(id);
+}
+
+function playLottieTransition(screenId) {
+  const overlay = document.getElementById("lottie-overlay");
+  if (!overlay || !window.lottie) return;
+
+  if (!lottieFx) {
+    lottieFx = window.lottie.loadAnimation({
+      container: overlay,
+      renderer: "svg",
+      loop: false,
+      autoplay: false,
+      path: "https://assets2.lottiefiles.com/packages/lf20_jvxwtdtp.json",
+    });
+  }
+
+  if (screenId === "view-game" || screenId === "view-results") {
+    overlay.classList.add("visible");
+    lottieFx.goToAndPlay(0, true);
+    setTimeout(() => overlay.classList.remove("visible"), 900);
   }
 }
 
@@ -863,14 +832,39 @@ function renderCandles() {
   `;
 }
 
+async function startMatchFlow() {
+  if (roomCreating || currentRoom) return;
+
+  const btn = document.getElementById("start-match-btn");
+  if (btn) {
+    btn.disabled = true;
+    btn.textContent = "Iniciando magia...";
+  }
+
+  unlockMagicSound();
+  playMagicSound("start");
+
+  if (window.VoiceLinesTv && typeof window.VoiceLinesTv.unlock === "function") {
+    window.VoiceLinesTv.unlock();
+    if (typeof window.VoiceLinesTv.play === "function") {
+      window.VoiceLinesTv.play("boot", { volume: 0.95 });
+    }
+  }
+
+  await startBackgroundMusic();
+  await crearSala();
+
+  if (!currentRoom && btn) {
+    btn.disabled = false;
+    btn.textContent = "Iniciar partida";
+  }
+}
+
 async function crearSala() {
   if (currentRoom || roomCreating) return;
 
   roomCreating = true;
 
-  unlockMagicSound();
-  playMagicSound("start");
-  startBackgroundMusic();
 
   try {
     const res = await fetch("/api/host/create_room", {
@@ -906,47 +900,73 @@ async function crearSala() {
 }
 
 function iniciarRadar() {
-  if (radarInterval) {
-    clearInterval(radarInterval);
-  }
+  if (roomSocket) roomSocket.close();
+  if (roomSocketRetryTimer) clearTimeout(roomSocketRetryTimer);
 
+  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
+  roomSocket = new WebSocket(`${protocol}://${window.location.host}/api/ws/room/${currentRoom}`);
+
+  roomSocket.onmessage = (event) => {
+    try {
+      const msg = JSON.parse(event.data || "{}");
+      if (msg.type !== "room_status" || !msg.payload) return;
+      renderRoomPayload(msg.payload);
+    } catch (error) {
+      console.error("Error parseando mensaje WS", error);
+    }
+  };
+
+  roomSocket.onopen = () => {
+    if (radarInterval) clearInterval(radarInterval);
+  };
+
+  roomSocket.onclose = () => {
+    roomSocket = null;
+    startPollingFallback();
+    roomSocketRetryTimer = setTimeout(() => {
+      if (currentRoom) iniciarRadar();
+    }, 1300);
+  };
+
+  roomSocket.onerror = () => {
+    if (roomSocket) roomSocket.close();
+  };
+}
+
+function startPollingFallback() {
+  if (radarInterval) clearInterval(radarInterval);
   radarInterval = setInterval(async () => {
     if (!currentRoom) return;
-
     try {
-      const res = await fetch(`/api/room/${currentRoom}/status?ts=${Date.now()}`, {
-        cache: "no-store",
-      });
-
+      const res = await fetch(`/api/room/${currentRoom}/status?ts=${Date.now()}`, { cache: "no-store" });
       if (!res.ok) return;
-
       const data = await res.json();
-
-      if (data.status === "lobby") {
-        if (typeof window.destroySnitchTv === "function") {
-          window.destroySnitchTv();
-        }
-
-        renderLobby(data);
-        return;
-      }
-
-      if (data.status === "playing") {
-        const phase = data.game_state?.phase || "lobby";
-
-        if (phase !== "lobby" && !phase.includes("results_")) {
-          renderPlaying(data);
-          return;
-        }
-
-        if (phase.includes("results_")) {
-          renderResults(data);
-        }
-      }
+      renderRoomPayload(data);
     } catch (error) {
-      console.error("Buscando radar...", error);
+      console.error("Polling fallback error", error);
     }
-  }, 650);
+  }, 900);
+}
+
+function renderRoomPayload(data) {
+  if (data.status === "lobby") {
+    if (typeof window.destroySnitchTv === "function") {
+      window.destroySnitchTv();
+    }
+    renderLobby(data);
+    return;
+  }
+
+  if (data.status === "playing") {
+    const phase = data.game_state?.phase || "lobby";
+    if (phase !== "lobby" && !phase.includes("results_")) {
+      renderPlaying(data);
+      return;
+    }
+    if (phase.includes("results_")) {
+      renderResults(data);
+    }
+  }
 }
 
 function renderLobby(data) {

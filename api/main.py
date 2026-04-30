@@ -1,10 +1,13 @@
 import random
 import string
 import uuid
+import asyncio
 from copy import deepcopy
 from typing import Optional
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -37,8 +40,19 @@ app.include_router(trivia.router)
 app.include_router(duelo.router)
 app.include_router(sombrero.router)
 
+app.mount("/assets", StaticFiles(directory="public/assets"), name="assets")
+app.mount("/voice-assets", StaticFiles(directory="assets"), name="voice-assets")
+app.mount("/data", StaticFiles(directory="data"), name="data")
+app.mount("/tv", StaticFiles(directory="public/tv"), name="tv")
+app.mount("/mobile", StaticFiles(directory="public/mobile"), name="mobile")
+
 
 TV_HOST_NAME = "TV"
+
+
+@app.get("/")
+async def home_redirect():
+    return RedirectResponse(url="/tv/index.html")
 
 
 class SnitchCatchInfo(BaseModel):
@@ -571,6 +585,10 @@ async def join_room(info: PlayerJoinInfo):
 
 @app.get("/api/room/{room_code}/status")
 async def get_room_status(room_code: str):
+    return get_public_room_snapshot(room_code)
+
+
+def get_public_room_snapshot(room_code: str):
     if not supabase:
         raise HTTPException(status_code=500, detail="Faltan credenciales")
 
@@ -602,7 +620,40 @@ async def get_room_status(room_code: str):
             "claimed": True,
             "managed_by": "tv",
         },
+        "server_ts": int(asyncio.get_event_loop().time() * 1000),
     }
+
+
+@app.websocket("/api/ws/room/{room_code}")
+async def ws_room_status(websocket: WebSocket, room_code: str):
+    await websocket.accept()
+    room_code = str(room_code or "").upper().strip()
+
+    try:
+        while True:
+            try:
+                snapshot = get_public_room_snapshot(room_code)
+                await websocket.send_json({
+                    "type": "room_status",
+                    "room_code": room_code,
+                    "payload": snapshot,
+                })
+            except HTTPException as error:
+                await websocket.send_json({
+                    "type": "room_error",
+                    "room_code": room_code,
+                    "detail": error.detail,
+                    "status_code": error.status_code,
+                })
+
+            try:
+                message = await asyncio.wait_for(websocket.receive_text(), timeout=0.65)
+                if message == "close":
+                    break
+            except asyncio.TimeoutError:
+                pass
+    except WebSocketDisconnect:
+        return
 
 
 @app.post("/api/host/{room_code}/start_game/{game_id}")
