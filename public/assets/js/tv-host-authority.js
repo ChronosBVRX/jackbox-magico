@@ -2,6 +2,7 @@
   const TV_HOST_COPY = "La TV controla la partida. Los celulares solo serán controles de jugador.";
   let lastClaimedRoom = "";
   let claimInFlight = false;
+  let lastClaimAt = 0;
 
   function uuidLike() {
     if (crypto?.randomUUID) return crypto.randomUUID();
@@ -34,26 +35,17 @@
 
   function normalizeCopy() {
     const hostStatus = document.getElementById("host-status");
-    if (hostStatus) hostStatus.textContent = TV_HOST_COPY;
-
-    document.querySelectorAll(".host-status, .host-help").forEach((el) => {
-      const text = (el.textContent || "").toLowerCase();
-      if (
-        text.includes("primer celular") ||
-        text.includes("será el host") ||
-        text.includes("sera el host") ||
-        text.includes("host inicie") ||
-        text.includes("celular host")
-      ) {
-        el.textContent = TV_HOST_COPY;
-      }
-    });
+    if (hostStatus && hostStatus.textContent !== TV_HOST_COPY) hostStatus.textContent = TV_HOST_COPY;
   }
 
   async function claimTvHost(force = false) {
     const room = getRoomCode();
     if (!room || claimInFlight) return;
+
+    const now = Date.now();
     if (!force && lastClaimedRoom === room) return;
+    if (now - lastClaimAt < 15000) return;
+    lastClaimAt = now;
 
     claimInFlight = true;
 
@@ -70,7 +62,7 @@
         normalizeCopy();
       }
     } catch (error) {
-      // Silencioso: el radar normal de TV seguirá funcionando aunque este reclamo falle momentáneamente.
+      // Silencioso.
     } finally {
       claimInFlight = false;
     }
@@ -83,9 +75,8 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     tick();
-    setTimeout(() => claimTvHost(true), 500);
-    setInterval(tick, 1200);
-    setInterval(() => claimTvHost(true), 10000);
+    setTimeout(() => claimTvHost(true), 1200);
+    setInterval(tick, 5000);
   });
 
   window.TvHostAuthority = {
