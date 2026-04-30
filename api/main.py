@@ -38,6 +38,9 @@ app.include_router(duelo.router)
 app.include_router(sombrero.router)
 
 
+TV_HOST_NAME = "TV"
+
+
 class SnitchCatchInfo(BaseModel):
     room_code: str
     player_name: str
@@ -50,6 +53,57 @@ def generate_room_code():
 
 def generate_host_token():
     return str(uuid.uuid4())
+
+
+def make_tv_host(tv_token: Optional[str] = None) -> dict:
+    host = {
+        "name": TV_HOST_NAME,
+        "managed_by": "tv",
+        "authority": "tv_screen",
+    }
+
+    if tv_token:
+        host["token"] = str(tv_token)
+
+    return host
+
+
+def state_has_tv_authority(state: dict) -> bool:
+    state = state or {}
+    host = state.get("host")
+
+    return (
+        isinstance(host, dict)
+        and host.get("name") == TV_HOST_NAME
+        and host.get("managed_by") == "tv"
+        and state.get("host_authority") == "tv"
+    )
+
+
+def force_tv_authority(state: Optional[dict]) -> dict:
+    """
+    Fuente única de verdad:
+    La TV siempre es el host.
+    Ningún celular puede reclamar host aunque entre primero.
+    """
+    state = deepcopy(state or {})
+
+    state["host"] = make_tv_host()
+    state["managed_by"] = "tv"
+    state["host_authority"] = "tv"
+    state["story_controlled_by"] = "tv"
+    state["story_autopilot"] = True
+
+    lifecycle = state.get("lifecycle")
+    if not isinstance(lifecycle, dict):
+        lifecycle = {}
+
+    lifecycle["host_authority"] = "tv"
+    lifecycle["tv_connected"] = True
+
+    state["lifecycle"] = lifecycle
+
+    return state
 
 
 def add_points(room_id: int, player_name: str, points: int):
@@ -252,13 +306,7 @@ def get_player_house(room_id: int, player_name: str):
 
 
 def get_host_from_state(state: dict):
-    state = state or {}
-    host = state.get("host")
-
-    if isinstance(host, dict):
-        return host
-
-    return None
+    return make_tv_host()
 
 
 def sanitize_game_state(state: dict):
@@ -268,9 +316,19 @@ def sanitize_game_state(state: dict):
     host = public_state.get("host")
     if isinstance(host, dict):
         public_state["host"] = {
-            "name": host.get("name"),
-            "claimed": bool(host.get("name")),
+            "name": TV_HOST_NAME,
+            "claimed": True,
+            "managed_by": "tv",
         }
+    else:
+        public_state["host"] = {
+            "name": TV_HOST_NAME,
+            "claimed": True,
+            "managed_by": "tv",
+        }
+
+    public_state["managed_by"] = "tv"
+    public_state["host_authority"] = "tv"
 
     if not phase.startswith("results_"):
         public_state.pop("correct", None)
@@ -311,30 +369,15 @@ def sanitize_game_state(state: dict):
     return public_state
 
 
-def ensure_host_in_state(state: dict, host: dict):
-    state = state or {}
-
-    if host:
-        state["host"] = host
-
-    return state
+def ensure_host_in_state(state: dict, host: dict = None):
+    return force_tv_authority(state)
 
 
 def validate_mobile_host(room_code: str, info: HostControlInfo):
-    room = get_room_by_code(room_code)
-    state = room.get("game_state") or {}
-    host = get_host_from_state(state)
-
-    if not host:
-        raise HTTPException(status_code=403, detail="Esta sala todavía no tiene host")
-
-    if host.get("name") != info.player_name:
-        raise HTTPException(status_code=403, detail="No eres el host de esta sala")
-
-    if host.get("token") != info.host_token:
-        raise HTTPException(status_code=403, detail="Token de host inválido")
-
-    return room
+    raise HTTPException(
+        status_code=403,
+        detail="Los celulares no pueden ser host. La TV controla la partida.",
+    )
 
 
 def build_game_state(room_code: str, game_id: str, previous_state: dict):
@@ -404,8 +447,7 @@ def start_game_internal(room_code: str, game_id: str):
         raise HTTPException(status_code=404, detail="Juego no existe en el catálogo")
 
     room = get_room_by_code(room_code)
-    previous_state = room.get("game_state") or {}
-    host = get_host_from_state(previous_state)
+    previous_state = force_tv_authority(room.get("game_state") or {})
 
     new_state = build_game_state(
         room_code=room_code,
@@ -413,7 +455,7 @@ def start_game_internal(room_code: str, game_id: str):
         previous_state=previous_state,
     )
 
-    new_state = ensure_host_in_state(new_state, host)
+    new_state = force_tv_authority(new_state)
 
     supabase.table("rooms").update({
         "status": "playing",
@@ -448,18 +490,24 @@ async def create_room():
 
     code = generate_room_code()
 
+    game_state = force_tv_authority({
+        "phase": "lobby",
+    })
+
     supabase.table("rooms").insert({
         "room_code": code,
         "status": "lobby",
-        "game_state": {
-            "phase": "lobby",
-            "host": None,
-        },
+        "game_state": game_state,
     }).execute()
 
     return {
-        "message": "Sala creada",
+        "message": "Sala creada por TV",
         "room_code": code,
+        "host": {
+            "name": TV_HOST_NAME,
+            "claimed": True,
+            "managed_by": "tv",
+        },
     }
 
 
@@ -470,8 +518,9 @@ async def join_room(info: PlayerJoinInfo):
 
     room = get_room_by_code(info.room_code)
     room_id = room["id"]
-    state = room.get("game_state") or {"phase": "lobby"}
     status = room.get("status")
+
+    state = force_tv_authority(room.get("game_state") or {"phase": "lobby"})
 
     existing_player = (
         supabase.table("players")
@@ -507,38 +556,16 @@ async def join_room(info: PlayerJoinInfo):
             "house": info.house,
         }).execute()
 
-    host = get_host_from_state(state)
-    is_host = False
-    host_token_to_return = None
-
-    if not host:
-        host_token = info.host_token or generate_host_token()
-
-        host = {
-            "name": info.player_name,
-            "token": host_token,
-        }
-
-        state["host"] = host
-
-        supabase.table("rooms").update({
-            "game_state": state
-        }).eq("room_code", info.room_code.upper()).execute()
-
-        is_host = True
-        host_token_to_return = host_token
-
-    else:
-        if host.get("name") == info.player_name and info.host_token == host.get("token"):
-            is_host = True
-            host_token_to_return = host.get("token")
+    supabase.table("rooms").update({
+        "game_state": state,
+    }).eq("room_code", info.room_code.upper()).execute()
 
     return {
         "message": "¡Bienvenido de vuelta!" if is_reconnect else "¡Bienvenido!",
         "reconnected": is_reconnect,
-        "is_host": is_host,
-        "host_token": host_token_to_return,
-        "host_name": host.get("name") if host else None,
+        "is_host": False,
+        "host_token": None,
+        "host_name": TV_HOST_NAME,
     }
 
 
@@ -556,18 +583,24 @@ async def get_room_status(room_code: str):
     room = get_room_by_code(room_code)
     players = get_players(room["id"])
 
-    state = room.get("game_state") or {"phase": "lobby"}
-    public_state = sanitize_game_state(state)
+    raw_state = room.get("game_state") or {"phase": "lobby"}
+    state = force_tv_authority(raw_state)
 
-    host = get_host_from_state(state)
+    if not state_has_tv_authority(raw_state):
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+    public_state = sanitize_game_state(state)
 
     return {
         "status": room.get("status"),
         "game_state": public_state,
         "players": players,
         "host": {
-            "name": host.get("name") if host else None,
-            "claimed": bool(host),
+            "name": TV_HOST_NAME,
+            "claimed": True,
+            "managed_by": "tv",
         },
     }
 
@@ -582,40 +615,18 @@ async def start_game(room_code: str, game_id: str):
 
 @app.post("/api/mobile/host/{room_code}/start_game/{game_id}")
 async def mobile_host_start_game(room_code: str, game_id: str, info: HostControlInfo):
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales")
-
-    validate_mobile_host(room_code, info)
-
-    return start_game_internal(room_code, game_id)
+    raise HTTPException(
+        status_code=403,
+        detail="Los celulares no pueden iniciar juegos. La TV controla la partida.",
+    )
 
 
 @app.post("/api/mobile/host/{room_code}/start_sombrero_custom")
 async def mobile_host_start_sombrero_custom(room_code: str, info: SombreroStartInfo):
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales")
-
-    room = validate_mobile_host(room_code, info)
-    previous_state = room.get("game_state") or {}
-    host = get_host_from_state(previous_state)
-
-    new_state = sombrero.build_sombrero_state(
-        room_code=room_code,
-        previous_state=previous_state,
-        custom_question=info.question,
+    raise HTTPException(
+        status_code=403,
+        detail="Los celulares no pueden iniciar juegos. La TV controla la partida.",
     )
-
-    new_state = ensure_host_in_state(new_state, host)
-
-    supabase.table("rooms").update({
-        "status": "playing",
-        "game_state": new_state,
-    }).eq("room_code", room_code.upper()).execute()
-
-    return {
-        "message": "Sombrero Burlón iniciado",
-        "game_id": "sombrero_burlon",
-    }
 
 
 @app.post("/api/player/snitch_catch")
@@ -1037,77 +1048,10 @@ async def submit_answer(request: Request):
             }
 
         if event_type == "control":
-            host = get_host_from_state(state)
-
-            if not host or host.get("name") != player_name:
-                return {
-                    "message": "Solo el host puede controlar esta fase de Patronus.",
-                    "accepted": False,
-                }
-
-            action = event.get("action")
-
-            if action not in {"VOTING", "RESULTS"}:
-                return {
-                    "message": "Acción de Patronus no reconocida.",
-                    "accepted": False,
-                }
-
-            event_key = patronus_personalizado.encode_control_event(
-                round_id=round_id,
-                action=action,
-                host_name=player_name,
-            )
-
-            votes[event_key] = 1
-            state["votes"] = votes
-
-            if action == "VOTING":
-                state["patronus_stage"] = "voting"
-
-                supabase.table("rooms").update({
-                    "game_state": state,
-                }).eq("room_code", room_code).execute()
-
-                return {
-                    "message": "Votación de Patronus abierta.",
-                    "accepted": True,
-                }
-
-            if action == "RESULTS":
-                if not state.get("scored"):
-                    result = patronus_personalizado.calculate_results(state)
-                    point_events = result.get("point_events", [])
-
-                    apply_point_events(room_id, point_events)
-
-                    state["point_events"] = point_events
-                    state["patronus_result"] = result
-                    state["votes_by_target"] = result.get("votes_by_target", {})
-                    state["votes_by_voter"] = result.get("votes_by_voter", {})
-                    state["scored"] = True
-
-                    ranking = result.get("ranking", [])
-
-                    if ranking:
-                        winner = ranking[0]
-                        state["correct"] = (
-                            f"{winner.get('player_name')} "
-                            f"({winner.get('votes', 0)} votos)"
-                        )
-                    else:
-                        state["correct"] = "Sin ganador"
-
-                state["phase"] = "results_patronus_personalizado"
-
-                supabase.table("rooms").update({
-                    "game_state": state,
-                }).eq("room_code", room_code).execute()
-
-                return {
-                    "message": "Resultados de Patronus revelados.",
-                    "accepted": True,
-                }
+            return {
+                "message": "El control de Patronus se hace desde la TV.",
+                "accepted": False,
+            }
 
         return {
             "message": "Evento de Patronus no aceptado.",
@@ -1282,7 +1226,7 @@ async def reveal_results(room_code: str):
     if not room.data:
         raise HTTPException(status_code=404, detail="Sala no encontrada")
 
-    state = room.data[0].get("game_state") or {}
+    state = force_tv_authority(room.data[0].get("game_state") or {})
     room_id = room.data[0]["id"]
     players = get_players(room_id)
 
@@ -1294,6 +1238,8 @@ async def reveal_results(room_code: str):
 
         if is_final:
             apply_point_events(room_id, point_events)
+
+        state = force_tv_authority(state)
 
         supabase.table("rooms").update({
             "game_state": state,
@@ -1310,6 +1256,8 @@ async def reveal_results(room_code: str):
         if is_final:
             apply_point_events(room_id, point_events)
 
+        state = force_tv_authority(state)
+
         supabase.table("rooms").update({
             "game_state": state,
         }).eq("room_code", room_code.upper()).execute()
@@ -1324,6 +1272,8 @@ async def reveal_results(room_code: str):
 
         if is_final:
             apply_point_events(room_id, point_events)
+
+        state = force_tv_authority(state)
 
         supabase.table("rooms").update({
             "game_state": state,
@@ -1343,6 +1293,8 @@ async def reveal_results(room_code: str):
         if is_final:
             apply_point_events(room_id, point_events)
 
+        state = force_tv_authority(state)
+
         supabase.table("rooms").update({
             "game_state": state,
         }).eq("room_code", room_code.upper()).execute()
@@ -1360,6 +1312,8 @@ async def reveal_results(room_code: str):
 
         if is_final:
             apply_point_events(room_id, point_events)
+
+        state = force_tv_authority(state)
 
         supabase.table("rooms").update({
             "game_state": state,
@@ -1379,6 +1333,8 @@ async def reveal_results(room_code: str):
         if is_final:
             apply_point_events(room_id, point_events)
 
+        state = force_tv_authority(state)
+
         supabase.table("rooms").update({
             "game_state": state,
         }).eq("room_code", room_code.upper()).execute()
@@ -1397,6 +1353,8 @@ async def reveal_results(room_code: str):
         if is_final:
             apply_point_events(room_id, point_events)
 
+        state = force_tv_authority(state)
+
         supabase.table("rooms").update({
             "game_state": state,
         }).eq("room_code", room_code.upper()).execute()
@@ -1414,6 +1372,8 @@ async def reveal_results(room_code: str):
 
         if is_final:
             apply_point_events(room_id, point_events)
+
+        state = force_tv_authority(state)
 
         supabase.table("rooms").update({
             "game_state": state,
@@ -1451,6 +1411,7 @@ async def reveal_results(room_code: str):
                 state["correct"] = "Sin ganador"
 
         state["phase"] = "results_patronus_personalizado"
+        state = force_tv_authority(state)
 
         supabase.table("rooms").update({
             "game_state": state,
@@ -1464,6 +1425,8 @@ async def reveal_results(room_code: str):
     if not str(state.get("phase", "")).startswith("results_"):
         state["phase"] = f"results_{state.get('phase', 'juego')}"
 
+    state = force_tv_authority(state)
+
     supabase.table("rooms").update({
         "game_state": state,
     }).eq("room_code", room_code.upper()).execute()
@@ -1475,12 +1438,10 @@ async def reveal_results(room_code: str):
 
 @app.post("/api/mobile/host/{room_code}/reveal")
 async def mobile_host_reveal(room_code: str, info: HostControlInfo):
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales")
-
-    validate_mobile_host(room_code, info)
-
-    return await reveal_results(room_code)
+    raise HTTPException(
+        status_code=403,
+        detail="Los celulares no pueden revelar resultados. La TV controla la partida.",
+    )
 
 
 @app.post("/api/host/{room_code}/return_lobby")
@@ -1495,18 +1456,12 @@ async def return_lobby(room_code: str):
         .execute()
     )
 
-    lobby_state = {
+    lobby_state = force_tv_authority({
         "phase": "lobby",
-    }
+    })
 
     if room.data:
         old_state = room.data[0].get("game_state") or {}
-        host = get_host_from_state(old_state)
-
-        if host:
-            lobby_state["host"] = host
-        else:
-            lobby_state["host"] = None
 
         if old_state.get("phase") == "results_artes_ridiculas":
             lobby_state["artes_streaks"] = old_state.get("streaks", {})
@@ -1520,9 +1475,6 @@ async def return_lobby(room_code: str):
         if old_state.get("phase") in {"trivia", "results_trivia"}:
             lobby_state["trivia_session"] = old_state.get("trivia_session", {})
 
-    else:
-        lobby_state["host"] = None
-
     supabase.table("rooms").update({
         "status": "lobby",
         "game_state": lobby_state,
@@ -1535,12 +1487,10 @@ async def return_lobby(room_code: str):
 
 @app.post("/api/mobile/host/{room_code}/return_lobby")
 async def mobile_host_return_lobby(room_code: str, info: HostControlInfo):
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales")
-
-    validate_mobile_host(room_code, info)
-
-    return await return_lobby(room_code)
+    raise HTTPException(
+        status_code=403,
+        detail="Los celulares no pueden regresar al lobby. La TV controla la partida.",
+    )
 
 
 @app.get("/api/debug/snitch/{room_code}")
@@ -1559,7 +1509,7 @@ async def debug_snitch(room_code: str):
         raise HTTPException(status_code=404, detail="Sala no encontrada")
 
     room_data = room.data[0]
-    state = room_data.get("game_state") or {}
+    state = force_tv_authority(room_data.get("game_state") or {})
     players = get_players(room_data["id"])
 
     return {
@@ -1594,7 +1544,7 @@ async def debug_trivia(room_code: str):
         raise HTTPException(status_code=404, detail="Sala no encontrada")
 
     room_data = room.data[0]
-    state = room_data.get("game_state") or {}
+    state = force_tv_authority(room_data.get("game_state") or {})
     players = get_players(room_data["id"])
 
     return {
@@ -1639,7 +1589,7 @@ async def debug_mapa(room_code: str):
         raise HTTPException(status_code=404, detail="Sala no encontrada")
 
     room_data = room.data[0]
-    state = room_data.get("game_state") or {}
+    state = force_tv_authority(room_data.get("game_state") or {})
     players = get_players(room_data["id"])
 
     return {
