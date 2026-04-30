@@ -6,6 +6,11 @@ from copy import deepcopy
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
+ codex/fix-jackbox-party-game-logic-and-audio-nde22r
+from fastapi.responses import RedirectResponse
+from fastapi.staticfiles import StaticFiles
+
+ main
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -38,8 +43,19 @@ app.include_router(trivia.router)
 app.include_router(duelo.router)
 app.include_router(sombrero.router)
 
+app.mount("/assets", StaticFiles(directory="public/assets"), name="assets")
+app.mount("/voice-assets", StaticFiles(directory="assets"), name="voice-assets")
+app.mount("/data", StaticFiles(directory="data"), name="data")
+app.mount("/tv", StaticFiles(directory="public/tv"), name="tv")
+app.mount("/mobile", StaticFiles(directory="public/mobile"), name="mobile")
+
 
 TV_HOST_NAME = "TV"
+
+
+@app.get("/")
+async def home_redirect():
+    return RedirectResponse(url="/tv/index.html")
 
 
 class SnitchCatchInfo(BaseModel):

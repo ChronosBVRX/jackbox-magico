@@ -3,7 +3,7 @@
   window.__VoiceLinesTvLoaded = true;
 
   const CATALOG_URL = "/data/voice_lines.json";
-  const VOICE_BASE = "/assets/audio/voice_lines/";
+  const VOICE_BASE = "/voice-assets/audio/voice_lines/";
 
   let catalog = null;
   let unlocked = false;
@@ -33,6 +33,8 @@
     const raw = line?.asset_path || file;
 
     if (raw.startsWith("http")) return raw;
+    if (raw.startsWith("/assets/audio/voice_lines/")) return raw.replace("/assets/audio/voice_lines/", "/voice-assets/audio/voice_lines/");
+    if (raw.startsWith("assets/audio/voice_lines/")) return `/${raw}`.replace("/assets/audio/voice_lines/", "/voice-assets/audio/voice_lines/");
     if (raw.startsWith("/assets/")) return raw;
     if (raw.startsWith("assets/")) return `/${raw}`;
     if (file) return `${VOICE_BASE}${file}`;
@@ -210,6 +212,11 @@
   }
 
   function init() {
+ codex/fix-jackbox-party-game-logic-and-audio-nde22r
+    loadCatalog()
+      .then(() => buildPreloadCache())
+      .catch((error) => log("catalog_error", { error: String(error?.message || error) }));
+
 codex/fix-jackbox-party-game-logic-and-audio-puosgj
     loadCatalog()
       .then(() => buildPreloadCache())
@@ -228,6 +235,7 @@ codex/fix-jackbox-party-game-logic-and-audio-v3d7oz
  main
 main
 main
+ main
     setInterval(bindLifecycleHooks, 1000);
     setInterval(observePhase, 1800);
   }
