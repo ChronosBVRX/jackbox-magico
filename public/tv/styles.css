@@ -33,8 +33,7 @@ body {
   color: var(--ink);
   font-family: Inter, "Segoe UI", system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
   text-align: center;
-  overflow-x: hidden;
-  overflow-y: auto;
+  overflow: hidden;
   background:
     radial-gradient(circle at 18% 6%, rgba(255, 216, 121, .18), transparent 30%),
     radial-gradient(circle at 82% 78%, rgba(124, 58, 237, .24), transparent 35%),
@@ -217,7 +216,7 @@ body::after {
   position: relative;
   z-index: 3;
   display: none;
-  min-height: 100vh;
+  height: 100vh;
   padding: 24px;
   flex-direction: column;
   align-items: center;
@@ -225,6 +224,22 @@ body::after {
   opacity: 0;
   transform: translateY(18px) scale(.985);
   transition: opacity .45s ease, transform .45s cubic-bezier(.2,.8,.2,1);
+codex/fix-jackbox-party-game-logic-and-audio-puosgj
+}
+
+#view-lobby .lobby-card {
+  height: calc(100vh - 56px);
+  display: grid;
+  grid-template-rows: auto auto auto auto 1fr auto;
+  gap: 10px;
+  overflow: hidden;
+}
+
+#view-lobby .players-list {
+  max-height: 150px;
+  overflow: auto;
+
+ main
 }
 
 .screen.visible {

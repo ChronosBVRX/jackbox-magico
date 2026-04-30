@@ -148,7 +148,6 @@
   function unlock() {
     if (unlocked) return;
     unlocked = true;
-    play("boot", { volume: 0.95 });
   }
 
   function bindLifecycleHooks() {
@@ -211,6 +210,11 @@
   }
 
   function init() {
+codex/fix-jackbox-party-game-logic-and-audio-puosgj
+    loadCatalog()
+      .then(() => buildPreloadCache())
+      .catch((error) => log("catalog_error", { error: String(error?.message || error) }));
+
 codex/fix-jackbox-party-game-logic-and-audio-wf4bq1
     loadCatalog()
       .then(() => buildPreloadCache())
@@ -223,6 +227,7 @@ codex/fix-jackbox-party-game-logic-and-audio-v3d7oz
     loadCatalog().catch((error) => log("catalog_error", { error: String(error?.message || error) }));
  main
 main
+main
     setInterval(bindLifecycleHooks, 1000);
     setInterval(observePhase, 1800);
   }
@@ -234,5 +239,6 @@ main
     play,
     loadCatalog,
     unlock,
+    isUnlocked: () => unlocked,
   };
 })();
