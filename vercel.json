@@ -49,6 +49,14 @@
       "use": "@vercel/python"
     },
     {
+      "src": "assets/**",
+      "use": "@vercel/static"
+    },
+    {
+      "src": "data/**",
+      "use": "@vercel/static"
+    },
+    {
       "src": "public/**",
       "use": "@vercel/static"
     }
@@ -101,6 +109,14 @@
     {
       "src": "/api/(.*)",
       "dest": "api/main.py"
+    },
+    {
+      "src": "/assets/(.*)",
+      "dest": "/assets/$1"
+    },
+    {
+      "src": "/data/(.*)",
+      "dest": "/data/$1"
     },
     {
       "src": "/tv/(.*)",
