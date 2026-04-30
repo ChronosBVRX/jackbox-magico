@@ -42,10 +42,6 @@
   function candidatePaths(line) {
     const primary = normalizePath(line);
     const paths = [primary];
-
-    if (primary.endsWith(".mp3")) paths.push(`${primary}.mpeg`);
-    if (primary.endsWith(".mp3.mpeg")) paths.push(primary.replace(/\.mpeg$/, ""));
-
     return [...new Set(paths.filter(Boolean))];
   }
 

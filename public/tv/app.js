@@ -935,7 +935,7 @@ function getTvToken() {
   if (window.RoomLifecycleTv?.getTvToken) return window.RoomLifecycleTv.getTvToken();
   let token = localStorage.getItem("jackbox_magico_tv_token");
   if (!token) {
-    token = crypto?.randomUUID ? crypto.randomUUID() : \`tv-\${Date.now()}-\${Math.random().toString(16).slice(2)}\`;
+    token = crypto?.randomUUID ? crypto.randomUUID() : `tv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
     localStorage.setItem("jackbox_magico_tv_token", token);
   }
   return token;
@@ -944,7 +944,7 @@ function getTvToken() {
 async function startStoryFromLobby() {
   if (!currentRoom) return;
   try {
-    const res = await fetch(\`/api/story-tv/\${currentRoom}/start\`, {
+    const res = await fetch(`/api/story-tv/${currentRoom}/start`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tv_token: getTvToken() }),
@@ -959,7 +959,7 @@ async function startStoryFromLobby() {
 async function nextStoryStep() {
   if (!currentRoom) return;
   try {
-    const res = await fetch(\`/api/story-tv/\${currentRoom}/next-step\`, {
+    const res = await fetch(`/api/story-tv/${currentRoom}/next-step`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ tv_token: getTvToken() }),
@@ -1014,7 +1014,7 @@ async function crearSala() {
     // Auto-prepare story for this room
     if (selectedStoryId) {
       try {
-        await fetch(\`/api/story-tv/\${currentRoom}/prepare\`, {
+        await fetch(`/api/story-tv/${currentRoom}/prepare`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ tv_token: getTvToken(), story_id: selectedStoryId }),
