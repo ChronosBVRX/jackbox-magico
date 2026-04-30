@@ -1,8 +1,7 @@
-"""Modo Historia controlado desde la TV.
+"""Modo Historia y autoridad de host controlados desde la TV.
 
-La TV elige y arranca la historia. Si ya existe un celular host, se conserva
-como operador técnico invisible para compatibilidad con los endpoints actuales.
-Visualmente, los celulares quedan como controles limpios de jugador.
+La TV es la única autoridad de la sala. Los celulares nunca administran la
+partida: solo se registran como jugadores y envían respuestas.
 """
 
 from copy import deepcopy
@@ -78,14 +77,8 @@ def make_tv_host(tv_token: str) -> dict:
         "name": "TV",
         "token": token,
         "managed_by": "tv",
+        "authority": "tv_screen",
     }
-
-
-def get_host(state: dict, tv_token: str) -> dict:
-    host = (state or {}).get("host")
-    if isinstance(host, dict) and host.get("token"):
-        return host
-    return make_tv_host(tv_token)
 
 
 def get_lifecycle(state: dict) -> dict:
@@ -106,9 +99,12 @@ def validate_or_claim_tv(state: dict, tv_token: str) -> dict:
 
     lifecycle["tv_token"] = tv_token
     lifecycle["tv_connected"] = True
+    lifecycle["host_authority"] = "tv"
 
     state["lifecycle"] = lifecycle
+    state["host"] = make_tv_host(tv_token)
     state["managed_by"] = "tv"
+    state["host_authority"] = "tv"
     state["story_controlled_by"] = "tv"
     state["story_autopilot"] = True
     return state
@@ -124,6 +120,21 @@ def get_story_state_or_fail(state: dict) -> dict:
 @app.get("/api/story-tv/health")
 async def health():
     return {"status": "ok", "message": "Modo Historia controlado por TV listo."}
+
+
+@app.post("/api/story-tv/{room_code}/claim-host")
+async def claim_tv_host(room_code: str, info: TvStoryInfo):
+    room = get_room(room_code)
+    state = deepcopy(room.get("game_state") or {})
+    state = validate_or_claim_tv(state, info.tv_token)
+
+    update_room(room_code, game_state=state)
+
+    return {
+        "message": "TV registrada como host de la sala",
+        "room_code": clean_room_code(room_code),
+        "host": {"name": "TV", "claimed": True, "managed_by": "tv"},
+    }
 
 
 @app.post("/api/story-tv/{room_code}/prepare")
@@ -153,6 +164,8 @@ async def prepare_story_from_tv(room_code: str, info: TvStoryInfo):
         "story_transition_reason": "Historia seleccionada desde la TV. Los celulares serán solo controles de jugador.",
         "story_controlled_by": "tv",
         "story_autopilot": True,
+        "managed_by": "tv",
+        "host_authority": "tv",
     })
 
     update_room(room_code, status="lobby", game_state=state)
@@ -172,18 +185,20 @@ async def start_story_from_tv(room_code: str, info: TvStoryInfo):
     previous_state = deepcopy(room.get("game_state") or {})
     previous_state = validate_or_claim_tv(previous_state, info.tv_token)
     story_state = get_story_state_or_fail(previous_state)
-    host = get_host(previous_state, info.tv_token)
+    tv_host = make_tv_host(info.tv_token)
 
     game_state = start_step_for_story(
         room_code=room_code,
         previous_state=previous_state,
         story_state=story_state,
-        host=host,
+        host=tv_host,
         random_seed=info.random_seed,
     )
+    game_state["host"] = tv_host
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
     game_state["managed_by"] = "tv"
+    game_state["host_authority"] = "tv"
 
     update_room(room_code, status="playing", game_state=game_state)
 
@@ -205,18 +220,20 @@ async def next_story_step_from_tv(room_code: str, info: TvStoryInfo):
     previous_state = validate_or_claim_tv(previous_state, info.tv_token)
     story_state = get_story_state_or_fail(previous_state)
     story_state = advance_story_state(story_state)
-    host = get_host(previous_state, info.tv_token)
+    tv_host = make_tv_host(info.tv_token)
 
     game_state = start_step_for_story(
         room_code=room_code,
         previous_state=previous_state,
         story_state=story_state,
-        host=host,
+        host=tv_host,
         random_seed=info.random_seed,
     )
+    game_state["host"] = tv_host
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
     game_state["managed_by"] = "tv"
+    game_state["host_authority"] = "tv"
 
     update_room(room_code, status="playing", game_state=game_state)
 
@@ -237,31 +254,35 @@ async def next_trivia_from_tv(room_code: str, info: TvStoryInfo):
     previous_state = deepcopy(room.get("game_state") or {})
     previous_state = validate_or_claim_tv(previous_state, info.tv_token)
     story_state = get_story_state_or_fail(previous_state)
-    host = get_host(previous_state, info.tv_token)
+    tv_host = make_tv_host(info.tv_token)
 
     game_state = build_game_state_for_game(
         room_code=room_code,
         game_id=DEFAULT_TRIVIA_GAME_ID,
         previous_state=previous_state,
     )
+    game_state["host"] = tv_host
     game_state["story_trivia_target_questions"] = previous_state.get("story_trivia_target_questions") or 3
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
     game_state["managed_by"] = "tv"
+    game_state["host_authority"] = "tv"
 
     game_state = attach_story_metadata(
         game_state=game_state,
         story_state=story_state,
-        host=host,
+        host=tv_host,
         game_id=DEFAULT_TRIVIA_GAME_ID,
         dialogue_lines=[
             "La siguiente pregunta aparece sola. Nadie toque nada, esto ya está embrujado profesionalmente.",
         ],
         transition_reason="La trivia continúa automáticamente dentro del bloque narrativo.",
     )
+    game_state["host"] = tv_host
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
     game_state["managed_by"] = "tv"
+    game_state["host_authority"] = "tv"
 
     update_room(room_code, status="playing", game_state=game_state)
 
