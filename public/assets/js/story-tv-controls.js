@@ -197,16 +197,16 @@
     const style = document.createElement("style");
     style.id = "story-tv-controls-style";
     style.textContent = `
-      #story-tv-controls { width: min(880px, 92vw); margin: 24px auto 0; }
+      #story-tv-controls { width: min(880px, 92vw); margin: 6px auto 0; }
       #story-tv-controls ~ #story-tv-controls { display: none !important; }
-      .story-tv-control-card { padding: 22px; border-radius: 28px; background: radial-gradient(circle at 18% 0%, rgba(255,216,121,.20), transparent 34%), rgba(255,255,255,.075); border: 1px solid rgba(255,216,121,.28); box-shadow: 0 24px 70px rgba(0,0,0,.32); outline: none; }
+      .story-tv-control-card { padding: 14px; border-radius: 20px; background: radial-gradient(circle at 18% 0%, rgba(255,216,121,.20), transparent 34%), rgba(255,255,255,.075); border: 1px solid rgba(255,216,121,.28); box-shadow: 0 16px 40px rgba(0,0,0,.25); outline: none; }
       .story-tv-kicker { display: inline-flex; padding: 7px 12px; border-radius: 999px; color: #271600; background: linear-gradient(135deg, #fff8d6, #facc15); font-size: .75rem; font-weight: 1000; text-transform: uppercase; letter-spacing: .1em; }
-      .story-tv-control-card h2 { margin: 10px 0 6px; font-size: clamp(2rem, 4vw, 3.8rem); }
-      .story-tv-control-card p { max-width: 760px; margin: 0 auto 16px; }
-      #story-tv-select { width: min(560px, 90%); padding: 16px; border-radius: 18px; color: #fff; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16); font-size: 1.05rem; font-weight: 900; outline: none; }
+      .story-tv-control-card h2 { margin: 8px 0 4px; font-size: clamp(1.2rem, 2.6vw, 2rem); }
+      .story-tv-control-card p { max-width: 760px; margin: 0 auto 10px; font-size: .9rem; }
+      #story-tv-select { width: min(560px, 90%); padding: 12px; border-radius: 14px; color: #fff; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.16); font-size: .95rem; font-weight: 900; outline: none; }
       #story-tv-select option { color: #111; }
-      .story-tv-actions, .story-tv-remote-line { display: flex; justify-content: center; flex-wrap: wrap; gap: 12px; margin-top: 16px; }
-      .story-tv-actions button, .story-tv-remote-line button { border: 0; border-radius: 18px; padding: 15px 20px; color: #271600; background: linear-gradient(135deg, #fff8d6, #facc15); font-size: 1rem; font-weight: 1000; cursor: pointer; }
+      .story-tv-actions, .story-tv-remote-line { display: flex; justify-content: center; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+      .story-tv-actions button, .story-tv-remote-line button { border: 0; border-radius: 14px; padding: 10px 14px; color: #271600; background: linear-gradient(135deg, #fff8d6, #facc15); font-size: .88rem; font-weight: 1000; cursor: pointer; }
       .story-tv-actions button { color: #fff7dc; background: rgba(255,255,255,.10); border: 1px solid rgba(255,255,255,.14); }
       #story-tv-status { min-height: 24px; margin-top: 12px; color: rgba(255,248,221,.78); font-weight: 900; }
       #story-tv-status.good { color: #bbf7d0; }
