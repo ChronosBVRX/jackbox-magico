@@ -8,8 +8,11 @@ let roomCreating = false;
 let lastResultsKey = "";
 let triviaSparklesInterval = null;
 let lottieFx = null;
+codex/fix-jackbox-party-game-logic-and-audio-wf4bq1
 let roomSocket = null;
 let roomSocketRetryTimer = null;
+
+main
 
 const houseIcons = {
   Gryffindor: "🦁",
