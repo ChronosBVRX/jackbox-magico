@@ -2,15 +2,13 @@ import random
 import string
 import uuid
 import asyncio
+import os
 from copy import deepcopy
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Request, WebSocket, WebSocketDisconnect
- codex/fix-jackbox-party-game-logic-and-audio-nde22r
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
-
- main
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
@@ -43,11 +41,16 @@ app.include_router(trivia.router)
 app.include_router(duelo.router)
 app.include_router(sombrero.router)
 
-app.mount("/assets", StaticFiles(directory="public/assets"), name="assets")
-app.mount("/voice-assets", StaticFiles(directory="assets"), name="voice-assets")
-app.mount("/data", StaticFiles(directory="data"), name="data")
-app.mount("/tv", StaticFiles(directory="public/tv"), name="tv")
-app.mount("/mobile", StaticFiles(directory="public/mobile"), name="mobile")
+def mount_if_exists(route_path: str, directory: str, name: str):
+    if os.path.isdir(directory):
+        app.mount(route_path, StaticFiles(directory=directory), name=name)
+
+
+mount_if_exists("/assets", "public/assets", "assets")
+mount_if_exists("/voice-assets", "assets", "voice-assets")
+mount_if_exists("/data", "data", "data")
+mount_if_exists("/tv", "public/tv", "tv")
+mount_if_exists("/mobile", "public/mobile", "mobile")
 
 
 TV_HOST_NAME = "TV"
