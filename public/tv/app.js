@@ -7,6 +7,7 @@ let autoRevealLock = false;
 let roomCreating = false;
 let lastResultsKey = "";
 let triviaSparklesInterval = null;
+let lottieFx = null;
 
 const houseIcons = {
   Gryffindor: "🦁",
@@ -711,6 +712,29 @@ function showScreen(id) {
 
   if (target) {
     target.classList.add("visible");
+  }
+
+  playLottieTransition(id);
+}
+
+function playLottieTransition(screenId) {
+  const overlay = document.getElementById("lottie-overlay");
+  if (!overlay || !window.lottie) return;
+
+  if (!lottieFx) {
+    lottieFx = window.lottie.loadAnimation({
+      container: overlay,
+      renderer: "svg",
+      loop: false,
+      autoplay: false,
+      path: "https://assets2.lottiefiles.com/packages/lf20_jvxwtdtp.json",
+    });
+  }
+
+  if (screenId === "view-game" || screenId === "view-results") {
+    overlay.classList.add("visible");
+    lottieFx.goToAndPlay(0, true);
+    setTimeout(() => overlay.classList.remove("visible"), 900);
   }
 }
 

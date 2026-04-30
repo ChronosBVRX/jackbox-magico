@@ -8,8 +8,10 @@
   let catalog = null;
   let unlocked = false;
   let currentAudio = null;
+  let playbackChain = Promise.resolve();
   const failed = new Set();
   const recentlyPlayed = [];
+  const preloadCache = new Map();
 
   function log(event, payload = {}) {
     try {
@@ -67,21 +69,41 @@
     return pool[Math.floor(Math.random() * pool.length)];
   }
 
+  function buildPreloadCache() {
+    const lines = catalog?.voice_lines || [];
+    for (const line of lines) {
+      for (const path of candidatePaths(line)) {
+        if (preloadCache.has(path) || failed.has(path)) continue;
+        const audio = new Audio(path);
+        audio.preload = "auto";
+        preloadCache.set(path, audio);
+      }
+    }
+    log("preload_cache_ready", { count: preloadCache.size });
+  }
+
   async function playPath(path, volume = 1) {
     if (!path || failed.has(path)) return false;
 
     try {
-      if (currentAudio) {
-        currentAudio.pause();
-        currentAudio.currentTime = 0;
-      }
+      const cached = preloadCache.get(path);
+      const audio = cached || new Audio(path);
 
-      const audio = new Audio(path);
       audio.preload = "auto";
       audio.volume = Math.max(0, Math.min(1, volume));
+      audio.currentTime = 0;
       currentAudio = audio;
 
       await audio.play();
+      await new Promise((resolve) => {
+        const done = () => {
+          audio.removeEventListener("ended", done);
+          audio.removeEventListener("error", done);
+          resolve();
+        };
+        audio.addEventListener("ended", done, { once: true });
+        audio.addEventListener("error", done, { once: true });
+      });
       log("playing", { path });
       return true;
     } catch (error) {
@@ -91,7 +113,7 @@
     }
   }
 
-  async function play(event, options = {}) {
+  async function playNow(event, options = {}) {
     try {
       await loadCatalog();
       const line = pickLine(event, options.voice_key || "");
@@ -114,6 +136,13 @@
       log("play_error", { event, error: String(error?.message || error) });
       return false;
     }
+  }
+
+  function play(event, options = {}) {
+    playbackChain = playbackChain
+      .then(() => playNow(event, options))
+      .catch(() => playNow(event, options));
+    return playbackChain;
   }
 
   function unlock() {
@@ -182,7 +211,12 @@
   }
 
   function init() {
+codex/fix-jackbox-party-game-logic-and-audio-v3d7oz
+    loadCatalog()
+      .then(() => buildPreloadCache())
+      .catch((error) => log("catalog_error", { error: String(error?.message || error) }));
     loadCatalog().catch((error) => log("catalog_error", { error: String(error?.message || error) }));
+ main
     setInterval(bindLifecycleHooks, 1000);
     setInterval(observePhase, 1800);
   }
