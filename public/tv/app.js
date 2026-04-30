@@ -903,34 +903,9 @@ function iniciarRadar() {
   if (roomSocket) roomSocket.close();
   if (roomSocketRetryTimer) clearTimeout(roomSocketRetryTimer);
 
-  const protocol = window.location.protocol === "https:" ? "wss" : "ws";
-  roomSocket = new WebSocket(`${protocol}://${window.location.host}/api/ws/room/${currentRoom}`);
-
-  roomSocket.onmessage = (event) => {
-    try {
-      const msg = JSON.parse(event.data || "{}");
-      if (msg.type !== "room_status" || !msg.payload) return;
-      renderRoomPayload(msg.payload);
-    } catch (error) {
-      console.error("Error parseando mensaje WS", error);
-    }
-  };
-
-  roomSocket.onopen = () => {
-    if (radarInterval) clearInterval(radarInterval);
-  };
-
-  roomSocket.onclose = () => {
-    roomSocket = null;
-    startPollingFallback();
-    roomSocketRetryTimer = setTimeout(() => {
-      if (currentRoom) iniciarRadar();
-    }, 1300);
-  };
-
-  roomSocket.onerror = () => {
-    if (roomSocket) roomSocket.close();
-  };
+  // Vercel Serverless Functions do not support persistent WebSockets.
+  // Fall back to polling immediately to prevent connection errors.
+  startPollingFallback();
 }
 
 function startPollingFallback() {
