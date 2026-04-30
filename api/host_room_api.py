@@ -13,6 +13,28 @@ def generate_room_code():
     return "".join(random.choices(string.ascii_uppercase, k=4))
 
 
+def generate_unique_room_code(max_attempts: int = 20):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    for _ in range(max_attempts):
+        code = generate_room_code()
+        existing = (
+            supabase.table("rooms")
+            .select("id")
+            .eq("room_code", code)
+            .execute()
+        )
+
+        if not existing.data:
+            return code
+
+    raise HTTPException(
+        status_code=500,
+        detail="No se pudo generar un código único de sala",
+    )
+
+
 def make_tv_host():
     return {
         "name": "TV",
@@ -26,7 +48,7 @@ async def create_room():
     if not supabase:
         raise HTTPException(status_code=500, detail="Faltan credenciales")
 
-    code = generate_room_code()
+    code = generate_unique_room_code()
     game_state = {
         "phase": "lobby",
         "host": make_tv_host(),
@@ -40,11 +62,14 @@ async def create_room():
         },
     }
 
-    supabase.table("rooms").insert({
+    result = supabase.table("rooms").insert({
         "room_code": code,
         "status": "lobby",
         "game_state": game_state,
     }).execute()
+
+    if not getattr(result, "data", None):
+        raise HTTPException(status_code=500, detail="No se pudo crear la sala")
 
     return {
         "message": "Sala creada por TV",
