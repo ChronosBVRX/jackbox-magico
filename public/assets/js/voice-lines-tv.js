@@ -215,6 +215,7 @@
     loadCatalog()
       .then(() => buildPreloadCache())
       .catch((error) => log("catalog_error", { error: String(error?.message || error) }));
+
     setInterval(bindLifecycleHooks, 1000);
     setInterval(observePhase, 1800);
   }
