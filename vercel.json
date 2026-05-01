@@ -13,6 +13,10 @@
       "use": "@vercel/python"
     },
     {
+      "src": "api/room_status_api.py",
+      "use": "@vercel/python"
+    },
+    {
       "src": "api/mobile_host_guard_api.py",
       "use": "@vercel/python"
     },
@@ -69,6 +73,10 @@
     {
       "src": "/api/player/join",
       "dest": "api/player_join_api.py"
+    },
+    {
+      "src": "/api/room/([^/]+)/status",
+      "dest": "api/room_status_api.py"
     },
     {
       "src": "/api/mobile/host/(.*)",
