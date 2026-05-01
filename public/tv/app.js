@@ -1021,6 +1021,7 @@ async function startMatchFlow(storyId, storyTitle) {
   }
 
   await startBackgroundMusic();
+  unlockMagicSound(); // Asegurar desbloqueo de contexto de audio
   await crearSala();
 }
 
@@ -1066,6 +1067,12 @@ async function crearSala() {
 
     if (qr) {
       qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
+    }
+
+    // VOZ: Forzar reglas generales de Dumbledore sí o sí al crear la sala
+    if (window.VoiceLinesTv) {
+      window.VoiceLinesTv.playInstruction("intro_general", "init", true);
+      window.currentGameInstructionId = "intro_general";
     }
 
     iniciarRadar();
