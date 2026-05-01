@@ -376,6 +376,11 @@ def start_step_for_story(
 
         game_id = pick["game_id"]
         game_state = build_game_state_for_game(room_code, game_id, previous_state)
+        
+        # Pausar el juego en la pantalla de reglas antes de comenzar
+        game_state["target_phase"] = game_state.get("phase", game_id)
+        game_state["phase"] = "rules"
+        
         transition_reason = step.get("reason") or "La Copa activó una prueba mágica inesperada."
         transition_lines = dialogue_lines + build_minigame_transition_lines(game_id, transition_reason)
         game_state["story_selected_minigame_name"] = get_game_display_name(game_id)
@@ -392,6 +397,12 @@ def start_step_for_story(
     if step_type == "copa_final":
         game_id = DEFAULT_FINAL_GAME_ID
         game_state = build_game_state_for_game(room_code, game_id, previous_state)
+        
+        # Pausar el juego en la pantalla de reglas antes de comenzar
+        game_state["target_phase"] = game_state.get("phase", game_id)
+        game_state["phase"] = "rules"
+        game_state["story_selected_minigame_name"] = "La Pregunta Final"
+        
         transition_reason = "Llegó la Pregunta Final. La Copa ya está juzgando a todos en silencio."
         transition_lines = dialogue_lines + build_final_transition_lines()
         return attach_story_metadata(

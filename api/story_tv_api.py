@@ -248,6 +248,31 @@ async def next_story_step_from_tv(room_code: str, info: TvStoryInfo):
     }
 
 
+@app.post("/api/story-tv/{room_code}/accept-rules")
+async def accept_rules_from_tv(room_code: str, info: TvStoryInfo):
+    import time
+    room = get_room(room_code)
+    state = deepcopy(room.get("game_state") or {})
+    state = validate_or_claim_tv(state, info.tv_token)
+
+    target = state.get("target_phase")
+    if target:
+        state["phase"] = target
+        state["started_at"] = time.time()
+        # En caso de que haya una propiedad de tiempo en el minijuego, la dejamos intacta
+        # pero started_at se inicializa ahora para evitar que el reloj expire prematuramente.
+        
+        # Eliminar target_phase para limpieza
+        del state["target_phase"]
+        
+        update_room(room_code, status="playing", game_state=state)
+
+    return {
+        "message": "Reglas aceptadas",
+        "phase": state.get("phase"),
+    }
+
+
 @app.post("/api/story-tv/{room_code}/next-trivia")
 async def next_trivia_from_tv(room_code: str, info: TvStoryInfo):
     room = get_room(room_code)

@@ -102,17 +102,58 @@ body::after {
   animation: pulseGlow 8s ease-in-out infinite alternate-reverse;
 }
 
-.lottie-overlay {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 4;
-  opacity: 0;
-  transition: opacity .2s ease;
+/* ==========================================================================
+   PANTALLA DE REGLAS (INTERMEDIO DE MINIJUEGOS)
+   ========================================================================== */
+
+#view-rules {
+  display: none; /* Se maneja con .visible */
+  align-items: center;
+  justify-content: center;
 }
 
-.lottie-overlay.visible {
-  opacity: .45;
+#view-rules.visible {
+  display: flex;
+}
+
+.rules-card {
+  max-width: 800px;
+  width: 90%;
+  padding: 60px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+  animation: slideUpFade 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) forwards;
+}
+
+.rules-title {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: #ffd879;
+  letter-spacing: -1px;
+  margin: 0;
+  text-shadow: 0 4px 20px rgba(255, 216, 121, 0.3);
+}
+
+.rules-reason {
+  font-size: 1.8rem;
+  color: rgba(255, 255, 255, 0.9);
+  line-height: 1.5;
+  margin: 0;
+  font-weight: 400;
+}
+
+.rules-actions {
+  margin-top: 20px;
+  font-size: 1.5rem;
+  font-weight: 600;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+  animation: pulseHints 2s infinite ease-in-out;
 }
 
 @keyframes pulseGlow {

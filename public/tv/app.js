@@ -719,30 +719,10 @@ function showScreen(id) {
   tvCarouselActive = (id === "view-inicio");
   tvLobbyActive = (id === "view-lobby");
   tvResultsActive = (id === "view-results");
-
-  playLottieTransition(id);
+  tvRulesActive = (id === "view-rules");
 }
 
-function playLottieTransition(screenId) {
-  const overlay = document.getElementById("lottie-overlay");
-  if (!overlay || !window.lottie) return;
 
-  if (!lottieFx) {
-    lottieFx = window.lottie.loadAnimation({
-      container: overlay,
-      renderer: "svg",
-      loop: false,
-      autoplay: false,
-      path: "https://assets2.lottiefiles.com/packages/lf20_jvxwtdtp.json",
-    });
-  }
-
-  if (screenId === "view-game" || screenId === "view-results") {
-    overlay.classList.add("visible");
-    lottieFx.goToAndPlay(0, true);
-    setTimeout(() => overlay.classList.remove("visible"), 900);
-  }
-}
 
 function safeText(value) {
   return String(value ?? "");
@@ -841,6 +821,7 @@ let currentStoryIndex = 0;
 let tvCarouselActive = true;
 let tvLobbyActive = false;
 let tvResultsActive = false;
+let tvRulesActive = false;
 let selectedStoryId = "";
 
 async function loadTvStories() {
@@ -923,6 +904,11 @@ document.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
        e.preventDefault();
        nextStoryStep();
+    }
+  } else if (tvRulesActive) {
+    if (e.key === "Enter" || e.key === " ") {
+       e.preventDefault();
+       acceptRules();
     }
   }
 });
@@ -1082,6 +1068,12 @@ function renderRoomPayload(data) {
 
   if (data.status === "playing") {
     const phase = data.game_state?.phase || "lobby";
+
+    if (phase === "rules") {
+      renderRules(data);
+      return;
+    }
+
     if (phase !== "lobby" && !phase.includes("results_")) {
       renderPlaying(data);
       return;
@@ -1090,6 +1082,17 @@ function renderRoomPayload(data) {
       renderResults(data);
     }
   }
+}
+
+function renderRules(data) {
+  const state = data.game_state || {};
+  showScreen("view-rules");
+
+  const titleEl = document.getElementById("rules-title");
+  const reasonEl = document.getElementById("rules-reason");
+
+  if (titleEl) titleEl.textContent = state.story_selected_minigame_name || "Siguiente Prueba";
+  if (reasonEl) reasonEl.textContent = state.story_transition_reason || "Prepárate para la siguiente dinámica...";
 }
 
 function renderLobby(data) {
@@ -1344,7 +1347,7 @@ function updateTriviaTimer(state) {
 
     setTimeout(() => {
       revelarResultados();
-    }, 650);
+    }, 3500);
   }
 }
 
@@ -1362,7 +1365,7 @@ function updateGenericTimer(state) {
 
     setTimeout(() => {
       revelarResultados();
-    }, 650);
+    }, 3500);
   }
 }
 
@@ -1568,6 +1571,20 @@ function renderScoreGrid(players = []) {
       <div class="score-points">${Number(player.score || 0)} pts</div>
     </div>
   `).join("");
+}
+
+async function acceptRules() {
+  if (!currentRoom) return;
+  try {
+    const res = await fetch(`/api/story-tv/${currentRoom}/accept-rules`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tv_token: getTvToken() }),
+    });
+    if (!res.ok) console.error("Error aceptando reglas", await res.text());
+  } catch (error) {
+    console.error("Network error acceptRules", error);
+  }
 }
 
 async function revelarResultados() {
