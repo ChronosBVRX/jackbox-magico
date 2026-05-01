@@ -13,6 +13,8 @@ let roomSocketRetryTimer = null;
 let lastVoicePhase = "";
 let threatVoiceTimer = null;
 let lastPlayersHash = "";
+let lastHouseScoresHash = "";
+let lastTriviaPlayersHash = "";
 
 const houseIcons = {
   Gryffindor: "🦁",
@@ -1294,12 +1296,18 @@ function updateTriviaHouseScores(players) {
   const box = document.getElementById("trivia-house-score");
   if (!box) return;
 
-  box.innerHTML = renderHouseScoreboard(players || []);
+  const scores = calculateHouseScores(players || []);
+  const currentHash = JSON.stringify(scores);
+
+  if (lastHouseScoresHash !== currentHash) {
+    lastHouseScoresHash = currentHash;
+    box.innerHTML = renderHouseScoreboard(players || []);
+  }
 }
 
 function updateTriviaPlayers(state, players) {
   const box = document.getElementById("trivia-players");
-  const count = document.getElementById("trivia-answered-count");
+  const countLabel = document.getElementById("trivia-answered-count");
 
   if (!box) return;
 
@@ -1307,9 +1315,18 @@ function updateTriviaPlayers(state, players) {
   const answeredCount = Object.keys(answered).length;
   const total = (players || []).length;
 
-  if (count) {
-    count.textContent = `${answeredCount}/${total} respondieron`;
+  if (countLabel) {
+    countLabel.textContent = `${answeredCount}/${total} respondieron`;
   }
+
+  // Hash para evitar parpadeo: incluye el nombre de los jugadores y si han respondido
+  const currentHash = JSON.stringify((players || []).map(p => ({
+    n: p.name,
+    a: Boolean(answered[p.name])
+  })));
+
+  if (lastTriviaPlayersHash === currentHash) return;
+  lastTriviaPlayersHash = currentHash;
 
   box.innerHTML = "";
 
