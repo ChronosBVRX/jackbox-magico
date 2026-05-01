@@ -1,4 +1,4 @@
-﻿let bgMusicStarted = false;
+let bgMusicStarted = false;
 let currentRoom = "";
 let radarInterval = null;
 let lastPlayKey = "";
@@ -915,46 +915,6 @@ function updateCarouselScroll() {
   }
 }
 
-document.addEventListener("keydown", (e) => {
-  if (tvCarouselActive) {
-    if (e.key === "ArrowLeft") {
-      e.preventDefault();
-      if (currentStoryIndex > 0) {
-        currentStoryIndex--;
-        updateCarouselScroll();
-      }
-    } else if (e.key === "ArrowRight") {
-      e.preventDefault();
-      if (currentStoryIndex < stories.length - 1) {
-        currentStoryIndex++;
-        updateCarouselScroll();
-      }
-    } else if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      const selectedStory = stories[currentStoryIndex];
-      if (selectedStory && !roomCreating && !currentRoom) {
-        tvCarouselActive = false;
-        startMatchFlow(selectedStory.story_id, selectedStory.title);
-      }
-    }
-  } else if (tvLobbyActive) {
-    if (e.key === "Enter" || e.key === " ") {
-       e.preventDefault();
-       startStoryFromLobby();
-    }
-  } else if (tvResultsActive) {
-    if (e.key === "Enter" || e.key === " ") {
-       e.preventDefault();
-       nextStoryStep();
-    }
-  } else if (tvRulesActive) {
-    if (e.key === "Enter" || e.key === " ") {
-       e.preventDefault();
-       acceptRules();
-    }
-  }
-});
-
 document.addEventListener("DOMContentLoaded", () => {
   loadTvStories();
 });
@@ -1121,6 +1081,7 @@ function renderRoomPayload(data) {
 
   if (data.status === "playing") {
     const state = data.game_state || {};
+    window.currentGameState = state;
     const phase = state.phase || "lobby";
     
     // Fases de Escenas Especiales (Jackbox Style)
@@ -1894,8 +1855,41 @@ function renderRulesScene(state) {
 }
 
 document.addEventListener("keydown", (event) => {
+  // Caso 1: Carrusel de historias (antes de crear sala)
+  if (tvCarouselActive) {
+    if (event.key === "ArrowLeft") {
+      event.preventDefault();
+      if (currentStoryIndex > 0) {
+        currentStoryIndex--;
+        updateCarouselScroll();
+      }
+    } else if (event.key === "ArrowRight") {
+      event.preventDefault();
+      if (currentStoryIndex < stories.length - 1) {
+        currentStoryIndex++;
+        updateCarouselScroll();
+      }
+    } else if (event.key === "Enter" || event.key === " ") {
+      event.preventDefault();
+      const selectedStory = stories[currentStoryIndex];
+      if (selectedStory && !roomCreating && !currentRoom) {
+        tvCarouselActive = false;
+        startMatchFlow(selectedStory.story_id, selectedStory.title);
+      }
+    }
+    return;
+  }
+
+  // Caso 2: Flujo de partida (Lobby y Escenas)
   if (event.key === "Enter" || event.key === " ") {
-    const phase = window.currentGameState?.phase;
+    const phase = window.currentGameState?.phase || (tvLobbyActive ? "lobby" : "");
+    
+    if (phase === "lobby") {
+      event.preventDefault();
+      startStoryFromLobby();
+      return;
+    }
+
     if (
       phase === "scene_intro" ||
       phase === "scene_rules" ||

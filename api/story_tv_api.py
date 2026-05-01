@@ -163,7 +163,13 @@ async def start_story_from_tv(room_code: str, info: TvStoryInfo):
     game_state["managed_by"] = "tv"
     game_state["host_authority"] = "tv"
 
-    room_service.update_room_with_version(room_code, game_state, room.get("state_version", 0))
+    # 3. Guardar estado y cambiar status a playing
+    from api.database import supabase
+    supabase.table("rooms").update({
+        "game_state": game_state,
+        "status": "playing",
+        "state_version": room.get("state_version", 0) + 1
+    }).eq("room_code", room_code).execute()
 
     return {
         "message": "Historia iniciada desde TV",
