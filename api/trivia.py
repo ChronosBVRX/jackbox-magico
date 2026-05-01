@@ -1048,7 +1048,7 @@ def build_trivia_state(room_code=None, previous_state=None):
         "difficulty": question_view["dificultad"],
         "narrator": question_view["comentarioNarrador"],
         "duration_seconds": QUESTION_SECONDS,
-        "started_at": _now(),
+        "started_at": _now() + 3.5,
         "points_correct": question_view["puntosBase"],
         "points_wrong": WRONG_POINTS,
         "points_fastest": FASTEST_CORRECT_BONUS,

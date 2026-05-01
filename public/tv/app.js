@@ -1090,9 +1090,35 @@ function renderRules(data) {
 
   const titleEl = document.getElementById("rules-title");
   const reasonEl = document.getElementById("rules-reason");
+  let rulesListEl = document.getElementById("rules-list");
 
-  if (titleEl) titleEl.textContent = state.story_selected_minigame_name || "Siguiente Prueba";
-  if (reasonEl) reasonEl.textContent = state.story_transition_reason || "Prepárate para la siguiente dinámica...";
+  // Create rules list element if it doesn't exist
+  if (!rulesListEl) {
+    rulesListEl = document.createElement("ul");
+    rulesListEl.id = "rules-list";
+    rulesListEl.className = "rules-list";
+    if (reasonEl && reasonEl.parentNode) {
+      reasonEl.parentNode.insertBefore(rulesListEl, reasonEl.nextSibling);
+    }
+  }
+
+  if (titleEl) titleEl.textContent = state.story_selected_minigame_name || state.title || "Siguiente Prueba";
+  if (reasonEl) reasonEl.textContent = state.story_transition_reason || state.subtitle || "Prepárate para la siguiente dinámica...";
+  
+  if (rulesListEl) {
+    rulesListEl.innerHTML = "";
+    const rules = state.rules_text || [];
+    if (rules.length > 0) {
+      rules.forEach(rule => {
+        const li = document.createElement("li");
+        li.textContent = rule;
+        rulesListEl.appendChild(li);
+      });
+      rulesListEl.style.display = "block";
+    } else {
+      rulesListEl.style.display = "none";
+    }
+  }
 }
 
 function renderLobby(data) {
@@ -1104,14 +1130,27 @@ function renderLobby(data) {
 
   const hostBox = document.getElementById("host-status");
 
+  const state = data.game_state || {};
+  const isStoryMode = state.mode === "story";
+
   if (hostBox) {
-    if (data.host && data.host.claimed && data.host.name) {
-      hostBox.textContent = `Host de la partida: ${data.host.name}. Él/ella puede iniciar desde su celular.`;
-      hostBox.classList.add("claimed");
+    if (isStoryMode) {
+      hostBox.style.display = "none";
     } else {
-      hostBox.textContent = "El primer celular que entre será el host de la partida.";
-      hostBox.classList.remove("claimed");
+      hostBox.style.display = "block";
+      if (data.host && data.host.claimed && data.host.name) {
+        hostBox.textContent = `Host de la partida: ${data.host.name}. Él/ella puede iniciar desde su celular.`;
+        hostBox.classList.add("claimed");
+      } else {
+        hostBox.textContent = "El primer celular que entre será el host de la partida.";
+        hostBox.classList.remove("claimed");
+      }
     }
+  }
+
+  const hostControlsBox = document.getElementById("controles-host");
+  if (hostControlsBox) {
+    hostControlsBox.style.display = isStoryMode ? "none" : "block";
   }
 
   const lista = document.getElementById("lista-jugadores");

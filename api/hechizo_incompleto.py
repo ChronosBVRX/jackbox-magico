@@ -394,6 +394,10 @@ def build_state(previous_state=None):
             "accent": "golden_spell_sparks",
         },
         "sound_cue": random.choice(["mystery_bell", "spell_hit", "dark_pop", "reveal"]),
+        "rules_text": [
+            "1. Completa la frase del hechizo lo más rápido que puedas.",
+            "2. ¡Tienes poco tiempo, presiona rápido la opción correcta!"
+        ],
     }
 
 

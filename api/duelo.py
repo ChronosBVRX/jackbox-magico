@@ -205,6 +205,11 @@ def build_duelo_state(room_code: str = None, previous_state=None):
         "duel_result": None,
         "point_events": [],
         "host": previous_state.get("host"),
+        "rules_text": [
+            "1. Elige un hechizo como si fuera 'Piedra, Papel o Tijera'.",
+            "2. El ganador rápido se lleva los puntos y la gloria.",
+            "3. Si empatan en el hechizo, ¡aprieta el celular como loco en el Choque de Varitas!"
+        ],
     }
 
 

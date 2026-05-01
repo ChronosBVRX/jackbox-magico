@@ -108,6 +108,11 @@ def build_state(previous_state: Optional[dict] = None) -> dict:
         "settings": {"conflict_mode": item.get("conflict_mode", DEFAULT_CONFLICT_MODE), "cap_wager_to_house_score": True, "missing_wager_defaults_to_zero": True, "all_in_bonus": ALL_IN_BONUS},
         "visual": {"scene":"great_hall_final_ceremony","background":"Gran Comedor, copa brillante, velas flotantes, escudos de casas, luz dorada cinematográfica","accent":"gold_epic_finale"},
         "sound_cue": "reveal",
+        "rules_text": [
+            "1. Esta es la última oportunidad de ganar puntos.",
+            "2. Apuesta cuántos puntos quieres arriesgar de tu casa.",
+            "3. Si aciertas ganas lo apostado, si fallas lo pierdes."
+        ],
     }
 
 

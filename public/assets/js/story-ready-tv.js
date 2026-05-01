@@ -173,7 +173,7 @@
     const state = status?.game_state || {};
     const phase = getPhase(status);
     if (state.mode !== "story") return false;
-    return String(phase).startsWith("results_");
+    return String(phase).startsWith("results_") || phase === "rules";
   }
 
   function progressCompleteLocally(status) {
@@ -231,6 +231,16 @@
             await callNextStep(room);
           } else {
             await callNextTrivia(room);
+          }
+        } else if (getPhase(fresh) === "rules") {
+          if (typeof window.acceptRules === "function") {
+            window.acceptRules();
+          } else {
+            await fetch(`/api/story-tv/${room}/accept-rules`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ tv_token: getTvToken() }),
+            });
           }
         } else {
           await callNextStep(room);

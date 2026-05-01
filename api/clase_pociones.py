@@ -132,6 +132,11 @@ def build_state(room_code=None, previous_state=None):
             "fastest_perfect": POINTS_FASTEST_PERFECT,
             "house_most_perfect": POINTS_HOUSE_MOST_PERFECT,
         },
+        "rules_text": [
+            "1. Memoriza la receta que aparece en la TV.",
+            "2. Repítela tocando los ingredientes en tu celular.",
+            "3. Si te equivocas mucho, tu caldero explotará."
+        ],
     }
 
 
