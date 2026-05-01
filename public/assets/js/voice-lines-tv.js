@@ -50,11 +50,26 @@
     return lines.filter((line) => line.event === event);
   }
 
+  let lastCharacter = "";
+
   function pickLine(event, preferredVoiceKey = "") {
     let candidates = byEvent(event);
+    
+    // Si queremos evitar que Dumbledore hable demasiado después del intro
+    if (lastCharacter === "dumbledore") {
+      const others = candidates.filter(c => c.voice_key !== "dumbledore");
+      if (others.length) candidates = others;
+    }
+
     if (preferredVoiceKey) {
       const preferred = candidates.filter((line) => line.voice_key === preferredVoiceKey);
       if (preferred.length) candidates = preferred;
+    }
+
+    // Evitar repetir el mismo personaje si hay alternativas
+    if (candidates.length > 1) {
+      const alternatives = candidates.filter(c => c.voice_key !== lastCharacter);
+      if (alternatives.length) candidates = alternatives;
     }
 
     candidates = candidates.filter((line) => !candidatePaths(line).every((path) => failed.has(path)));
@@ -62,7 +77,13 @@
 
     const fresh = candidates.filter((line) => !recentlyPlayed.includes(line.id));
     const pool = fresh.length ? fresh : candidates;
-    return pool[Math.floor(Math.random() * pool.length)];
+    const selected = pool[Math.floor(Math.random() * pool.length)];
+    
+    if (selected) {
+      lastCharacter = selected.voice_key;
+    }
+    
+    return selected;
   }
 
   function buildPreloadCache() {
@@ -219,6 +240,23 @@
     return instructionsMuted;
   }
 
+  const INSTRUCTION_CHARACTER_MAP = {
+    "intro_general": "dumbledore",
+    "trivia": "hermione",
+    "atrapa_snitch": "harry",
+    "duelo": "snape",
+    "sombrero": "sombrero",
+    "clase_pociones": "snape",
+    "artes_ridiculas": "ron",
+    "mapa_travieso": "luna",
+    "retratos_chismosos": "hagrid",
+    "hechizo_incompleto": "mcgonagall",
+    "caldero_mentiroso": "dobby",
+    "patronus_personalizado": "luna",
+    "copa_final": "dumbledore",
+    "cierre_ganador": "sombrero"
+  };
+
   function playInstruction(gameId, roundId = "1", force = false) {
     if (!gameId) return false;
     
@@ -238,6 +276,7 @@
     }
 
     lastInstructionPlayed = playKey;
+    lastCharacter = INSTRUCTION_CHARACTER_MAP[normalizedId] || "";
     
     return enqueuePlayback(audioPath, 1.0);
   }
