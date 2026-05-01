@@ -14,6 +14,7 @@ from pydantic import BaseModel
 from api.database import supabase
 from api.story_orchestrator import build_story_state, get_story, get_story_public_payload
 from api.story_api import start_step_for_story, build_game_state_for_game, attach_story_metadata, DEFAULT_TRIVIA_GAME_ID
+from api.services import room_service
 
 
 app = FastAPI(title="Jackbox Mágico Story TV API")
@@ -33,52 +34,6 @@ class TvStoryInfo(BaseModel):
     random_seed: Optional[str] = None
 
 
-def clean_room_code(room_code: str) -> str:
-    code = str(room_code or "").upper().strip()
-    if not code:
-        raise HTTPException(status_code=400, detail="Código de sala vacío")
-    return code
-
-
-def require_supabase():
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales de Supabase")
-
-
-def get_room(room_code: str):
-    require_supabase()
-    code = clean_room_code(room_code)
-    room = (
-        supabase.table("rooms")
-        .select("id, room_code, status, game_state")
-        .eq("room_code", code)
-        .execute()
-    )
-    if not room.data:
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
-    return room.data[0]
-
-
-def update_room(room_code: str, status: Optional[str] = None, game_state: Optional[dict] = None):
-    payload = {}
-    if status is not None:
-        payload["status"] = status
-    if game_state is not None:
-        payload["game_state"] = game_state
-    if payload:
-        supabase.table("rooms").update(payload).eq("room_code", clean_room_code(room_code)).execute()
-
-
-def make_tv_host(tv_token: str) -> dict:
-    token = str(tv_token or "").strip()
-    if not token:
-        raise HTTPException(status_code=400, detail="Falta tv_token")
-    return {
-        "name": "TV",
-        "token": token,
-        "managed_by": "tv",
-        "authority": "tv_screen",
-    }
 
 
 def get_lifecycle(state: dict) -> dict:
@@ -102,7 +57,7 @@ def validate_or_claim_tv(state: dict, tv_token: str) -> dict:
     lifecycle["host_authority"] = "tv"
 
     state["lifecycle"] = lifecycle
-    state["host"] = make_tv_host(tv_token)
+    state["host"] = room_service.make_tv_host(tv_token)
     state["managed_by"] = "tv"
     state["host_authority"] = "tv"
     state["story_controlled_by"] = "tv"
@@ -124,11 +79,11 @@ async def health():
 
 @app.post("/api/story-tv/{room_code}/claim-host")
 async def claim_tv_host(room_code: str, info: TvStoryInfo):
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     state = deepcopy(room.get("game_state") or {})
     state = validate_or_claim_tv(state, info.tv_token)
 
-    update_room(room_code, game_state=state)
+    room_service.update_room_with_version(room_code, state, room.get("state_version", 0))
 
     return {
         "message": "TV registrada como host de la sala",
@@ -168,7 +123,7 @@ async def prepare_story_from_tv(room_code: str, info: TvStoryInfo):
         "host_authority": "tv",
     })
 
-    update_room(room_code, status="lobby", game_state=state)
+    room_service.update_room_with_version(room_code, state, room.get("state_version", 0))
 
     return {
         "message": "Historia preparada desde TV",
@@ -200,11 +155,11 @@ async def start_story_from_tv(room_code: str, info: TvStoryInfo):
     game_state["managed_by"] = "tv"
     game_state["host_authority"] = "tv"
 
-    update_room(room_code, status="playing", game_state=game_state)
+    room_service.update_room_with_version(room_code, game_state, room.get("state_version", 0))
 
     return {
         "message": "Historia iniciada desde TV",
-        "room_code": clean_room_code(room_code),
+        "room_code": room["room_code"],
         "game_id": game_state.get("current_game_id"),
         "phase": game_state.get("phase"),
         "story": game_state.get("story_public"),
@@ -215,12 +170,12 @@ async def start_story_from_tv(room_code: str, info: TvStoryInfo):
 async def next_story_step_from_tv(room_code: str, info: TvStoryInfo):
     from api.story_orchestrator import advance_story_state
 
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     previous_state = deepcopy(room.get("game_state") or {})
     previous_state = validate_or_claim_tv(previous_state, info.tv_token)
     story_state = get_story_state_or_fail(previous_state)
     story_state = advance_story_state(story_state)
-    tv_host = make_tv_host(info.tv_token)
+    tv_host = room_service.make_tv_host(info.tv_token)
 
     game_state = start_step_for_story(
         room_code=room_code,
@@ -235,11 +190,11 @@ async def next_story_step_from_tv(room_code: str, info: TvStoryInfo):
     game_state["managed_by"] = "tv"
     game_state["host_authority"] = "tv"
 
-    update_room(room_code, status="playing", game_state=game_state)
+    room_service.update_room_with_version(room_code, game_state, room.get("state_version", 0))
 
     return {
         "message": "Siguiente etapa iniciada desde TV",
-        "room_code": clean_room_code(room_code),
+        "room_code": room["room_code"],
         "game_id": game_state.get("current_game_id"),
         "phase": game_state.get("phase"),
         "story": game_state.get("story_public"),
@@ -265,7 +220,7 @@ async def accept_rules_from_tv(room_code: str, info: TvStoryInfo):
         # Eliminar target_phase para limpieza
         del state["target_phase"]
         
-        update_room(room_code, status="playing", game_state=state)
+        room_service.update_room_with_version(room_code, state, room.get("state_version", 0))
 
     return {
         "message": "Reglas aceptadas",
@@ -314,11 +269,11 @@ async def next_trivia_from_tv(room_code: str, info: TvStoryInfo):
     game_state["managed_by"] = "tv"
     game_state["host_authority"] = "tv"
 
-    update_room(room_code, status="playing", game_state=game_state)
+    room_service.update_room_with_version(room_code, game_state, room.get("state_version", 0))
 
     return {
         "message": "Siguiente pregunta de trivia iniciada desde TV",
-        "room_code": clean_room_code(room_code),
+        "room_code": room["room_code"],
         "game_id": DEFAULT_TRIVIA_GAME_ID,
         "phase": game_state.get("phase"),
         "story": game_state.get("story_public"),

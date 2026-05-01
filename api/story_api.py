@@ -45,6 +45,7 @@ from api.story_orchestrator import (
     list_stories,
     pick_minigame_for_story,
 )
+from api.services import room_service
 
 
 app = FastAPI(title="Jackbox Mágico Story API")
@@ -92,90 +93,6 @@ class StoryHostNextInfo(HostControlInfo):
 # -----------------------------------------------------------------------------
 
 
-def require_supabase():
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales de Supabase")
-
-
-def clean_room_code(room_code: str) -> str:
-    clean = str(room_code or "").upper().strip()
-    if not clean:
-        raise HTTPException(status_code=400, detail="Código de sala vacío")
-    return clean
-
-
-def generate_room_code() -> str:
-    return "".join(random.choices(string.ascii_uppercase, k=4))
-
-
-def generate_unique_room_code() -> str:
-    require_supabase()
-
-    for _ in range(12):
-        code = generate_room_code()
-        existing = (
-            supabase.table("rooms")
-            .select("id")
-            .eq("room_code", code)
-            .execute()
-        )
-        if not existing.data:
-            return code
-
-    raise HTTPException(status_code=500, detail="No se pudo crear un código único de sala")
-
-
-def get_room(room_code: str) -> Dict[str, Any]:
-    require_supabase()
-    code = clean_room_code(room_code)
-
-    room = (
-        supabase.table("rooms")
-        .select("id, room_code, status, game_state")
-        .eq("room_code", code)
-        .execute()
-    )
-
-    if not room.data:
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
-
-    return room.data[0]
-
-
-def update_room(room_code: str, status: Optional[str] = None, game_state: Optional[dict] = None):
-    require_supabase()
-    payload = {}
-
-    if status is not None:
-        payload["status"] = status
-
-    if game_state is not None:
-        payload["game_state"] = game_state
-
-    if not payload:
-        return
-
-    supabase.table("rooms").update(payload).eq("room_code", clean_room_code(room_code)).execute()
-
-
-def get_host_from_state(state: dict) -> Optional[dict]:
-    host = (state or {}).get("host")
-    return host if isinstance(host, dict) else None
-
-
-def validate_host(state: dict, info: HostControlInfo):
-    host = get_host_from_state(state)
-
-    if not host:
-        raise HTTPException(status_code=403, detail="Esta sala todavía no tiene host")
-
-    if host.get("name") != info.player_name:
-        raise HTTPException(status_code=403, detail="No eres el host de esta sala")
-
-    if host.get("token") != info.host_token:
-        raise HTTPException(status_code=403, detail="Token de host inválido")
-
-    return host
 
 
 # -----------------------------------------------------------------------------
@@ -492,14 +409,13 @@ async def story_pick_minigame(info: MinigamePickInfo):
 
 @router.post("/host/create_room")
 async def create_story_room(info: StoryRoomCreateInfo):
-    require_supabase()
 
     try:
         story_state = build_story_state(info.story_id)
     except KeyError:
         raise HTTPException(status_code=404, detail="Historia no encontrada")
 
-    code = generate_unique_room_code()
+    code = room_service.generate_unique_room_code()
 
     supabase.table("rooms").insert({
         "room_code": code,
@@ -511,6 +427,7 @@ async def create_story_room(info: StoryRoomCreateInfo):
             "story": story_state,
             "story_public": get_story_public_payload(story_state),
         },
+        "state_version": 0
     }).execute()
 
     return {
@@ -539,11 +456,11 @@ async def start_story_room(room_code: str, info: StoryHostStartInfo):
         random_seed=info.random_seed,
     )
 
-    update_room(room_code, status="playing", game_state=game_state)
+    room_service.update_room_with_version(room_code, game_state, room.get("state_version", 0))
 
     return {
         "message": "Modo Historia iniciado",
-        "room_code": clean_room_code(room_code),
+        "room_code": room["room_code"],
         "game_id": game_state.get("current_game_id"),
         "game_name": GAME_CATALOG.get(game_state.get("current_game_id"), {}).get("name"),
         "phase": game_state.get("phase"),
@@ -573,11 +490,11 @@ async def story_next_step(room_code: str, info: StoryHostNextInfo):
         random_seed=info.random_seed,
     )
 
-    update_room(room_code, status="playing", game_state=game_state)
+    room_service.update_room_with_version(room_code, game_state, room.get("state_version", 0))
 
     return {
         "message": "Siguiente etapa de historia iniciada",
-        "room_code": clean_room_code(room_code),
+        "room_code": room["room_code"],
         "game_id": game_state.get("current_game_id"),
         "game_name": GAME_CATALOG.get(game_state.get("current_game_id"), {}).get("name"),
         "phase": game_state.get("phase"),

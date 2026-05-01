@@ -101,3 +101,23 @@ def state_has_tv_authority(state: dict) -> bool:
         and host.get("managed_by") == "tv"
         and state.get("host_authority") == "tv"
     )
+
+def get_host_from_state(state: dict) -> Optional[dict]:
+    """Obtiene el objeto host del estado actual."""
+    host = (state or {}).get("host")
+    return host if isinstance(host, dict) else None
+
+def validate_host(state: dict, player_name: str, host_token: str):
+    """Valida que el jugador y el token coincidan con el host de la sala."""
+    host = get_host_from_state(state)
+
+    if not host:
+        raise HTTPException(status_code=403, detail="Esta sala todavía no tiene host")
+
+    if host.get("name") != player_name:
+        raise HTTPException(status_code=403, detail="No eres el host de esta sala")
+
+    if host.get("token") != host_token:
+        raise HTTPException(status_code=403, detail="Token de host inválido")
+
+    return host
