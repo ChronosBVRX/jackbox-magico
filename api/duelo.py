@@ -60,6 +60,15 @@ DUEL_NARRATOR_LINES = [
     "El duelo empieza cuando la dignidad abandona el salón.",
 ]
 
+STORY_DUEL_LINES = {
+    "copa_encantada_loca": "La Copa exige sangre... o al menos un buen hechizo desarmador.",
+    "peeves_hackeo_trivia": "Peeves dice que el perdedor tendrá que lavarle los calzoncillos a Filch.",
+    "ministerio_cancelo_diversion": "Duelo oficial. Queda estrictamente prohibido divertirse o sonreír.",
+    "torneo_cuatro_casas": "Torneo oficial. Si pierden, le restan puntos a su casa y dignidad a su apellido.",
+    "grimorio_excusas_prohibidas": "El Grimorio ya escribió la excusa del perdedor: 'Se me resbaló la varita por el sudor'.",
+    "banquete_hechizos_descompuestos": "Duelo sobre la mesa. Cuidado con tirarle la sopa de calabaza al director.",
+}
+
 POINTS_WIN = 150
 POINTS_FAST = 30
 POINTS_CLASH_WIN = 80
@@ -170,6 +179,9 @@ def build_duelo_state(room_code: str = None, previous_state=None):
             "host": previous_state.get("host"),
         }
 
+    story_id = previous_state.get("story", {}).get("story_id")
+    narrator_line = STORY_DUEL_LINES.get(story_id, random.choice(DUEL_NARRATOR_LINES))
+
     return {
         "phase": "duelo",
         "game_id": "duelo_hechizos",
@@ -177,7 +189,7 @@ def build_duelo_state(room_code: str = None, previous_state=None):
         "title": "Duelo de Hechizos",
         "subtitle": "Dos casas se enfrentan. Cinco hechizos. Una dignidad en riesgo.",
         "question": "¡Varitas arriba! Elige tu hechizo antes de que termine la cuenta.",
-        "narrator": random.choice(DUEL_NARRATOR_LINES),
+        "narrator": narrator_line,
         "options": DUEL_OPTIONS,
         "spell_copy": SPELL_COPY,
         "duelists": duelists,

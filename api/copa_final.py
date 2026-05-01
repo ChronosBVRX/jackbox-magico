@@ -21,6 +21,14 @@ NARRATOR_OPENING = [
     "¿Apostarán con inteligencia o con la confianza absurda de un Gryffindor?",
     "La Copa de las Casas está en juego.",
 ]
+STORY_COPA_NARRATOR = {
+    "copa_encantada_loca": "La Copa despertó con resaca y exige puntos. Hagan sus apuestas y traten de no enojarla.",
+    "peeves_hackeo_trivia": "Peeves se robó los puntos. Si ganan, se los devuelve; si pierden, los usa para comprar bombas fétidas.",
+    "ministerio_cancelo_diversion": "Examen final del Ministerio. Cualquier apuesta se tomará como declaración oficial de bienes mágicos.",
+    "torneo_cuatro_casas": "La prueba final del Torneo. Pongan en juego su orgullo, su casa y hasta la dignidad de su mascota.",
+    "grimorio_excusas_prohibidas": "El Grimorio cerró sus páginas. Ya no hay excusas, solo su respuesta contra el destino.",
+    "banquete_hechizos_descompuestos": "El gran postre final. Si se equivocan, los que explotan son ustedes.",
+}
 HUMILIATIONS = [
     "Todo o nada... y eligieron nada con pasos extra. El Sombrero está evitando contacto visual.",
     "Esa apuesta cayó más fuerte que estudiante bajando las escaleras móviles sin fijarse.",
@@ -68,7 +76,11 @@ def build_state(previous_state: Optional[dict] = None) -> dict:
     item = deepcopy(random.choice(FINAL_POOL))
     final_type = item.get("final_type", "sabiduria")
     duration = int(item.get("duration_seconds") or QUESTION_SECONDS_BY_TYPE.get(final_type, 18))
-    payload = {"final_type": final_type, "final_label": item.get("final_label", "Pregunta Final"), "question": item.get("question"), "options": _shuffle_options(item.get("options", [])), "sequence": item.get("sequence", []), "explanation": item.get("explanation", ""), "narrator": item.get("narrator") or random.choice(NARRATOR_OPENING), "duration_seconds": duration}
+    
+    story_id = (previous_state or {}).get("story", {}).get("story_id")
+    narrator_line = STORY_COPA_NARRATOR.get(story_id) or item.get("narrator") or random.choice(NARRATOR_OPENING)
+
+    payload = {"final_type": final_type, "final_label": item.get("final_label", "Pregunta Final"), "question": item.get("question"), "options": _shuffle_options(item.get("options", [])), "sequence": item.get("sequence", []), "explanation": item.get("explanation", ""), "narrator": narrator_line, "duration_seconds": duration}
     return {
         "phase": PHASE_BETTING,
         "game_id": "copa_final",

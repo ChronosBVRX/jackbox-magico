@@ -37,6 +37,15 @@ SOMBRERO_LINES = [
     "Ni el Pensadero quería guardar este momento.",
 ]
 
+STORY_SOMBRERO_NARRATOR = {
+    "copa_encantada_loca": "La Copa exige que se echen la culpa entre ustedes. Empiecen.",
+    "peeves_hackeo_trivia": "Peeves se robó los resultados y puso esto en su lugar. Diviértanse.",
+    "ministerio_cancelo_diversion": "El Ministerio requiere una auditoría de comportamiento. Señalen a los culpables.",
+    "torneo_cuatro_casas": "En este Torneo también se evalúa la reputación... y las puñaladas por la espalda.",
+    "grimorio_excusas_prohibidas": "El Grimorio exige un sacrificio social. ¿A quién van a aventar bajo el carruaje?",
+    "banquete_hechizos_descompuestos": "La comida está encantada y el chisme está servido. Voten.",
+}
+
 POINTS_MOST_VOTED = 120
 POINTS_PER_VOTE = 15
 POINTS_WINNER_HOUSE = 80
@@ -98,6 +107,9 @@ def build_sombrero_state(room_code: str, previous_state=None, custom_question=No
 
     prompt = custom_question or random.choice(SOMBRERO_PROMPTS)
 
+    story_id = previous_state.get("story", {}).get("story_id")
+    story_narrator = STORY_SOMBRERO_NARRATOR.get(story_id)
+
     if tied_options:
         phase = "sombrero_tiebreak"
         question = f"Desempate del Sombrero Burlón: {prompt}"
@@ -107,7 +119,7 @@ def build_sombrero_state(room_code: str, previous_state=None, custom_question=No
         phase = "sombrero"
         question = prompt
         options = names
-        narrator = "El Sombrero Burlón está listo para destruir amistades con democracia mágica."
+        narrator = story_narrator or "El Sombrero Burlón está listo para destruir amistades con democracia mágica."
 
     return {
         "phase": phase,

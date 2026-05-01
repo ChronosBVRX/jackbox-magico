@@ -22,6 +22,15 @@ STREAK_TARGET = 5
 ANSWER_LABELS = ["A", "B", "C", "D"]
 DATA_PATH = Path(__file__).with_name("hechizo_incompleto_bank.json")
 
+STORY_HECHIZO_NARRATOR = {
+    "copa_encantada_loca": "La Copa olvidó la otra mitad de la palabra. Si explota algo, fue su culpa.",
+    "peeves_hackeo_trivia": "Peeves borró los pergaminos con baba de gusarajo. Adivinen lo que falta.",
+    "ministerio_cancelo_diversion": "El Ministerio evalúa ortografía mágica. Las fallas serán anexadas a su expediente.",
+    "torneo_cuatro_casas": "Hechizos bajo presión. Un tartamudeo y le restan 50 puntos a su casa.",
+    "grimorio_excusas_prohibidas": "El Grimorio dice que la varita está chueca. Prueben que se equivocan.",
+    "banquete_hechizos_descompuestos": "Tienen la boca llena de polvo de aparición, pronuncien bien o se quedan mudos.",
+}
+
 
 DEFAULT_POOL = [
     {
@@ -344,6 +353,14 @@ def build_state(previous_state=None):
     difficulty = item["difficulty"]
     expert_mode = difficulty == "experto"
 
+    story_id = previous_state.get("story", {}).get("story_id")
+    narrator_line = STORY_HECHIZO_NARRATOR.get(story_id, random.choice([
+        "Pronuncien bien, por favor.",
+        "La varita escucha. El problema es que ustedes a veces no.",
+        "Siete segundos. Ni Hermione revisaba tan rápido, pero inténtenlo.",
+        "Eso no fue latín mágico, eso fue invento de borracho.",
+    ]))
+
     return {
         "phase": PHASE,
         "game_id": GAME_ID,
@@ -357,12 +374,7 @@ def build_state(previous_state=None):
         "options": _shuffle_options(item["options"]),
         "correct": item["correct"],
         "comment": item["narrator_comment"],
-        "narrator": random.choice([
-            "Pronuncien bien, por favor.",
-            "La varita escucha. El problema es que ustedes a veces no.",
-            "Siete segundos. Ni Hermione revisaba tan rápido, pero inténtenlo.",
-            "Eso no fue latín mágico, eso fue invento de borracho.",
-        ]),
+        "narrator": narrator_line,
         "duration_seconds": ROUND_SECONDS,
         "started_at": time.time(),
         "points_correct": POINTS_CORRECT,

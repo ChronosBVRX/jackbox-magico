@@ -49,6 +49,15 @@ NARRATOR_LINES = [
     "Hoy aprenderemos química mágica y responsabilidad civil limitada.",
 ]
 
+STORY_POCIONES_NARRATOR = {
+    "copa_encantada_loca": "La Copa pide una poción improvisada. Mézclenle a ver qué sale.",
+    "peeves_hackeo_trivia": "Peeves escondió la receta. Si explota, él se ríe. Si no, también.",
+    "ministerio_cancelo_diversion": "Evaluación estandarizada de Pociones. Cualquier explosión será deducida de su sueldo.",
+    "torneo_cuatro_casas": "Prueba oficial de pociones. No le pongan chile que no es pozole.",
+    "grimorio_excusas_prohibidas": "Si explota, el Grimorio dirá que fue porque mercurio estaba retrógrado.",
+    "banquete_hechizos_descompuestos": "El postre mutó. Ayuden a preparar el antídoto rápido.",
+}
+
 MEMORIZE_SECONDS = 7
 MIX_SECONDS = 15
 
@@ -89,6 +98,9 @@ def build_state(room_code=None, previous_state=None):
     recipe = _pick_recipe()
     shuffled_ingredients = _shuffle(_ingredient_names())
 
+    story_id = previous_state.get("story", {}).get("story_id")
+    narrator_line = STORY_POCIONES_NARRATOR.get(story_id, random.choice(NARRATOR_LINES))
+
     return {
         "phase": "clase_pociones",
         "game_id": "clase_pociones",
@@ -97,7 +109,7 @@ def build_state(room_code=None, previous_state=None):
         "subtitle": "Memoriza la receta. Luego prepárala en tu celular sin volar el caldero.",
         "potion_name": random.choice(POTION_NAMES),
         "question": "Memoriza la receta antes de que desaparezca.",
-        "narrator": random.choice(NARRATOR_LINES),
+        "narrator": narrator_line,
         "recipe": recipe,
         "recipe_length": len(recipe),
         "ingredients": INGREDIENTS,
