@@ -18,15 +18,17 @@
         : (state.story_transition_reason || state.subtitle || "Prepárate para la siguiente dinámica...");
     }
     
-    // Gestión de audio
+    // Gestión de audio: instrucciones completas por game_id y round_id.
     if (window.lastVoicePhase !== "rules") {
       window.lastVoicePhase = "rules";
-      const gameId = state.current_game_id || state.mode || "trivia";
-      const played = window.VoiceLinesTv?.playInstruction(gameId);
+      const gameId = state.current_game_id || state.game_id || state.mode || "trivia_magica";
+      const roundId = state.round_id || state.round_number || "1";
+      const played = window.VoiceLinesTv?.playInstructionVoice?.(gameId, roundId);
       if (!played) {
-        window.VoiceLinesTv?.play("rules", { volume: 0.95 });
+        window.VoiceLinesTv?.playVoiceLine?.("rules", { volume: 0.95, dedupeKey: `rules_${roundId}` });
       }
       window.currentGameInstructionId = gameId;
+      window.currentInstructionRoundId = roundId;
     }
 
     // Función global para que story-ready la llame al avanzar
