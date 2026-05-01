@@ -21,7 +21,7 @@ def make_tv_host() -> dict:
     }
 
 
-def force_tv_authority(state: dict | None) -> dict:
+def force_tv_authority(state) -> dict:
     state = deepcopy(state or {})
     state["host"] = room_service.make_tv_host()
     state["managed_by"] = "tv"
@@ -124,10 +124,7 @@ async def get_room_status(room_code: str):
     clean_code = str(room_code or "").upper().strip()
 
     if len(clean_code) < 4:
-        raise HTTPException(
-            status_code=400,
-            detail=f"Código de sala inválido: {room_code}",
-        )
+        raise HTTPException(status_code=400, detail=f"Código de sala inválido: {room_code}")
 
     room = get_room_by_code(clean_code)
     players = get_players(room["id"])
@@ -136,9 +133,7 @@ async def get_room_status(room_code: str):
     state = force_tv_authority(raw_state)
 
     if not room_service.state_has_tv_authority(raw_state):
-        supabase.table("rooms").update({
-            "game_state": state,
-        }).eq("room_code", clean_code).execute()
+        supabase.table("rooms").update({"game_state": state}).eq("room_code", clean_code).execute()
 
     return {
         "status": room.get("status"),
