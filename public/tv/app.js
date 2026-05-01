@@ -1161,6 +1161,8 @@ function renderRules(data) {
     } else {
       rulesListEl.style.display = "none";
     }
+  }
+  
   if (lastVoicePhase !== "rules") {
     lastVoicePhase = "rules";
     const gameId = state.current_game_id || state.mode || "trivia";
