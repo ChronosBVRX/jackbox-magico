@@ -28,17 +28,20 @@
   function isReadyMoment(data) {
     const state = data?.game_state || {};
     const phase = state.phase || "";
-    if (state.mode !== "story") return false;
-    if (phase === "lobby") return false;
+    if (phase === "lobby" || phase === "") return false;
 
-    return (
-      String(phase).startsWith("results_") ||
-      phase === "rules" ||
-      phase === "scene_instructions" ||
-      phase === "scene_intro" ||
-      phase === "scene_rules"
-    );
+    // Fases de escena narrativa: siempre mostrar botón independientemente de mode.
+    // El campo mode puede no estar presente en el primer payload de scene_intro.
+    const narrativePhases = new Set([
+      "scene_intro", "scene_rules", "scene_instructions", "rules",
+    ]);
+    if (narrativePhases.has(phase)) return true;
+
+    // Para resultados y demás, requerir mode === "story"
+    if (state.mode !== "story") return false;
+    return String(phase).startsWith("results_");
   }
+
 
   // ─── Etiqueta e ícono del botón según la fase ─────────────────────────────
 
@@ -159,7 +162,19 @@
 
   function ensureReadyBox() {
     let box = document.getElementById("story-ready-mobile-box");
-    if (box) return box;
+
+    // Target preferido: siempre view-wait .card
+    const waitCard = document.querySelector("#view-wait .card");
+    const gameCard = document.querySelector("#view-game .card");
+    const preferredParent = waitCard || gameCard || document.body;
+
+    if (box) {
+      // Si el box existe pero está en el contenedor equivocado, re-adjuntarlo
+      if (box.parentElement !== preferredParent) {
+        preferredParent.appendChild(box);
+      }
+      return box;
+    }
 
     box = document.createElement("div");
     box.id = "story-ready-mobile-box";
@@ -178,17 +193,10 @@
       sendReady();
     });
 
-    // Adjuntar al card correcto según pantalla visible
-    const gameCard  = document.querySelector("#view-game .card");
-    const waitCard  = document.querySelector("#view-wait .card");
-    const target =
-      document.getElementById("view-game")?.classList.contains("visible")
-        ? gameCard
-        : waitCard || gameCard;
-    target?.appendChild(box);
-
+    preferredParent.appendChild(box);
     return box;
   }
+
 
   function renderReadyBox(readyData, sent = false) {
     const box = ensureReadyBox();

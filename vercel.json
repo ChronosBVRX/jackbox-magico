@@ -107,6 +107,10 @@
       "dest": "api/room_lifecycle_api.py"
     },
     {
+      "src": "/api/tv/(.*)",
+      "dest": "api/story_tv_api.py"
+    },
+    {
       "src": "/api/(.*)",
       "dest": "api/main.py"
     },
