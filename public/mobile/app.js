@@ -519,6 +519,19 @@ function iniciarRadarMovil() {
       }
 
       if (data.status === "playing" && phase !== "lobby" && !phase.includes("results_")) {
+        // ── Escenas narrativas: mostrar pantalla de espera con mensaje contextual ──
+        // Sin este bloque, caen al fallback renderMobileGame() y muestran "¡Responde rápido!"
+        if (
+          phase === "scene_intro" ||
+          phase === "scene_rules" ||
+          phase === "scene_instructions" ||
+          phase === "scene_scoreboard" ||
+          phase === "scene_transition"
+        ) {
+          renderSceneWait(state);
+          return;
+        }
+
         if (phase === "rules") {
           renderRulesMobile(state);
           return;
@@ -576,6 +589,7 @@ function iniciarRadarMovil() {
       if (data.status === "playing" && phase.includes("results_")) {
         renderResultsWait(state);
       }
+
 
       if (state.phase === "artes_ridiculas") {
         updateMobileTimer(state);
@@ -653,6 +667,53 @@ function renderResultsWait(state = {}) {
   document.getElementById("wait-pill").innerText = "🏆 Resultados";
   document.getElementById("wait-msg").innerText = "¡Mira la TV!";
   document.getElementById("wait-subtitle").innerText = "La ronda terminó. Revisa la TV.";
+}
+
+/**
+ * Pantalla de espera para fases narrativas de escena (intro, reglas, instrucciones, marcador, transición).
+ * El móvil muestra view-wait con contexto relevante en lugar de la pantalla de minijuego vacía.
+ */
+function renderSceneWait(state = {}) {
+  const phase = state.phase || "";
+
+  // Solo re-renderizar si la fase cambió (anti-flicker)
+  const sceneKey = `scene-wait-${phase}`;
+  if (window._lastSceneWaitKey === sceneKey) return;
+  window._lastSceneWaitKey = sceneKey;
+
+  hideGamePanels();
+  showScreen("view-wait");
+
+  const pillEl    = document.getElementById("wait-pill");
+  const msgEl     = document.getElementById("wait-msg");
+  const subtitleEl = document.getElementById("wait-subtitle");
+
+  if (phase === "scene_intro") {
+    if (pillEl)    pillEl.innerText    = "🏰 Bienvenida";
+    if (msgEl)     msgEl.innerText     = "¡Bienvenidos a Jackbox Mágico!";
+    if (subtitleEl) subtitleEl.innerText = "El Gran Comedor les da la bienvenida. Miren la TV.";
+  } else if (phase === "scene_rules") {
+    if (pillEl)    pillEl.innerText    = "📖 Reglas";
+    if (msgEl)     msgEl.innerText     = "Reglas del Castillo";
+    if (subtitleEl) subtitleEl.innerText = "Lean las reglas en la TV y confirmen cuando estén listos.";
+  } else if (phase === "scene_instructions") {
+    const gameTitle = state.instruction_title || state.story_selected_minigame_name || "Siguiente Prueba";
+    if (pillEl)    pillEl.innerText    = "⚡ Instrucciones";
+    if (msgEl)     msgEl.innerText     = gameTitle;
+    if (subtitleEl) subtitleEl.innerText = "Lean las instrucciones en la TV y confirmen cuando estén listos.";
+  } else if (phase === "scene_scoreboard") {
+    if (pillEl)    pillEl.innerText    = "🏆 Marcador";
+    if (msgEl)     msgEl.innerText     = "¡Marcador actualizado!";
+    if (subtitleEl) subtitleEl.innerText = "Miren el marcador en la TV.";
+  } else if (phase === "scene_transition") {
+    if (pillEl)    pillEl.innerText    = "✨ Transición";
+    if (msgEl)     msgEl.innerText     = "Algo grande viene...";
+    if (subtitleEl) subtitleEl.innerText = "La siguiente prueba está a punto de comenzar.";
+  } else {
+    if (pillEl)    pillEl.innerText    = "🪄 Historia";
+    if (msgEl)     msgEl.innerText     = "¡Mira la TV!";
+    if (subtitleEl) subtitleEl.innerText = "La aventura continúa en la pantalla principal.";
+  }
 }
 
 function renderTriviaMobile(state) {

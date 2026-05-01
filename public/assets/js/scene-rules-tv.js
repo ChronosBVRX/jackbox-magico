@@ -1,68 +1,75 @@
 (() => {
-  // Clave granular para evitar repetir audio/render en cada polling
-  let lastInstructionKey = "";
+  // ─── Anti-flicker: solo re-renderizar cuando el estado cambia ────────────
+  let lastRulesKey = "";
+  let voteUpdateInterval = null;
 
   function renderRules(data) {
     const state = data.game_state || {};
+
+    // Clave única para la escena actual — si no cambió, no re-renderizar el card
+    const rulesKey = `${state.phase}_${state.current_game_id || ""}_${state.round_id || ""}`;
+    const isNewScene = rulesKey !== lastRulesKey;
+    lastRulesKey = rulesKey;
+
     window.showScreen("view-rules");
-
-    const titleEl  = document.getElementById("rules-title");
-    const reasonEl = document.getElementById("rules-reason");
-
-    // Ocultar transición si venimos de otra pantalla
     window.SceneTransition?.hide();
 
-    if (titleEl)
-      titleEl.textContent =
-        state.story_selected_minigame_name || state.title || "Siguiente Prueba";
+    if (isNewScene) {
+      // Solo actualizar textos estáticos cuando la escena cambia
+      const titleEl  = document.getElementById("rules-title");
+      const reasonEl = document.getElementById("rules-reason");
 
-    if (reasonEl) {
-      const isWaiting = window.VoiceLinesTv?.isProcessing?.();
-      reasonEl.textContent = isWaiting
-        ? "Escuchando instrucciones del narrador..."
-        : state.story_transition_reason ||
-          state.subtitle ||
-          "Prepárate para la siguiente dinámica...";
-    }
+      if (titleEl)
+        titleEl.textContent =
+          state.story_selected_minigame_name || state.instruction_title || state.title || "Siguiente Prueba";
 
-    // ── Audio: instrucciones por gameId+roundId ──────────────────────────
-    // Esta es la ÚNICA pantalla donde intro_general (Dumbledore) puede sonar.
-    // view-rules está visible en este punto → el bloqueo en voice-lines-tv.js lo permitirá.
-    const gameId =
-      state.current_game_id ||
-      state.game_id ||
-      state.mode ||
-      "intro_general";
-
-    const roundId = state.round_id || state.round_number || "1";
-    const instructionKey = `${gameId}_${roundId}`;
-
-    if (window.lastInstructionScreenVoiceKey !== instructionKey) {
-      window.lastInstructionScreenVoiceKey = instructionKey;
-      window.lastVoicePhase = "rules";
-
-      window.currentGameInstructionId   = gameId;
-      window.currentInstructionRoundId  = roundId;
-
-      const played = window.VoiceLinesTv?.playInstructionVoice?.(gameId, roundId);
-      if (!played) {
-        window.VoiceLinesTv?.playVoiceLine?.("rules", { volume: 0.95 });
+      if (reasonEl) {
+        const isWaiting = window.VoiceLinesTv?.isProcessing?.();
+        reasonEl.textContent = isWaiting
+          ? "Escuchando instrucciones del narrador..."
+          : state.story_transition_reason ||
+            state.subtitle ||
+            "Prepárate para la siguiente dinámica...";
       }
+
+      // ── Audio: instrucciones por gameId+roundId ──────────────────────────
+      const gameId =
+        state.current_game_id ||
+        state.game_id ||
+        state.mode ||
+        "intro_general";
+      const roundId = state.round_id || state.round_number || "1";
+      const instructionKey = `${gameId}_${roundId}`;
+
+      if (window.lastInstructionScreenVoiceKey !== instructionKey) {
+        window.lastInstructionScreenVoiceKey = instructionKey;
+        window.lastVoicePhase = "rules";
+        window.currentGameInstructionId   = gameId;
+        window.currentInstructionRoundId  = roundId;
+
+        const played = window.VoiceLinesTv?.playInstructionVoice?.(gameId, roundId);
+        if (!played) {
+          window.VoiceLinesTv?.playVoiceLine?.("rules", { volume: 0.95 });
+        }
+      }
+
+      // ── Montar el panel de votos (solo una vez por escena) ───────────────
+      ensureVotePanel();
+
+      // ── Iniciar el intervalo de actualización de votos ───────────────────
+      clearInterval(voteUpdateInterval);
+      voteUpdateInterval = setInterval(updateVotePanel, 1200);
+      updateVotePanel(); // Actualización inicial inmediata
     }
 
-    // ── Panel de votos en TV ─────────────────────────────────────────────
-    // Se actualiza en cada tick de polling sin re-renderizar la card completa
-    ensureVotePanel(data);
-
-    // ── acceptRules global para story-ready-tv.js ────────────────────────
+    // ── acceptRules global para story-ready-tv.js ──────────────────────────
     window.acceptRules = async () => {
       window.SceneTransition?.show("¡Que comience la magia!");
       const room =
-        typeof getRoomCode === "function"
-          ? getRoomCode()
-          : window.currentRoom || "";
-      const token =
-        typeof getTvToken === "function" ? getTvToken() : "";
+        (typeof currentRoom !== "undefined" ? currentRoom : null) ||
+        document.getElementById("tv-code")?.textContent?.trim() ||
+        "";
+      const token = typeof getTvToken === "function" ? getTvToken() : "";
 
       try {
         await fetch(`/api/story-tv/${room}/accept-rules`, {
@@ -76,7 +83,6 @@
       }
     };
 
-    // ── Auto-aceptación sincronizada con audio ───────────────────────────
     if (typeof window.checkAutoAcceptRules === "function") {
       window.checkAutoAcceptRules(data);
     }
@@ -84,43 +90,44 @@
 
   // ────────────────────────────────────────────────────────────────────────
   // Panel de votos: contador de jugadores listos visible en TV
+  // Se monta UNA vez y se actualiza solo los datos, sin re-montar HTML
   // ────────────────────────────────────────────────────────────────────────
 
-  function ensureVotePanel(data) {
-    let panel = document.getElementById("rules-vote-panel");
-    if (!panel) {
-      panel = document.createElement("div");
-      panel.id = "rules-vote-panel";
-      panel.className = "rules-vote-panel";
-      panel.innerHTML = `
-        <div class="rvp-row">
-          <span class="rvp-icon">⚡</span>
-          <span class="rvp-label">Jugadores listos:</span>
-          <span class="rvp-count" id="rvp-count">…</span>
-        </div>
-        <div class="rvp-names" id="rvp-names"></div>
-        <div class="rvp-hint">Los jugadores confirman desde su celular</div>
-        <div class="rvp-bar-wrap">
-          <div class="rvp-bar"><div class="rvp-bar-fill" id="rvp-bar-fill"></div></div>
-        </div>
-      `;
+  function ensureVotePanel() {
+    if (document.getElementById("rules-vote-panel")) return; // Ya existe
 
-      // Insertar dentro de la .rules-card
-      const card = document.querySelector(".rules-card");
-      if (card) card.appendChild(panel);
-      else document.querySelector(".rules-card-container")?.appendChild(panel);
+    const panel = document.createElement("div");
+    panel.id = "rules-vote-panel";
+    panel.className = "rules-vote-panel";
+    panel.innerHTML = `
+      <div class="rvp-row">
+        <span class="rvp-icon">⚡</span>
+        <span class="rvp-label">Jugadores listos:</span>
+        <span class="rvp-count" id="rvp-count">…</span>
+      </div>
+      <div class="rvp-names" id="rvp-names"></div>
+      <div class="rvp-hint">Confirma desde tu celular cuando estés listo</div>
+      <div class="rvp-bar-wrap">
+        <div class="rvp-bar"><div class="rvp-bar-fill" id="rvp-bar-fill"></div></div>
+      </div>
+    `;
 
-      // Inyectar estilos del panel una sola vez
-      injectVotePanelStyles();
-    }
+    const card = document.querySelector(".rules-card");
+    if (card) card.appendChild(panel);
+    else document.querySelector(".rules-card-container")?.appendChild(panel);
 
-    // Actualizar datos de votos desde el ready-status (polling asíncrono)
-    updateVotePanel();
+    injectVotePanelStyles();
   }
+
+  // Cache del último estado del panel para evitar re-renders innecesarios
+  let lastVotePanelHash = "";
 
   async function updateVotePanel() {
     const panel = document.getElementById("rules-vote-panel");
     if (!panel) return;
+
+    // Solo actualizar si la pantalla de reglas está visible
+    if (!document.getElementById("view-rules")?.classList.contains("visible")) return;
 
     const room =
       (typeof currentRoom !== "undefined" ? currentRoom : null) ||
@@ -137,19 +144,23 @@
       if (!res.ok) return;
       const ready = await res.json();
 
+      const readyCount   = Number(ready.ready_count   || 0);
+      const totalPlayers = Number(ready.total_players || 0);
+      const pct          = totalPlayers > 0 ? (readyCount / totalPlayers) * 100 : 0;
+
+      // Hash para evitar actualizaciones sin cambio de datos (anti-flicker)
+      const hash = `${readyCount}/${totalPlayers}|${(ready.ready_players || []).join(",")}`;
+      if (hash === lastVotePanelHash) return;
+      lastVotePanelHash = hash;
+
       const countEl   = document.getElementById("rvp-count");
       const namesEl   = document.getElementById("rvp-names");
       const barFillEl = document.getElementById("rvp-bar-fill");
 
-      const readyCount   = Number(ready.ready_count   || 0);
-      const totalPlayers = Number(ready.total_players || 0);
-      const pct = totalPlayers > 0 ? (readyCount / totalPlayers) * 100 : 0;
-
-      if (countEl)
-        countEl.textContent = `${readyCount}/${totalPlayers}`;
+      if (countEl) countEl.textContent = `${readyCount}/${totalPlayers}`;
 
       if (namesEl) {
-        const readyNames  = ready.ready_players  || [];
+        const readyNames   = ready.ready_players  || [];
         const pendingNames = ready.pending_players || [];
         namesEl.innerHTML =
           readyNames.map(
@@ -244,13 +255,7 @@
         font-weight: 700;
         margin-bottom: 8px;
       }
-      .rvp-bar-wrap {}
-      .rvp-bar {
-        height: 5px;
-        border-radius: 999px;
-        background: rgba(255,255,255,.08);
-        overflow: hidden;
-      }
+      .rvp-bar { height: 5px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
       .rvp-bar-fill {
         height: 100%;
         border-radius: inherit;
@@ -261,6 +266,18 @@
     `;
     document.head.appendChild(style);
   }
+
+  // Limpiar intervalo cuando la pantalla de reglas ya no esté visible
+  setInterval(() => {
+    if (!document.getElementById("view-rules")?.classList.contains("visible")) {
+      clearInterval(voteUpdateInterval);
+      voteUpdateInterval = null;
+      lastRulesKey = ""; // Forzar re-montaje en próxima visita
+      lastVotePanelHash = "";
+      // Remover panel para que se monte fresco en la siguiente escena
+      document.getElementById("rules-vote-panel")?.remove();
+    }
+  }, 1500);
 
   window.SceneRules = { render: renderRules };
 })();

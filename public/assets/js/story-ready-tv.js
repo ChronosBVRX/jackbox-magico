@@ -4,6 +4,7 @@
   let advancingKey = "";
   let readyWindowStartedAt = 0;
   let sceneEnteredAt = 0; // Cuándo entró a la escena actual (para pacing)
+  let lastPanelHash = ""; // Anti-flicker: evitar DOM updates sin cambios
 
   // ─── Duración mínima por tipo de escena (pacing Jackbox) ──────────────────
   // Aunque todos voten, la TV no avanza antes de este tiempo.
@@ -368,13 +369,7 @@
     const panel = ensurePanel();
     panel.classList.add("visible");
 
-    const iconEl   = panel.querySelector(".srtv-icon");
-    const countEl  = panel.querySelector(".srtv-count");
-    const titleEl  = panel.querySelector(".srtv-title");
-    const pendingEl = panel.querySelector(".srtv-pending");
-    const timerEl  = panel.querySelector(".srtv-timer");
-    const barEl    = panel.querySelector(".srtv-bar span");
-
+    // ── Anti-flicker: skip DOM updates si los datos no cambiaron ──
     const remaining = getRemainingSeconds();
     const totalMs = getAutoAdvanceMs();
     const elapsed = readyWindowStartedAt
@@ -383,6 +378,27 @@
     const progress = totalMs
       ? Math.max(0, Math.min(100, (elapsed / totalMs) * 100))
       : 0;
+
+    const dataHash = `${phase}|${ready.ready_count || 0}/${ready.total_players || 0}|${(ready.pending_players || []).join(",")}|${ready.all_ready}`;
+    const barEl = panel.querySelector(".srtv-bar span");
+    const timerEl = panel.querySelector(".srtv-timer");
+
+    // La barra y el timer siempre se actualizan (son animaciones de tiempo)
+    if (barEl) barEl.style.width = `${progress}%`;
+    if (timerEl) {
+      timerEl.textContent = ready.all_ready
+        ? "Avanzando en un momento..."
+        : `Avanza automáticamente en ${remaining}s`;
+    }
+
+    // Los textos estáticos solo cambian cuando los datos cambian
+    if (dataHash === lastPanelHash) return;
+    lastPanelHash = dataHash;
+
+    const iconEl    = panel.querySelector(".srtv-icon");
+    const countEl   = panel.querySelector(".srtv-count");
+    const titleEl   = panel.querySelector(".srtv-title");
+    const pendingEl = panel.querySelector(".srtv-pending");
 
     // Ícono dinámico según fase
     if (iconEl) {
@@ -402,20 +418,15 @@
         ? `Faltan: ${pendingPlayers.map(escapeHTML).join(", ")}`
         : "¡Todos listos! Avanzando...";
     }
-
-    if (timerEl) {
-      timerEl.textContent = ready.all_ready
-        ? "Avanzando en un momento..."
-        : `Avanza automáticamente en ${remaining}s`;
     }
 
-    if (barEl) barEl.style.width = `${progress}%`;
-  }
 
   function hidePanel() {
     const panel = document.getElementById("story-ready-tv-panel");
     if (panel) panel.classList.remove("visible");
+    lastPanelHash = ""; // Forzar re-render en próxima aparición
   }
+
 
   // ─── Estilos ──────────────────────────────────────────────────────────────
 
