@@ -83,7 +83,7 @@
   }
 
   function loadStoryReadyButton() {
-    loadScriptOnce("story-ready-mobile-script", "/assets/js/story-ready-mobile.js?v=story-ready-1");
+    loadScriptOnce("story-ready-mobile-script", "/assets/js/story-ready-mobile.js?v=story-ready-2");
   }
 
   function loadStoryBetControls() {

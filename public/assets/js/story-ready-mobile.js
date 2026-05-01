@@ -1,6 +1,12 @@
 (() => {
   let lastReadyKey = "";
   let lastReadySentKey = "";
+  let autoReadyTimer = null;      // setTimeout para auto-marcar listo a los 20s
+  let autoReadyFired = false;     // Evitar disparar el auto-ready dos veces
+
+  const AUTO_READY_MS = 20_000;   // 20 segundos → listo automático
+
+  // ─── Room / player helpers ────────────────────────────────────────────────
 
   function getRoom() {
     try {
@@ -16,19 +22,54 @@
     return localStorage.getItem("jackbox_magico_name") || "";
   }
 
+  // ─── ¿Momento de mostrar "Listo"? ─────────────────────────────────────────
+  // FIX: Antes solo cubría results_*. Ahora también cubre instrucciones/reglas.
+
   function isReadyMoment(data) {
     const state = data?.game_state || {};
     const phase = state.phase || "";
     if (state.mode !== "story") return false;
     if (phase === "lobby") return false;
-    return String(phase).startsWith("results_");
+
+    return (
+      String(phase).startsWith("results_") ||
+      phase === "rules" ||
+      phase === "scene_instructions" ||
+      phase === "scene_intro" ||
+      phase === "scene_rules"
+    );
   }
+
+  // ─── Etiqueta e ícono del botón según la fase ─────────────────────────────
+
+  function getReadyLabel(phase, sent) {
+    if (sent) return "Listo enviado ✨";
+    if (phase === "scene_instructions") return "⚡ ¡Entendido! Empieza ya";
+    if (phase === "scene_intro")        return "🏰 ¡Adelante!";
+    if (phase === "scene_rules")        return "📖 He leído las reglas";
+    if (phase === "rules")              return "🪄 ¡Listos!";
+    return "✅ Listo para continuar";
+  }
+
+  function getPhaseBadge(phase) {
+    if (phase === "scene_instructions") return "⚡ Instrucciones";
+    if (phase === "scene_intro")        return "🏰 Introducción";
+    if (phase === "scene_rules")        return "📖 Reglas";
+    if (phase === "rules")              return "🪄 ¿Listos?";
+    if (String(phase).startsWith("results_")) return "🏆 Resultados";
+    return "🪄 Siguiente ronda";
+  }
+
+  // ─── Fetch helpers ────────────────────────────────────────────────────────
 
   async function fetchStatus() {
     const room = getRoom();
     if (!room) return null;
     try {
-      const res = await fetch(`/api/room/${room}/status?storyReadyMobileTs=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(
+        `/api/room/${room}/status?storyReadyMobileTs=${Date.now()}`,
+        { cache: "no-store" }
+      );
       if (!res.ok) return null;
       return await res.json();
     } catch (error) {
@@ -40,7 +81,10 @@
     const room = getRoom();
     if (!room) return null;
     try {
-      const res = await fetch(`/api/story-ready/${room}/status?ts=${Date.now()}`, { cache: "no-store" });
+      const res = await fetch(
+        `/api/story-ready/${room}/status?ts=${Date.now()}`,
+        { cache: "no-store" }
+      );
       if (!res.ok) return null;
       return await res.json();
     } catch (error) {
@@ -48,14 +92,19 @@
     }
   }
 
-  async function sendReady() {
+  // ─── Enviar "Listo" ───────────────────────────────────────────────────────
+
+  async function sendReady(options = {}) {
     const room = getRoom();
     const playerName = getPlayerName();
     if (!room || !playerName) return;
 
     const box = ensureReadyBox();
-    const button = box.querySelector("button");
-    if (button) {
+    const button = box?.querySelector("button");
+    const isAuto = Boolean(options.auto);
+
+    // Deshabilitar botón visualmente
+    if (button && !isAuto) {
       button.disabled = true;
       button.textContent = "Listo enviado ✨";
     }
@@ -68,14 +117,45 @@
       });
       const data = await res.json();
       if (data?.ready_key) lastReadySentKey = data.ready_key;
+
+      if (button && isAuto) {
+        button.disabled = true;
+        button.textContent = "Listo enviado ✨";
+      }
+
       renderReadyBox(data, true);
     } catch (error) {
-      if (button) {
+      if (button && !isAuto) {
         button.disabled = false;
-        button.textContent = "Estoy listo";
       }
     }
   }
+
+  // ─── Auto-ready (si el jugador se va al baño 🚽) ─────────────────────────
+
+  function scheduleAutoReady(readyKey) {
+    // Si ya se disparó para esta misma clave, no volver a programar
+    if (lastReadySentKey === readyKey) return;
+    if (autoReadyFired) return;
+
+    clearTimeout(autoReadyTimer);
+    autoReadyFired = false;
+
+    autoReadyTimer = setTimeout(() => {
+      // Verificar que no haya enviado ya
+      if (lastReadySentKey === readyKey) return;
+      autoReadyFired = true;
+      sendReady({ auto: true });
+    }, AUTO_READY_MS);
+  }
+
+  function cancelAutoReady() {
+    clearTimeout(autoReadyTimer);
+    autoReadyTimer = null;
+    autoReadyFired = false;
+  }
+
+  // ─── UI del box de "listo" ────────────────────────────────────────────────
 
   function ensureReadyBox() {
     let box = document.getElementById("story-ready-mobile-box");
@@ -85,16 +165,26 @@
     box.id = "story-ready-mobile-box";
     box.className = "story-ready-mobile-box";
     box.innerHTML = `
-      <div class="story-ready-title">¿Listo para continuar?</div>
-      <p>Cuando todos confirmen, la TV avanzará automáticamente.</p>
-      <button type="button">Estoy listo</button>
-      <small></small>
+      <div class="srmb-badge">🪄 ¿Listos?</div>
+      <div class="srmb-title">¿Listo para continuar?</div>
+      <p class="srmb-desc">Cuando todos confirmen, la TV avanzará automáticamente.</p>
+      <button type="button" id="srmb-btn">✅ Listo para continuar</button>
+      <small class="srmb-count"></small>
+      <div class="srmb-auto-hint">Auto-listo en <span id="srmb-auto-counter">20</span>s</div>
     `;
-    box.querySelector("button")?.addEventListener("click", sendReady);
 
-    const waitCard = document.querySelector("#view-wait .card");
-    const gameCard = document.querySelector("#view-game .card");
-    const target = document.getElementById("view-game")?.classList.contains("visible") ? gameCard : waitCard || gameCard;
+    box.querySelector("#srmb-btn")?.addEventListener("click", () => {
+      cancelAutoReady();
+      sendReady();
+    });
+
+    // Adjuntar al card correcto según pantalla visible
+    const gameCard  = document.querySelector("#view-game .card");
+    const waitCard  = document.querySelector("#view-wait .card");
+    const target =
+      document.getElementById("view-game")?.classList.contains("visible")
+        ? gameCard
+        : waitCard || gameCard;
     target?.appendChild(box);
 
     return box;
@@ -102,33 +192,69 @@
 
   function renderReadyBox(readyData, sent = false) {
     const box = ensureReadyBox();
-    const button = box.querySelector("button");
-    const small = box.querySelector("small");
+    const button   = box.querySelector("#srmb-btn");
+    const small    = box.querySelector(".srmb-count");
+    const badge    = box.querySelector(".srmb-badge");
+    const title    = box.querySelector(".srmb-title");
+    const autoHint = box.querySelector(".srmb-auto-hint");
 
+    // Obtener fase actual para personalizar labels
+    const phase = readyData?.phase || "";
     const readyKey = readyData?.ready_key || lastReadyKey;
     const sentForThisKey = sent || (readyKey && readyKey === lastReadySentKey);
 
+    if (badge)  badge.textContent  = getPhaseBadge(phase);
+    if (title)  title.textContent  = sentForThisKey ? "¡Listo! Esperando al resto..." : "¿Listo para continuar?";
     if (button) {
-      button.disabled = Boolean(sentForThisKey);
-      button.textContent = sentForThisKey ? "Listo enviado ✨" : "Estoy listo";
+      button.disabled   = Boolean(sentForThisKey);
+      button.textContent = getReadyLabel(phase, sentForThisKey);
     }
 
     if (small) {
       const count = Number(readyData?.ready_count || 0);
       const total = Number(readyData?.total_players || 0);
-      small.textContent = total ? `${count}/${total} jugadores listos` : "Esperando jugadores...";
+      small.textContent = total
+        ? `${count}/${total} jugadores listos`
+        : "Esperando jugadores...";
     }
+
+    // Ocultar hint de auto-ready si ya envió
+    if (autoHint) autoHint.style.display = sentForThisKey ? "none" : "block";
   }
+
+  // ─── Cuenta regresiva del auto-ready ─────────────────────────────────────
+
+  function startCountdownDisplay(readyKey) {
+    let secs = Math.ceil(AUTO_READY_MS / 1000);
+    const counterEl = () => document.getElementById("srmb-auto-counter");
+
+    const interval = setInterval(() => {
+      // Detener si ya se envió o cambió la clave
+      if (lastReadySentKey === readyKey || lastReadyKey !== readyKey) {
+        clearInterval(interval);
+        return;
+      }
+      secs = Math.max(0, secs - 1);
+      const el = counterEl();
+      if (el) el.textContent = secs;
+      if (secs <= 0) clearInterval(interval);
+    }, 1_000);
+  }
+
+  // ─── Show / Hide ──────────────────────────────────────────────────────────
 
   function hideReadyBox() {
     const box = document.getElementById("story-ready-mobile-box");
     if (box) box.classList.remove("visible");
+    cancelAutoReady();
   }
 
   function showReadyBox() {
     const box = ensureReadyBox();
     box.classList.add("visible");
   }
+
+  // ─── Estilos ──────────────────────────────────────────────────────────────
 
   function injectStyles() {
     if (document.getElementById("story-ready-mobile-style")) return;
@@ -138,70 +264,128 @@
       .story-ready-mobile-box {
         display: none;
         margin-top: 18px;
-        padding: 18px;
-        border-radius: 24px;
+        padding: 20px 18px;
+        border-radius: 28px;
         color: #fff7dc;
         background:
-          radial-gradient(circle at 20% 0%, rgba(255,216,121,.22), transparent 34%),
+          radial-gradient(circle at 20% 0%, rgba(255,216,121,.24), transparent 38%),
           rgba(255,255,255,.08);
         border: 1px solid rgba(255,216,121,.28);
-        box-shadow: 0 18px 42px rgba(0,0,0,.22);
+        box-shadow: 0 18px 48px rgba(0,0,0,.24);
         text-align: center;
+        animation: srmb-in .38s cubic-bezier(0.18,0.89,0.32,1.28) both;
+      }
+      @keyframes srmb-in {
+        from { opacity: 0; transform: translateY(12px) scale(.96); }
+        to   { opacity: 1; transform: translateY(0)   scale(1); }
       }
       .story-ready-mobile-box.visible { display: block; }
-      .story-ready-title {
+      .srmb-badge {
+        display: inline-block;
+        margin-bottom: 10px;
+        padding: 5px 14px;
+        border-radius: 999px;
+        color: #271600;
+        background: linear-gradient(135deg, #fff8d6, #facc15);
+        font-size: .78rem;
+        font-weight: 1000;
+        text-transform: uppercase;
+        letter-spacing: .07em;
+      }
+      .srmb-title {
         color: #ffe7a3;
-        font-size: 1.35rem;
+        font-size: 1.3rem;
         font-weight: 1000;
         margin-bottom: 6px;
       }
-      .story-ready-mobile-box p {
-        margin: 0 0 12px;
-        color: rgba(255,248,221,.76);
-        line-height: 1.25;
+      .srmb-desc {
+        margin: 0 0 14px;
+        color: rgba(255,248,221,.72);
+        font-size: .9rem;
+        line-height: 1.35;
       }
       .story-ready-mobile-box button {
         width: 100%;
         border: 0;
-        border-radius: 20px;
-        padding: 17px 18px;
+        border-radius: 22px;
+        padding: 18px 18px;
         color: #271600;
         background: linear-gradient(135deg, #fff8d6, #facc15);
-        font-size: 1.15rem;
+        font-size: 1.1rem;
         font-weight: 1000;
+        letter-spacing: -.01em;
+        cursor: pointer;
+        transition: transform .12s ease, box-shadow .12s ease;
+        box-shadow: 0 8px 28px rgba(250,204,21,.28);
+      }
+      .story-ready-mobile-box button:active {
+        transform: scale(.97);
+        box-shadow: 0 4px 14px rgba(250,204,21,.20);
       }
       .story-ready-mobile-box button:disabled {
-        opacity: .72;
+        opacity: .68;
+        cursor: default;
+        background: linear-gradient(135deg, #d4c87e, #a8850a);
+        color: rgba(255,255,255,.9);
+        box-shadow: none;
       }
-      .story-ready-mobile-box small {
+      .srmb-count {
         display: block;
-        margin-top: 10px;
-        color: rgba(255,248,221,.70);
+        margin-top: 11px;
+        color: rgba(255,248,221,.66);
         font-weight: 850;
+        font-size: .88rem;
+      }
+      .srmb-auto-hint {
+        margin-top: 9px;
+        color: rgba(255,248,221,.48);
+        font-size: .78rem;
+        font-weight: 700;
+      }
+      #srmb-auto-counter {
+        font-weight: 1000;
+        color: #fde68a;
       }
     `;
     document.head.appendChild(style);
   }
 
+  // ─── Tick principal ───────────────────────────────────────────────────────
+
   async function tick() {
     injectStyles();
+
     const status = await fetchStatus();
     if (!status || !isReadyMoment(status)) {
       hideReadyBox();
       return;
     }
 
+    const phase = status?.game_state?.phase || "";
     const readyData = await fetchReadyStatus();
     if (!readyData) return;
 
+    // Detectar nueva clave → reiniciar auto-ready
     if (readyData.ready_key !== lastReadyKey) {
       lastReadyKey = readyData.ready_key;
+      cancelAutoReady();
+      autoReadyFired = false;
+
+      // Solo programar auto-ready si el jugador aún no está marcado
+      if (lastReadySentKey !== lastReadyKey) {
+        scheduleAutoReady(lastReadyKey);
+        startCountdownDisplay(lastReadyKey);
+      }
+
+      // Reset el "sent" si es una nueva ronda
       if (lastReadySentKey !== lastReadyKey) lastReadySentKey = "";
     }
 
     showReadyBox();
-    renderReadyBox(readyData, false);
+    renderReadyBox({ ...readyData, phase }, false);
   }
+
+  // ─── Init ─────────────────────────────────────────────────────────────────
 
   document.addEventListener("DOMContentLoaded", () => {
     injectStyles();

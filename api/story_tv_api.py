@@ -220,26 +220,52 @@ async def next_story_step_from_tv(room_code: str, info: TvStoryInfo):
 @app.post("/api/story-tv/{room_code}/accept-rules")
 async def accept_rules_from_tv(room_code: str, info: TvStoryInfo):
     import time
+    from api.story_orchestrator import advance_story_state
+
     room = room_service.get_room_by_code(room_code)
     state = deepcopy(room.get("game_state") or {})
     state = validate_or_claim_tv(state, info.tv_token)
 
     target = state.get("target_phase")
+
     if target:
+        # Camino normal: mover a la fase objetivo
         state["phase"] = target
         state["started_at"] = time.time()
-        # En caso de que haya una propiedad de tiempo en el minijuego, la dejamos intacta
-        # pero started_at se inicializa ahora para evitar que el reloj expire prematuramente.
-        
-        # Eliminar target_phase para limpieza
         del state["target_phase"]
-        
         room_service.update_room_with_version(room_code, state, room.get("state_version", 0))
+
+    else:
+        # FIX: Sin target_phase, avanzar al siguiente step de la historia.
+        # Esto evita que la sala quede congelada en phase=rules indefinidamente.
+        story_state = state.get("story")
+        if isinstance(story_state, dict):
+            story_state = advance_story_state(story_state)
+            tv_host = room_service.make_tv_host(info.tv_token)
+            game_state = start_step_for_story(
+                room_code=room_code,
+                previous_state=state,
+                story_state=story_state,
+                host=tv_host,
+            )
+            game_state["host"] = tv_host
+            game_state["story_controlled_by"] = "tv"
+            game_state["story_autopilot"] = True
+            game_state["managed_by"] = "tv"
+            game_state["host_authority"] = "tv"
+            room_service.update_room_with_version(
+                room_code, game_state, room.get("state_version", 0)
+            )
+            return {
+                "message": "Reglas aceptadas — avanzando al siguiente step",
+                "phase": game_state.get("phase"),
+            }
 
     return {
         "message": "Reglas aceptadas",
         "phase": state.get("phase"),
     }
+
 
 
 @app.post("/api/story-tv/{room_code}/next-trivia")
