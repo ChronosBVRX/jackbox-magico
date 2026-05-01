@@ -87,7 +87,7 @@ async def claim_tv_host(room_code: str, info: TvStoryInfo):
 
     return {
         "message": "TV registrada como host de la sala",
-        "room_code": clean_room_code(room_code),
+        "room_code": room["room_code"],
         "host": {"name": "TV", "claimed": True, "managed_by": "tv"},
     }
 
@@ -97,7 +97,7 @@ async def prepare_story_from_tv(room_code: str, info: TvStoryInfo):
     if not info.story_id:
         raise HTTPException(status_code=400, detail="Falta story_id")
 
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     state = deepcopy(room.get("game_state") or {})
     state = validate_or_claim_tv(state, info.tv_token)
 
@@ -127,7 +127,7 @@ async def prepare_story_from_tv(room_code: str, info: TvStoryInfo):
 
     return {
         "message": "Historia preparada desde TV",
-        "room_code": clean_room_code(room_code),
+        "room_code": room["room_code"],
         "story_id": info.story_id,
         "story_title": story.get("title"),
         "story": get_story_public_payload(story_state),
@@ -136,11 +136,11 @@ async def prepare_story_from_tv(room_code: str, info: TvStoryInfo):
 
 @app.post("/api/story-tv/{room_code}/start")
 async def start_story_from_tv(room_code: str, info: TvStoryInfo):
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     previous_state = deepcopy(room.get("game_state") or {})
     previous_state = validate_or_claim_tv(previous_state, info.tv_token)
     story_state = get_story_state_or_fail(previous_state)
-    tv_host = make_tv_host(info.tv_token)
+    tv_host = room_service.make_tv_host(info.tv_token)
 
     game_state = start_step_for_story(
         room_code=room_code,
@@ -206,7 +206,7 @@ async def next_story_step_from_tv(room_code: str, info: TvStoryInfo):
 @app.post("/api/story-tv/{room_code}/accept-rules")
 async def accept_rules_from_tv(room_code: str, info: TvStoryInfo):
     import time
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     state = deepcopy(room.get("game_state") or {})
     state = validate_or_claim_tv(state, info.tv_token)
 
@@ -230,11 +230,11 @@ async def accept_rules_from_tv(room_code: str, info: TvStoryInfo):
 
 @app.post("/api/story-tv/{room_code}/next-trivia")
 async def next_trivia_from_tv(room_code: str, info: TvStoryInfo):
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     previous_state = deepcopy(room.get("game_state") or {})
     previous_state = validate_or_claim_tv(previous_state, info.tv_token)
     story_state = get_story_state_or_fail(previous_state)
-    tv_host = make_tv_host(info.tv_token)
+    tv_host = room_service.make_tv_host(info.tv_token)
 
     game_state = build_game_state_for_game(
         room_code=room_code,

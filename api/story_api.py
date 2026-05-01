@@ -100,6 +100,130 @@ class StoryHostNextInfo(HostControlInfo):
 # -----------------------------------------------------------------------------
 
 
+def attach_story_metadata(
+    game_state: dict,
+    story_state: dict,
+    host: dict,
+    game_id: str,
+    dialogue_lines: list[str] = None,
+    transition_reason: str = None,
+) -> dict:
+    """Añade metadatos de la historia a un estado de minijuego para que la TV sepa qué mostrar."""
+    game_state["mode"] = "story"
+    game_state["story"] = story_state
+    game_state["story_public"] = get_story_public_payload(story_state)
+    game_state["story_dialogue"] = dialogue_lines or []
+    game_state["story_transition_reason"] = transition_reason
+    game_state["story_controlled_by"] = "tv" if host.get("authority") == "tv_screen" else "player"
+    game_state["host"] = host
+    game_state["current_game_id"] = game_id
+    return game_state
+
+
+def start_step_for_story(
+    room_code: str,
+    previous_state: dict,
+    story_state: dict,
+    host: dict,
+    random_seed: str = None,
+) -> dict:
+    """Decide qué game_state construir basado en el step actual de la historia."""
+    step = get_current_step(story_state)
+    if not step:
+        # Fin de la historia
+        return {
+            "phase": "story_complete",
+            "story_completed": True,
+            "story_public": get_story_public_payload(story_state),
+        }
+
+    step_type = step.get("type")
+
+    if step_type == "dialogue":
+        return attach_story_metadata(
+            game_state={"phase": "lobby"},
+            story_state=story_state,
+            host=host,
+            game_id="narration",
+            dialogue_lines=step.get("lines", []),
+            transition_reason="Narrativa en curso",
+        )
+
+    if step_type == "trivia_block":
+        # Iniciar trivia
+        game_state = build_game_state_for_game(
+            room_code=room_code,
+            game_id=DEFAULT_TRIVIA_GAME_ID,
+            previous_state=previous_state,
+        )
+        # Forzar número de preguntas del step
+        game_state["story_trivia_target_questions"] = step.get("questions", 3)
+        
+        return attach_story_metadata(
+            game_state=game_state,
+            story_state=story_state,
+            host=host,
+            game_id=DEFAULT_TRIVIA_GAME_ID,
+            dialogue_lines=["¿Listos para un poco de trivia?"],
+            transition_reason="Iniciando bloque de trivia",
+        )
+
+    if step_type == "minigame_random":
+        pick = pick_minigame_for_story(
+            used_minigames=story_state.get("used_minigames", []),
+            recent_minigames=story_state.get("recent_minigames", []),
+            random_seed=random_seed,
+        )
+        game_id = pick["game_id"]
+        # Actualizar estado de historia con el nuevo minijuego usado
+        story_state["used_minigames"] = pick["used_minigames"]
+        story_state["recent_minigames"] = pick["recent_minigames"]
+
+        game_state = build_game_state_for_game(
+            room_code=room_code,
+            game_id=game_id,
+            previous_state=previous_state,
+        )
+        
+        # Pausar en reglas para sincronizar audio/timers
+        target_phase = game_state.get("phase", "playing")
+        game_state["target_phase"] = target_phase
+        game_state["phase"] = "rules"
+        game_state["story_selected_minigame_name"] = GAME_CATALOG.get(game_id, {}).get("name", "Minijuego")
+
+        return attach_story_metadata(
+            game_state=game_state,
+            story_state=story_state,
+            host=host,
+            game_id=game_id,
+            dialogue_lines=[step.get("reason", "¡Hora de un minijuego!")],
+            transition_reason=f"Seleccionado minijuego: {game_id}",
+        )
+
+    if step_type == "copa_final":
+        game_state = build_game_state_for_game(
+            room_code=room_code,
+            game_id=DEFAULT_FINAL_GAME_ID,
+            previous_state=previous_state,
+        )
+        return attach_story_metadata(
+            game_state=game_state,
+            story_state=story_state,
+            host=host,
+            game_id=DEFAULT_FINAL_GAME_ID,
+            dialogue_lines=["La gran final ha llegado."],
+            transition_reason="Copa Final",
+        )
+
+    # Fallback
+    return attach_story_metadata(
+        game_state={"phase": "lobby"},
+        story_state=story_state,
+        host=host,
+        game_id="unknown",
+    )
+
+
 def build_game_state_for_game(room_code: str, game_id: str, previous_state: dict) -> Dict[str, Any]:
     """Constructor local de estados para no importar `api.main` y no duplicar apps."""
     if game_id == "trivia_magica":
@@ -440,9 +564,9 @@ async def create_story_room(info: StoryRoomCreateInfo):
 
 @router.post("/host/{room_code}/start")
 async def start_story_room(room_code: str, info: StoryHostStartInfo):
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     previous_state = deepcopy(room.get("game_state") or {})
-    host = validate_host(previous_state, info)
+    host = room_service.validate_host(previous_state, info.player_name, info.host_token)
 
     story_state = previous_state.get("story")
     if not isinstance(story_state, dict):
@@ -472,9 +596,9 @@ async def start_story_room(room_code: str, info: StoryHostStartInfo):
 
 @router.post("/host/{room_code}/next")
 async def story_next_step(room_code: str, info: StoryHostNextInfo):
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     previous_state = deepcopy(room.get("game_state") or {})
-    host = validate_host(previous_state, info)
+    host = room_service.validate_host(previous_state, info.player_name, info.host_token)
 
     story_state = previous_state.get("story")
     if not isinstance(story_state, dict):

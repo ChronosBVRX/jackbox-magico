@@ -12,6 +12,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 from api.database import supabase
+from api.services import room_service
 
 
 app = FastAPI(title="Jackbox Mágico Story Ready API")
@@ -34,30 +35,6 @@ class ResetInfo(BaseModel):
     tv_token: Optional[str] = None
 
 
-def clean_room_code(room_code: str) -> str:
-    code = str(room_code or "").upper().strip()
-    if not code:
-        raise HTTPException(status_code=400, detail="Código de sala vacío")
-    return code
-
-
-def require_supabase():
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales de Supabase")
-
-
-def get_room(room_code: str):
-    require_supabase()
-    code = clean_room_code(room_code)
-    room = (
-        supabase.table("rooms")
-        .select("id, room_code, status, game_state")
-        .eq("room_code", code)
-        .execute()
-    )
-    if not room.data:
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
-    return room.data[0]
 
 
 def get_players(room_id: int):
@@ -129,7 +106,7 @@ async def health():
 
 @app.get("/api/story-ready/{room_code}/status")
 async def ready_status(room_code: str):
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     state = deepcopy(room.get("game_state") or {})
     return build_payload(room, state)
 
@@ -140,7 +117,7 @@ async def player_ready(room_code: str, info: ReadyInfo):
     if not player_name:
         raise HTTPException(status_code=400, detail="Falta player_name")
 
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     state = deepcopy(room.get("game_state") or {})
     players = get_players(room["id"])
     player_names = [player.get("name") for player in players if player.get("name")]
@@ -165,19 +142,16 @@ async def player_ready(room_code: str, info: ReadyInfo):
     else:
         ready_players = [name for name in ready_players if name != player_name]
 
-    ready_state["players"] = ready_players
     state["story_ready"] = ready_state
-
-    supabase.table("rooms").update({
-        "game_state": state,
-    }).eq("room_code", clean_room_code(room_code)).execute()
+    
+    room_service.update_room_with_version(room_code, state, room.get("state_version", 0))
 
     return build_payload(room, state)
 
 
 @app.post("/api/story-ready/{room_code}/reset")
 async def reset_ready(room_code: str, info: ResetInfo):
-    room = get_room(room_code)
+    room = room_service.get_room_by_code(room_code)
     state = deepcopy(room.get("game_state") or {})
     lifecycle = state.get("lifecycle") if isinstance(state.get("lifecycle"), dict) else {}
 
@@ -190,8 +164,6 @@ async def reset_ready(room_code: str, info: ResetInfo):
         "players": [],
     }
 
-    supabase.table("rooms").update({
-        "game_state": state,
-    }).eq("room_code", clean_room_code(room_code)).execute()
+    room_service.update_room_with_version(room_code, state, room.get("state_version", 0))
 
     return build_payload(room, state)
