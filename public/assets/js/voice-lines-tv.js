@@ -478,11 +478,31 @@
     return GAME_ID_ALIASES[raw] || raw;
   }
 
-  // Protección: intro_general solo puede sonar si view-rules está visible
-  function isRulesScreenVisible() {
-    const rules = document.getElementById("view-rules");
-    return Boolean(rules && rules.classList.contains("visible"));
+  // Protección: las voces de instrucciones solo suenan cuando la TV
+  // muestra una pantalla narrativa (reglas, intro, instrucciones de minijuego).
+  // Esto evita que suenen durante trivia activa, resultados o lobby.
+  function isInstructionScreenVisible() {
+    // Pantalla de reglas clásica (elemento DOM)
+    const rulesView = document.getElementById("view-rules");
+    if (rulesView && rulesView.classList.contains("visible")) return true;
+
+    // Leer la fase actual desde el estado global expuesto por tv/app.js
+    const narrativePhases = new Set([
+      "rules", "scene_intro", "scene_rules", "scene_instructions",
+    ]);
+    try {
+      const phase =
+        window.currentGameState?.phase ||
+        window.lastKnownPhase ||
+        "";
+      if (narrativePhases.has(phase)) return true;
+    } catch (_) {}
+
+    return false;
   }
+
+  // Alias para compatibilidad con código anterior que usaba isRulesScreenVisible
+  const isRulesScreenVisible = isInstructionScreenVisible;
 
   async function playInstructionVoice(gameId, roundId = "1", forceRepeat = false) {
     try {
@@ -491,9 +511,10 @@
       const normalizedId = normalizeGameId(gameId);
       if (!normalizedId) return false;
 
-      // BLOQUEO DE SEGURIDAD: intro_general solo puede sonar en view-rules
-      if (normalizedId === "intro_general" && !isRulesScreenVisible()) {
-        log("intro_general_blocked_outside_rules", { gameId, roundId });
+      // BLOQUEO DE SEGURIDAD: intro_general solo puede sonar en pantallas narrativas
+      // No debe sonar durante trivia, resultados, lobby ni cada polling.
+      if (normalizedId === "intro_general" && !isInstructionScreenVisible()) {
+        log("intro_general_blocked_outside_instruction_screen", { gameId, roundId });
         return false;
       }
 
@@ -552,9 +573,13 @@
     if (btnRepeat && !btnRepeat.__voiceRepeatBound) {
       btnRepeat.__voiceRepeatBound = true;
       btnRepeat.addEventListener("click", () => {
-        // Solo repetir si view-rules está visible
-        if (!isRulesScreenVisible()) {
-          log("repeat_blocked_not_in_rules");
+        if (!isVoiceEnabled()) {
+          log("repeat_blocked_voice_disabled");
+          return;
+        }
+        // Permitir repetir en cualquier pantalla de instrucciones narrativas
+        if (!isInstructionScreenVisible()) {
+          log("repeat_blocked_not_in_instruction_screen");
           return;
         }
         const gameId = window.currentGameInstructionId;

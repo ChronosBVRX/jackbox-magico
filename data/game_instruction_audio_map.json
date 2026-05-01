@@ -1,0 +1,20 @@
+{
+  "version": "1.0.0",
+  "description": "Mapa de audios de instrucciones por game_id. Cargado por voice-lines-tv.js como complemento al catálogo general.",
+  "instructions": {
+    "intro_general":          "assets/audio/voice_lines/00_intro_general_dumbledore.mp3",
+    "trivia_magica":          "assets/audio/voice_lines/01_trivia_magica_hermione.mp3",
+    "atrapa_snitch":          "assets/audio/voice_lines/02_atrapa_snitch_harry.mp3",
+    "duelo_hechizos":         "assets/audio/voice_lines/03_duelo_hechizos_snape.mp3",
+    "sombrero_burlon":        "assets/audio/voice_lines/04_sombrero_burlon_sombrero.mp3",
+    "clase_pociones":         "assets/audio/voice_lines/05_clase_pociones_snape.mp3",
+    "artes_ridiculas":        "assets/audio/voice_lines/06_artes_ridiculas_ron.mp3",
+    "mapa_travieso":          "assets/audio/voice_lines/07_mapa_travieso_luna.mp3",
+    "retratos_chismosos":     "assets/audio/voice_lines/08_retratos_chismosos_hagrid.mp3",
+    "hechizo_incompleto":     "assets/audio/voice_lines/09_hechizo_incompleto_mcgonagall.mp3",
+    "caldero_mentiroso":      "assets/audio/voice_lines/10_caldero_mentiroso_dobby.mp3",
+    "patronus_personalizado": "assets/audio/voice_lines/11_patronus_personalizado_luna.mp3",
+    "copa_final":             "assets/audio/voice_lines/12_copa_final_dumbledore.mp3",
+    "cierre_ganador":         "assets/audio/voice_lines/13_cierre_ganador_sombrero.mp3"
+  }
+}
