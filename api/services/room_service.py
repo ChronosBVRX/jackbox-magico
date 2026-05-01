@@ -51,34 +51,54 @@ def get_room_by_code(room_code: str):
         
     return room.data[0]
 
-def update_room_with_version(room_code: str, new_state: dict, current_version: int):
+def update_room_with_version(room_code: str, new_state: dict, current_version: int, max_retries: int = 3):
     """
     Actualiza el estado de la sala de forma segura usando Optimistic Locking.
-    Requiere que la tabla 'rooms' tenga una columna 'state_version'.
+    Si hay un conflicto (409), reintenta obteniendo la versión más reciente.
     """
     if not supabase: return
     
     code = str(room_code or "").upper().strip()
-    
-    # Intentar actualizar solo si la versión coincide
-    result = (
-        supabase.table("rooms")
-        .update({
-            "game_state": new_state,
-            "state_version": current_version + 1
-        })
-        .eq("room_code", code)
-        .eq("state_version", current_version)
-        .execute()
-    )
-    
-    if not result.data:
-        # Si no se actualizó nada, hubo un conflicto de concurrencia
-        raise HTTPException(
-            status_code=409, 
-            detail="Conflicto de estado. Alguien más actualizó la sala. Intenta de nuevo."
+    last_version = current_version
+    last_state = new_state
+
+    for attempt in range(max_retries + 1):
+        # Intentar actualizar solo si la versión coincide
+        result = (
+            supabase.table("rooms")
+            .update({
+                "game_state": last_state,
+                "state_version": last_version + 1
+            })
+            .eq("room_code", code)
+            .eq("state_version", last_version)
+            .execute()
         )
-    return result.data[0]
+        
+        if result.data:
+            return result.data[0]
+            
+        # Si falló, puede ser por conflicto de versión
+        if attempt < max_retries:
+            # Obtener versión fresca y reintentar
+            fresh = (
+                supabase.table("rooms")
+                .select("state_version, game_state")
+                .eq("room_code", code)
+                .execute()
+            )
+            if fresh.data:
+                last_version = fresh.data[0].get("state_version", 0)
+                # Opcional: Podríamos intentar mezclar los estados si fuera necesario, 
+                # pero por ahora simplemente sobreescribimos con el nuevo estado 
+                # sobre la versión más reciente.
+                continue
+                
+    # Si después de los reintentos sigue fallando
+    raise HTTPException(
+        status_code=409, 
+        detail="Conflicto de estado persistente. Alguien más está actualizando la sala intensamente."
+    )
 
 def make_tv_host(tv_token: Optional[str] = None) -> dict:
     """Crea el objeto host para la TV."""

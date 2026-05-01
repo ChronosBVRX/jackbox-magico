@@ -459,7 +459,8 @@ async function joinRoom(auto = false) {
     }
   } catch (error) {
     if (!auto) {
-      alert("Error de conexión al castillo.");
+      console.error("Connection Error:", error);
+      alert("Error de conexión al castillo. Detalles: " + error.message);
     }
 
     if (btn) {

@@ -46,6 +46,7 @@ from api.story_orchestrator import (
     pick_minigame_for_story,
 )
 from api.services import room_service
+from api.scenes.instructions_scene import build_instruction_scene
 
 
 app = FastAPI(title="Jackbox Mágico Story API")
@@ -402,11 +403,13 @@ def start_step_for_story(
             dialogue_lines=transition_lines,
             transition_reason=step.get("reason") or "La historia regresa a la trivia principal.",
         )
-        # Pausar en reglas para sincronizar audio/timers
-        game_state["target_phase"] = game_state.get("phase", "trivia")
-        game_state["phase"] = "rules"
-        game_state["story_selected_minigame_name"] = "Bloque de Trivia"
-        return game_state
+        
+        # Nueva Escena de Instrucciones
+        return build_instruction_scene(
+            game_id=game_id,
+            previous_state=game_state,
+            next_phase=game_state.get("phase", "trivia")
+        )
 
     if step_type == "minigame_random":
         pick = pick_minigame_for_story(
@@ -423,15 +426,10 @@ def start_step_for_story(
         game_id = pick["game_id"]
         game_state = build_game_state_for_game(room_code, game_id, previous_state)
         
-        # Pausar el juego en la pantalla de reglas antes de comenzar
-        game_state["target_phase"] = game_state.get("phase", game_id)
-        game_state["phase"] = "rules"
-        
         transition_reason = step.get("reason") or "La Copa activó una prueba mágica inesperada."
         transition_lines = dialogue_lines + build_minigame_transition_lines(game_id, transition_reason)
-        game_state["story_selected_minigame_name"] = get_game_display_name(game_id)
-
-        return attach_story_metadata(
+        
+        game_state = attach_story_metadata(
             game_state=game_state,
             story_state=story_state,
             host=host,
@@ -440,24 +438,34 @@ def start_step_for_story(
             transition_reason=transition_reason,
         )
 
+        # Nueva Escena de Instrucciones
+        return build_instruction_scene(
+            game_id=game_id,
+            previous_state=game_state,
+            next_phase=game_state.get("phase", game_id)
+        )
+
     if step_type == "copa_final":
         game_id = DEFAULT_FINAL_GAME_ID
         game_state = build_game_state_for_game(room_code, game_id, previous_state)
         
-        # Pausar el juego en la pantalla de reglas antes de comenzar
-        game_state["target_phase"] = game_state.get("phase", game_id)
-        game_state["phase"] = "rules"
-        game_state["story_selected_minigame_name"] = "La Pregunta Final"
-        
         transition_reason = "Llegó la Pregunta Final. La Copa ya está juzgando a todos en silencio."
         transition_lines = dialogue_lines + build_final_transition_lines()
-        return attach_story_metadata(
+        
+        game_state = attach_story_metadata(
             game_state=game_state,
             story_state=story_state,
             host=host,
             game_id=game_id,
             dialogue_lines=transition_lines,
             transition_reason=transition_reason,
+        )
+
+        # Nueva Escena de Instrucciones
+        return build_instruction_scene(
+            game_id=game_id,
+            previous_state=game_state,
+            next_phase=game_state.get("phase", game_id)
         )
 
     raise HTTPException(status_code=400, detail=f"Step de historia no soportado: {step_type}")

@@ -1111,7 +1111,24 @@ function renderRoomPayload(data) {
   }
 
   if (data.status === "playing") {
-    const phase = data.game_state?.phase || "lobby";
+    const state = data.game_state || {};
+    const phase = state.phase || "lobby";
+    
+    // Fases de Escenas Especiales (Jackbox Style)
+    if (phase === "scene_instructions") {
+      renderInstructionsScene(state);
+      return;
+    }
+
+    if (phase === "scene_scoreboard") {
+      renderScoreboardScene(state);
+      return;
+    }
+
+    if (phase === "scene_transition") {
+      renderTransitionScene(state);
+      return;
+    }
 
     if (phase === "rules") {
       renderRules(data);
@@ -1665,3 +1682,133 @@ async function volverLobby() {
     console.error("No se pudo volver al lobby:", error);
   }
 }
+
+async function continueTvFlow() {
+  if (!currentRoom) return;
+
+  try {
+    const res = await fetch(`/api/tv/${currentRoom}/continue`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        tv_token: getTvToken()
+      })
+    });
+
+    const data = await res.json();
+    if (!res.ok) {
+      console.error("No se pudo continuar:", data);
+      return;
+    }
+
+    // El polling ya refrescará, pero forzamos un tick rápido
+    setTimeout(() => {
+      refreshRoomStatus();
+    }, 100);
+
+  } catch (error) {
+    console.error("Error continuando flujo:", error);
+  }
+}
+
+function renderInstructionsScene(state) {
+  showScreen("view-game");
+  const container = document.getElementById("game-container");
+  if (!container) return;
+
+  const lines = state.instruction_lines || [];
+
+  container.innerHTML = `
+    <section class="scene-card instructions-scene ${state.instruction_visual_theme || "default"}">
+      <div class="badge">📖 Instrucciones</div>
+      <h1>${escapeHTML(state.instruction_title || "Siguiente Prueba")}</h1>
+      <p class="scene-subtitle">${escapeHTML(state.instruction_subtitle || "Prepárate para continuar.")}</p>
+      <div class="instruction-list">
+        ${lines.map((line, index) => `
+          <div class="instruction-item">
+            <span>${index + 1}</span>
+            <p>${escapeHTML(line)}</p>
+          </div>
+        `).join("")}
+      </div>
+      <div class="tv-controls-hint large">
+        <span class="key-hint">OK</span> ${escapeHTML(state.cta || "Iniciar")}
+      </div>
+    </section>
+  `;
+}
+
+function renderScoreboardScene(state) {
+  showScreen("view-game");
+  const container = document.getElementById("game-container");
+  if (!container) return;
+
+  const scores = state.house_scores || [];
+  const leader = state.leader;
+  const topPlayer = state.top_player;
+
+  container.innerHTML = `
+    <section class="scene-card scoreboard-scene">
+      <div class="badge">🏆 Copa de las Casas</div>
+      <h1>${escapeHTML(state.scoreboard_title || "Marcador general")}</h1>
+      <p class="scene-subtitle">${escapeHTML(state.scoreboard_subtitle || "Así va la competencia.")}</p>
+      <div class="scoreboard-list">
+        ${scores.map((item, index) => `
+          <div class="scoreboard-row ${index === 0 ? "leader" : ""}">
+            <div class="scoreboard-position">${index + 1}</div>
+            <div class="scoreboard-house">
+              <span>${escapeHTML(item.icon || "✨")}</span>
+              <strong>${escapeHTML(item.label || item.house)}</strong>
+            </div>
+            <div class="scoreboard-points">${Number(item.score || 0)} pts</div>
+          </div>
+        `).join("")}
+      </div>
+      ${leader ? `<div class="leader-banner">Casa líder: ${escapeHTML(leader.icon || "✨")} ${escapeHTML(leader.label || leader.house)}</div>` : ""}
+      ${topPlayer ? `<div class="top-player-banner">Jugador destacado: ${escapeHTML(topPlayer.icon || "✨")} ${escapeHTML(topPlayer.name || "")} · ${Number(topPlayer.score || 0)} pts</div>` : ""}
+      <div class="tv-controls-hint large">
+        <span class="key-hint">OK</span> ${escapeHTML(state.cta || "Continuar")}
+      </div>
+    </section>
+  `;
+}
+
+function renderTransitionScene(state) {
+  showScreen("view-game");
+  const container = document.getElementById("game-container");
+  if (!container) return;
+
+  container.innerHTML = `
+    <section class="scene-card transition-scene">
+      <div class="badge">✨ Transición</div>
+      <h1>${escapeHTML(state.transition_title || "La historia continúa...")}</h1>
+      <p class="scene-subtitle">${escapeHTML(state.transition_subtitle || "")}</p>
+      <div class="magic-loader">
+        <span></span>
+        <span></span>
+        <span></span>
+      </div>
+      <div class="tv-controls-hint large">
+        <span class="key-hint">OK</span> ${escapeHTML(state.cta || "Continuar")}
+      </div>
+    </section>
+  `;
+}
+
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Enter" || event.key === " ") {
+    // Solo si el lobby o alguna escena está activa y requiere confirmación
+    const phase = window.currentGameState?.phase;
+    if (
+      phase === "scene_instructions" ||
+      phase === "scene_scoreboard" ||
+      phase === "scene_transition" ||
+      String(phase || "").startsWith("results_")
+    ) {
+      event.preventDefault();
+      continueTvFlow();
+    }
+  }
+});

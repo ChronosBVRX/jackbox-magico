@@ -149,6 +149,11 @@
       const { path, volume, resolve } = playbackQueue.shift();
       const ok = await playPath(path, volume);
       resolve(ok);
+      
+      // Respiro orgánico entre clips para que no se sientan atropellados
+      if (playbackQueue.length > 0) {
+        await new Promise(r => setTimeout(r, 1200));
+      }
     }
     isProcessing = false;
   }

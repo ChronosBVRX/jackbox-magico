@@ -508,6 +508,7 @@ async def create_room():
         "room_code": code,
         "status": "lobby",
         "game_state": game_state,
+        "state_version": 0
     }).execute()
 
     return {
