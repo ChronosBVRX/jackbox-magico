@@ -8,6 +8,7 @@
 
     const options = state.options || [];
     const roundNumber = Number(state.round_number || 1);
+    const roundId = state.round_id || state.round_number || roundNumber;
     const totalQuestions = Number(state.trivia_session?.total_questions || 25);
     const category = state.category || state.question_payload?.categoria || "Mundo mágico";
 
@@ -41,15 +42,24 @@
 
           <div class="trivia-footer-clean">
             <div id="trivia-answered-count">0/${players.length} respondieron</div>
-            <div class="trivia-narrator-box">“${window.escapeHTML(state.narrator || "El Gran Comedor espera...")}”</div>
+            <div class="trivia-narrator-box">“${window.escapeHTML(state.narrator || "El Gran Comedor espera...H")}”</div>
           </div>
         </div>
       </section>
     `;
 
-    if (window.lastVoicePhase !== "trivia_start_" + state.round_number) {
-      window.lastVoicePhase = "trivia_start_" + state.round_number;
-      window.VoiceLinesTv?.play("round_start", { volume: 0.75 });
+    const roundVoiceKey = `trivia_start_${roundId}`;
+    if (window.lastVoicePhase !== roundVoiceKey) {
+      window.lastVoicePhase = roundVoiceKey;
+      window.VoiceLinesTv?.playVoiceLine?.("round_start", { volume: 0.75, dedupeKey: roundVoiceKey });
+    }
+
+    const threatVoiceKey = `trivia_threat_${roundId}_${state.question || ""}`;
+    if (window.lastThreatVoiceKey !== threatVoiceKey) {
+      window.lastThreatVoiceKey = threatVoiceKey;
+      setTimeout(() => {
+        window.VoiceLinesTv?.playVoiceLine?.("threat", { volume: 0.75, dedupeKey: threatVoiceKey });
+      }, 900);
     }
   }
 
