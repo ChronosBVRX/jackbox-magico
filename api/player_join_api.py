@@ -66,10 +66,8 @@ async def join_room(info: PlayerJoinInfo):
             "house": info.house,
         }).execute()
 
-    # Actualizar estado (aquí omitimos la versión por ahora hasta que se cree la columna)
-    supabase.table("rooms").update({
-        "game_state": state,
-    }).eq("room_code", room["room_code"]).execute()
+    # Actualizar estado usando el servicio con bloqueo optimista
+    room_service.update_room_with_version(room["room_code"], state, room.get("state_version", 0))
 
     return {
         "message": "¡Bienvenido de vuelta!" if is_reconnect else "¡Bienvenido!",

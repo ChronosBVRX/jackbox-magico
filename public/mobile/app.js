@@ -425,6 +425,7 @@ async function joinRoom(auto = false) {
 
     const data = await res.json();
 
+    if (res.ok) {
       showScreen("view-wait");
 
       document.getElementById("wait-msg").innerText = data.reconnected
