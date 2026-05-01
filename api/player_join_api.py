@@ -32,48 +32,55 @@ def ensure_tv_host(state: dict):
 
 @app.post("/api/player/join")
 async def join_room(info: PlayerJoinInfo):
-    if not supabase:
-        raise HTTPException(status_code=500, detail="Faltan credenciales")
+    try:
+        if not supabase:
+            raise HTTPException(status_code=500, detail="Faltan credenciales de base de datos")
 
-    # Validar entrada usando el servicio
-    name = player_service.clean_player_name(info.player_name)
-    
-    room = room_service.get_room_by_code(info.room_code)
-    room_id = room["id"]
-    status = room.get("status")
-    state = ensure_tv_host(room.get("game_state") or {"phase": "lobby"})
+        # Validar entrada usando el servicio
+        name = player_service.clean_player_name(info.player_name)
+        
+        room = room_service.get_room_by_code(info.room_code)
+        room_id = room["id"]
+        status = room.get("status")
+        state = ensure_tv_host(room.get("game_state") or {"phase": "lobby"})
 
-    # Usar el servicio para validar unión
-    player_service.validate_player_join(room_id, name, info.house)
+        # Usar el servicio para validar unión
+        player_service.validate_player_join(room_id, name, info.house)
 
-    # Verificar si es reconexión
-    existing_player = (
-        supabase.table("players")
-        .select("id")
-        .eq("room_id", room_id)
-        .eq("name", name)
-        .execute()
-    )
-    is_reconnect = bool(existing_player.data)
+        # Verificar si es reconexión
+        existing_player = (
+            supabase.table("players")
+            .select("id")
+            .eq("room_id", room_id)
+            .eq("name", name)
+            .execute()
+        )
+        is_reconnect = bool(existing_player.data)
 
-    if not is_reconnect and status != "lobby":
-        raise HTTPException(status_code=403, detail="Partida ya en curso")
+        if not is_reconnect and status != "lobby":
+            raise HTTPException(status_code=403, detail="Partida ya en curso")
 
-    if not is_reconnect:
-        supabase.table("players").insert({
-            "room_id": room_id,
-            "name": name,
-            "house": info.house,
-            "gender": info.gender or "wizard"
-        }).execute()
+        if not is_reconnect:
+            supabase.table("players").insert({
+                "room_id": room_id,
+                "name": name,
+                "house": info.house,
+                "gender": info.gender or "wizard"
+            }).execute()
 
-    # Actualizar estado usando el servicio con bloqueo optimista
-    room_service.update_room_with_version(room["room_code"], state, room.get("state_version", 0))
+        # Actualizar estado usando el servicio con bloqueo optimista (retry automático incluido)
+        room_service.update_room_with_version(room["room_code"], state, room.get("state_version", 0))
 
-    return {
-        "message": "¡Bienvenido de vuelta!" if is_reconnect else "¡Bienvenido!",
-        "reconnected": is_reconnect,
-        "is_host": False,
-        "host_token": None,
-        "host_name": "TV",
-    }
+        return {
+            "message": "¡Bienvenido de vuelta!" if is_reconnect else "¡Bienvenido!",
+            "reconnected": is_reconnect,
+            "is_host": False,
+            "host_token": None,
+            "host_name": "TV",
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        # Capturar el error real para diagnóstico
+        print(f"JOIN_ERROR: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Error interno al entrar al castillo: {str(e)}")
