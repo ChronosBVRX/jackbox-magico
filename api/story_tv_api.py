@@ -299,10 +299,15 @@ async def next_trivia_from_tv(room_code: str, info: TvStoryInfo):
         host=tv_host,
         game_id=DEFAULT_TRIVIA_GAME_ID,
         dialogue_lines=[
-            "La siguiente pregunta aparece sola. Nadie toque nada, esto ya está embrujado profesionalmente.",
+            "La siguiente pregunta aparece sola. Prepárense.",
         ],
-        transition_reason="La trivia continúa automáticamente dentro del bloque narrativo.",
+        transition_reason="La trivia continúa automáticamente.",
     )
+    
+    # Pausar en reglas para sincronizar audio/timers
+    game_state["target_phase"] = game_state.get("phase", "trivia")
+    game_state["phase"] = "rules"
+    game_state["story_selected_minigame_name"] = "Continuación de Trivia"
     game_state["host"] = tv_host
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True

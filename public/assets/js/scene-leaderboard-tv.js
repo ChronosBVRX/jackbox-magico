@@ -22,6 +22,7 @@
   }
 
   function render(data) {
+    window.SceneTransition?.hide();
     window.showScreen("view-leaderboard");
     const container = document.getElementById("leaderboard-container");
     if (!container) return;

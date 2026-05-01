@@ -220,10 +220,11 @@
     const timedOut = isReadyTimedOut();
     const voiceBusy = window.VoiceLinesTv?.isProcessing?.() || false;
 
-    // Si terminó el tiempo pero la voz sigue hablando, esperamos a que termine.
-    // Si todos están listos (ready.all_ready), avanzamos de inmediato (consenso).
+    // No dejar cambiar de escena hasta que terminen los audios (narrador)
+    if (voiceBusy) return;
+
+    // Si terminó el tiempo o todos están listos, avanzamos.
     if ((!ready.all_ready && !timedOut) || advancingKey === ready.ready_key) return;
-    if (voiceBusy && !ready.all_ready) return; 
     advancingKey = ready.ready_key;
 
     window.setTimeout(async () => {

@@ -3,6 +3,7 @@
     const container = document.getElementById("game-container");
     if (!container) return;
 
+    window.SceneTransition?.hide();
     window.showScreen("view-game");
 
     const options = state.options || [];

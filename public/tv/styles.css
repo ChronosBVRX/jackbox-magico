@@ -1190,3 +1190,57 @@ p {
   font-weight: 1000;
 }
 
+/* ==========================================================================
+   SCENE: MAGIC TRANSITION (Intermedio)
+   ========================================================================== */
+
+.magic-transition-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  background: radial-gradient(circle, #1a0b2e 0%, #0a0514 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.5s ease;
+}
+
+.magic-transition-overlay.visible {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.magic-transition-content {
+  text-align: center;
+  animation: magicPulse 2s infinite ease-in-out;
+}
+
+@keyframes magicPulse {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 10px rgba(255,216,121,0.2)); }
+  50% { transform: scale(1.05); filter: drop-shadow(0 0 30px rgba(255,216,121,0.5)); }
+}
+
+.magic-spinner {
+  width: 120px;
+  height: 120px;
+  border: 4px solid rgba(255,216,121,0.1);
+  border-top-color: #ffd879;
+  border-radius: 50%;
+  margin: 0 auto 30px;
+  animation: magicSpin 1.5s linear infinite;
+  box-shadow: 0 0 20px rgba(255,216,121,0.2);
+}
+
+@keyframes magicSpin {
+  to { transform: rotate(360deg); }
+}
+
+.magic-text {
+  font-size: 2.5rem;
+  font-weight: 900;
+  color: #ffd879;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
