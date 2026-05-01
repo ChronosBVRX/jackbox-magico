@@ -1175,10 +1175,23 @@ function renderLobby(data) {
   if (lista) {
     lista.innerHTML = "";
 
-    (data.players || []).forEach((player) => {
+    (data.players || []).forEach((player, idx) => {
       const item = document.createElement("div");
-      item.className = "player-tag";
-      item.textContent = `${houseIcons[player.house] || "✨"} ${player.name}`;
+      item.className = "player-magic-card";
+      
+      // Estabilidad visual: alternamos mago/maga de forma determinista basada en el índice
+      const isMaga = (idx % 2 === 0);
+      const label = isMaga ? "Una maga" : "Un mago";
+      const avatar = isMaga ? "🧙‍♀️" : "🧙‍♂️";
+      
+      item.style.setProperty("--house-color", houseColors[player.house] || "#facc15");
+      item.innerHTML = `
+        <div class="mago-avatar">${avatar}</div>
+        <div class="mago-info">
+          <span class="mago-label">${label} de ${player.house}</span>
+          <span class="mago-name">${escapeHTML(player.name)}</span>
+        </div>
+      `;
       lista.appendChild(item);
     });
   }

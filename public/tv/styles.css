@@ -1244,3 +1244,76 @@ p {
   text-transform: uppercase;
   letter-spacing: 0.1em;
 }
+
+/* OVERRIDES PARA EL LOBBY - TARJETAS MÁGICAS */
+.players-list {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  gap: 20px !important;
+  justify-content: center !important;
+  margin-top: 40px !important;
+  perspective: 1200px;
+}
+
+.player-magic-card {
+  position: relative;
+  width: 240px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 28px;
+  background: 
+    radial-gradient(circle at top right, rgba(255,255,255,0.1), transparent 70%),
+    rgba(15, 14, 24, 0.7);
+  backdrop-filter: blur(16px);
+  box-shadow: 
+    0 15px 40px rgba(0,0,0,0.3),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
+  text-align: left;
+  animation: magicCardIn 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+  border-left: 6px solid var(--house-color, var(--gold));
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes magicCardIn {
+  from { opacity: 0; transform: translateY(30px) rotateX(-20deg) scale(0.9); filter: blur(10px); }
+  to { opacity: 1; transform: translateY(0) rotateX(0) scale(1); filter: blur(0); }
+}
+
+.player-magic-card:hover {
+  transform: translateY(-10px) rotateY(5deg) scale(1.05);
+  background: rgba(28, 22, 38, 0.9);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.5);
+  border-color: var(--house-color, var(--gold));
+}
+
+.mago-avatar {
+  font-size: 2.8rem;
+  filter: drop-shadow(0 0 15px var(--house-color, rgba(255,255,255,0.3)));
+}
+
+.mago-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mago-label {
+  font-size: 0.7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  opacity: 0.8;
+}
+
+.mago-name {
+  font-size: 1.4rem;
+  font-weight: 1000;
+  color: #fff;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-shadow: 0 2px 10px rgba(0,0,0,0.3);
+}
