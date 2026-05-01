@@ -40,10 +40,25 @@
     <span></span>
   </div>
 
+  <!-- PANTALLA DE CARGA INICIAL -->
+  <div id="view-loading" class="screen visible">
+    <div class="loading-content">
+      <div class="magic-loader-wrap">
+        <div class="magic-wand-loader"></div>
+        <div class="magic-circles"></div>
+      </div>
+      <h1 class="loading-title">Preparando el Castillo</h1>
+      <p id="loading-status">Encendiendo las velas y cargando audios...</p>
+      <div class="loading-bar-container">
+        <div id="loading-progress-bar" class="loading-progress-bar"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- PANTALLA DE TRANSICIÓN INTERMEDIA -->
   <div id="transition-overlay" class="magic-transition-overlay"></div>
 
-  <div id="view-inicio" class="screen visible">
+  <div id="view-inicio" class="screen">
     <div class="jackbox-header">
       <div class="badge">⚡ MODO HISTORIA</div>
       <h1>JACKBOX MÁGICO</h1>
@@ -199,5 +214,6 @@
   <script src="/assets/js/tv-host-authority.js?v=tv-host-authority-1"></script>
   <script src="/assets/js/voice-lines-tv.js?v=voice-lines-tv-1"></script>
   <script src="/assets/js/tv-host-copy-cleanup.js?v=tv-host-clean-1"></script>
+  <script src="/assets/js/app-preloader.js?v=1"></script>
 </body>
 </html>

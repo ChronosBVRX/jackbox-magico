@@ -1491,3 +1491,117 @@ p {
   text-transform: uppercase;
   letter-spacing: 0.05em;
 }
+
+
+/* ==========================================================================
+   PANTALLA DE CARGA (LOADING SCREEN)
+   ========================================================================== */
+
+#view-loading {
+  background: var(--bg);
+  z-index: 20000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+#view-loading.visible {
+  display: flex;
+}
+
+.loading-content {
+  width: min(600px, 90vw);
+}
+
+.magic-loader-wrap {
+  position: relative;
+  width: 150px;
+  height: 150px;
+  margin: 0 auto 40px;
+}
+
+.magic-wand-loader {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 100px;
+  height: 10px;
+  background: linear-gradient(90deg, #3e2723, #5d4037);
+  border-radius: 5px;
+  transform-origin: left center;
+  animation: wandWave 2s infinite ease-in-out;
+  box-shadow: 0 0 20px rgba(0,0,0,0.5);
+}
+
+.magic-wand-loader::after {
+  content: "";
+  position: absolute;
+  right: -5px;
+  top: -5px;
+  width: 20px;
+  height: 20px;
+  background: #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 30px #fff, 0 0 60px var(--gold);
+  filter: blur(2px);
+}
+
+.magic-circles {
+  position: absolute;
+  inset: 0;
+  border: 2px dashed rgba(250, 204, 21, 0.2);
+  border-radius: 50%;
+  animation: rotateCircle 10s linear infinite;
+}
+
+.magic-circles::before {
+  content: "";
+  position: absolute;
+  inset: 15px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  animation: rotateCircle 15s linear reverse infinite;
+}
+
+@keyframes wandWave {
+  0%, 100% { transform: translate(-50%, -50%) rotate(-30deg); }
+  50% { transform: translate(-50%, -50%) rotate(30deg); }
+}
+
+@keyframes rotateCircle {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.loading-title {
+  font-size: 2.5rem;
+  font-weight: 1000;
+  margin-bottom: 10px;
+  letter-spacing: -0.04em;
+  color: #fff;
+}
+
+#loading-status {
+  color: var(--muted);
+  font-size: 1.1rem;
+  margin-bottom: 30px;
+  font-style: italic;
+}
+
+.loading-bar-container {
+  width: 100%;
+  height: 6px;
+  background: rgba(255,255,255,0.05);
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.05);
+}
+
+.loading-progress-bar {
+  width: 0%;
+  height: 100%;
+  background: linear-gradient(90deg, var(--gold), #fff);
+  box-shadow: 0 0 20px rgba(250, 204, 21, 0.5);
+  transition: width 0.4s ease;
+}
