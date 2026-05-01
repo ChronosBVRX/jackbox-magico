@@ -36,7 +36,7 @@
     if (window.RoomLifecycleTv?.getTvToken) return window.RoomLifecycleTv.getTvToken();
     let token = localStorage.getItem("jackbox_magico_tv_token");
     if (!token) {
-      token = crypto?.randomUUID ? crypto.randomUUID() : `tv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+      token = globalThis.crypto?.randomUUID ? globalThis.crypto.randomUUID() : `tv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
       localStorage.setItem("jackbox_magico_tv_token", token);
     }
     return token;

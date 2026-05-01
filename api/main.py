@@ -24,15 +24,23 @@ from api import trivia, duelo, sombrero
 from api import clase_pociones, atrapa_snitch, retratos_chismosos, mapa_travieso
 from api import hechizo_incompleto, artes_ridiculas, caldero_mentiroso, patronus_personalizado, copa_final
 from api.game_catalog import GAME_CATALOG
+from api.services import room_service, player_service
 
 
 app = FastAPI(title="Hogwarts Snacks API")
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://jackbox-magico.vercel.app",
+        "https://jackbox-magico-git-main-chronosbvrxs-projects.vercel.app",
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST"],
     allow_headers=["*"],
 )
 
@@ -47,7 +55,6 @@ def mount_if_exists(route_path: str, directory: str, name: str):
 
 
 mount_if_exists("/assets", "public/assets", "assets")
-mount_if_exists("/voice-assets", "assets", "voice-assets")
 mount_if_exists("/data", "data", "data")
 mount_if_exists("/tv", "public/tv", "tv")
 mount_if_exists("/mobile", "public/mobile", "mobile")
@@ -68,7 +75,7 @@ class SnitchCatchInfo(BaseModel):
 
 
 def generate_room_code():
-    return "".join(random.choices(string.ascii_uppercase, k=4))
+    return room_service.generate_room_code()
 
 
 def generate_host_token():
@@ -76,28 +83,11 @@ def generate_host_token():
 
 
 def make_tv_host(tv_token: Optional[str] = None) -> dict:
-    host = {
-        "name": TV_HOST_NAME,
-        "managed_by": "tv",
-        "authority": "tv_screen",
-    }
-
-    if tv_token:
-        host["token"] = str(tv_token)
-
-    return host
+    return room_service.make_tv_host(tv_token)
 
 
 def state_has_tv_authority(state: dict) -> bool:
-    state = state or {}
-    host = state.get("host")
-
-    return (
-        isinstance(host, dict)
-        and host.get("name") == TV_HOST_NAME
-        and host.get("managed_by") == "tv"
-        and state.get("host_authority") == "tv"
-    )
+    return room_service.state_has_tv_authority(state)
 
 
 def force_tv_authority(state: Optional[dict]) -> dict:

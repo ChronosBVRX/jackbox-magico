@@ -1,8 +1,6 @@
 let myRoom = "";
 let myName = "";
 let myHouse = "";
-let myHostToken = "";
-let myIsHost = false;
 
 let radarInterval = null;
 let currentRoundKey = "";
@@ -358,14 +356,6 @@ function hideGamePanels() {
   });
 }
 
-function showHostPanels(show) {
-  const hostPanel = document.getElementById("host-panel");
-  const hostGamePanel = document.getElementById("host-game-panel");
-
-  // Forzar ocultamiento en modo historia / jugador único controlado por TV
-  if (hostPanel) hostPanel.classList.remove("visible");
-  if (hostGamePanel) hostGamePanel.classList.remove("visible");
-}
 
 function ensureTriviaPanel() {
   let panel = document.getElementById("trivia-mobile-panel");
@@ -391,62 +381,6 @@ function ensureTriviaPanel() {
   return panel;
 }
 
-function ensureHostExtraActions() {
-  const panels = [
-    document.getElementById("host-panel"),
-    document.getElementById("host-game-panel"),
-  ];
-
-  panels.forEach((panel) => {
-    if (!panel) return;
-
-    let extra = panel.querySelector(".trivia-mobile-host-extra");
-
-    if (!extra) {
-      extra = document.createElement("div");
-      extra.className = "trivia-mobile-host-extra";
-      panel.appendChild(extra);
-    }
-  });
-}
-
-function setHostExtraActions(html = "") {
-  ensureHostExtraActions();
-
-  document.querySelectorAll(".trivia-mobile-host-extra").forEach((box) => {
-    box.innerHTML = html;
-  });
-}
-
-function clearHostExtraActions() {
-  setHostExtraActions("");
-}
-
-async function loadGamesForHost() {
-  if (gamesLoaded) return;
-
-  try {
-    const res = await fetch("/api/games");
-    const data = await res.json();
-
-    const select = document.getElementById("host-game-select");
-
-    if (!select) return;
-
-    select.innerHTML = "";
-
-    Object.entries(data.games).forEach(([gameId, game]) => {
-      const option = document.createElement("option");
-      option.value = gameId;
-      option.textContent = game.name;
-      select.appendChild(option);
-    });
-
-    gamesLoaded = true;
-  } catch (error) {
-    console.error("No se pudo cargar catálogo de juegos");
-  }
-}
 
 async function joinRoom(auto = false) {
   safeUnlockSound();
@@ -491,37 +425,13 @@ async function joinRoom(auto = false) {
 
     const data = await res.json();
 
-    if (res.ok) {
-      myIsHost = Boolean(data.is_host);
-
-      if (data.host_token) {
-        myHostToken = data.host_token;
-        localStorage.setItem(`jackbox_magico_host_token_${myRoom}`, myHostToken);
-      }
-
-      if (myIsHost) {
-        await loadGamesForHost();
-      }
-
       showScreen("view-wait");
 
       document.getElementById("wait-msg").innerText = data.reconnected
         ? "¡Reconectado!"
-        : myIsHost
-          ? "¡Eres el host!"
-          : "¡Estás dentro!";
+        : "¡Estás dentro!";
 
-      document.getElementById("wait-subtitle").innerText = myIsHost
-        ? "Cuando todos entren, inicia la partida desde aquí."
-        : "Espera a que el host inicie la partida.";
-
-      const feedback = document.getElementById("points-feedback");
-      if (feedback) {
-        feedback.className = "points-feedback";
-        feedback.innerText = "";
-      }
-
-      showHostPanels(myIsHost);
+      document.getElementById("wait-subtitle").innerText = "Espera a que la TV inicie la partida.";
       iniciarRadarMovil();
       safeSound("start");
     } else {
@@ -693,7 +603,6 @@ function renderLobbyWait(data) {
   if (buttons) buttons.innerHTML = "";
 
   hideGamePanels();
-  clearHostExtraActions();
 
   showScreen("view-wait");
 
@@ -706,8 +615,6 @@ function renderLobbyWait(data) {
     feedback.className = "points-feedback";
     feedback.innerText = "";
   }
-
-  showHostPanels(myIsHost);
 }
 
 function renderAnsweredWait(state) {
@@ -716,8 +623,6 @@ function renderAnsweredWait(state) {
   document.getElementById("wait-pill").innerText = "🕯️ Aspirante";
   document.getElementById("wait-msg").innerText = "¡Hechizo enviado!";
   document.getElementById("wait-subtitle").innerText = "Mira la TV para ver los resultados.";
-
-  showHostPanels(myIsHost);
 }
 
 function renderResultsWait(state = {}) {
@@ -731,23 +636,13 @@ function renderResultsWait(state = {}) {
 
   showScreen("view-wait");
 
-  document.getElementById("wait-pill").innerText = myIsHost ? "👑 Host" : "🏆 Resultados";
+  document.getElementById("wait-pill").innerText = "🏆 Resultados";
   document.getElementById("wait-msg").innerText = "¡Mira la TV!";
-
-  if (myIsHost && state.phase === "results_trivia") {
-    document.getElementById("wait-subtitle").innerText = "La TV mostrará el siguiente paso pronto.";
-    clearHostExtraActions();
-  } else {
-    document.getElementById("wait-subtitle").innerText = "La ronda terminó. Revisa la TV.";
-    clearHostExtraActions();
-  }
-
-  showHostPanels(myIsHost);
+  document.getElementById("wait-subtitle").innerText = "La ronda terminó. Revisa la TV.";
 }
 
 function renderTriviaMobile(state) {
   showScreen("view-game");
-  showHostPanels(myIsHost);
 
   hideGamePanels();
 
@@ -880,7 +775,6 @@ function getIngredientEmojiMobile(state, name) {
 
 function renderPocionesMobile(state) {
   showScreen("view-game");
-  showHostPanels(myIsHost);
 
   const buttons = document.getElementById("m-botones");
   if (buttons) buttons.innerHTML = "";
@@ -1045,9 +939,7 @@ async function submitPotionRecipe() {
         ? "🧪 ¡Poción perfecta!"
         : "🧪 Poción entregada";
 
-    document.getElementById("wait-subtitle").innerText = myIsHost
-      ? "Puedes revelar resultados desde aquí."
-      : "Mira la TV para seguir la ronda.";
+    document.getElementById("wait-subtitle").innerText = "Mira la TV para seguir la ronda.";
 
     const feedback = document.getElementById("points-feedback");
     feedback.className = `points-feedback ${data.exploded ? "bad" : data.perfect ? "good" : "neutral"}`;
@@ -1055,7 +947,6 @@ async function submitPotionRecipe() {
       `${data.points > 0 ? "+" : ""}${data.points || 0} pts · ${data.message || "Poción entregada."}`;
 
     safeSound(data.exploded ? "wrong" : "correct");
-    showHostPanels(myIsHost);
   } catch (error) {
     showScreen("view-wait");
 
@@ -1068,7 +959,6 @@ async function submitPotionRecipe() {
     feedback.innerText = "Error de conexión.";
 
     safeSound("wrong");
-    showHostPanels(myIsHost);
   }
 }
 
@@ -1095,7 +985,6 @@ function updateMobilePocionesTimer(state) {
 
 function renderSombreroMobile(state) {
   showScreen("view-game");
-  showHostPanels(myIsHost);
 
   const buttons = document.getElementById("m-botones");
   if (buttons) buttons.innerHTML = "";
@@ -1167,7 +1056,6 @@ function renderSombreroMobile(state) {
 
 function renderDuelMobile(state) {
   showScreen("view-game");
-  showHostPanels(myIsHost);
 
   const buttons = document.getElementById("m-botones");
   if (buttons) buttons.innerHTML = "";
@@ -1194,10 +1082,9 @@ function renderDuelMobile(state) {
 
   if (!iAmDuelist) {
     showScreen("view-wait");
-    document.getElementById("wait-pill").innerText = myIsHost ? "👑 Host" : "⚔️ Duelo";
+    document.getElementById("wait-pill").innerText = "⚔️ Duelo";
     document.getElementById("wait-msg").innerText = "Estás viendo el duelo";
     document.getElementById("wait-subtitle").innerText = "No fuiste seleccionado en esta ronda. Mira la TV.";
-    showHostPanels(myIsHost);
     return;
   }
 
@@ -1243,7 +1130,6 @@ function renderDuelMobile(state) {
 
 function renderDuelClashMobile(state) {
   showScreen("view-game");
-  showHostPanels(myIsHost);
 
   const buttons = document.getElementById("m-botones");
   if (buttons) buttons.innerHTML = "";
@@ -1267,10 +1153,9 @@ function renderDuelClashMobile(state) {
 
   if (!iAmDuelist) {
     showScreen("view-wait");
-    document.getElementById("wait-pill").innerText = myIsHost ? "👑 Host" : "⚡ Choque";
+    document.getElementById("wait-pill").innerText = "⚡ Choque";
     document.getElementById("wait-msg").innerText = "¡Choque de Varitas!";
     document.getElementById("wait-subtitle").innerText = "Los duelistas están presionando como si debieran renta.";
-    showHostPanels(myIsHost);
     return;
   }
 
@@ -1546,11 +1431,9 @@ async function enviarRespuesta(answer, button = null) {
 
     showScreen("view-wait");
 
-    document.getElementById("wait-pill").innerText = myIsHost ? "👑 Host" : "📨 Enviada";
+    document.getElementById("wait-pill").innerText = "📨 Enviada";
     document.getElementById("wait-msg").innerText = data.correct ? "✅ ¡Respuesta enviada!" : "📨 Respuesta enviada";
-    document.getElementById("wait-subtitle").innerText = myIsHost
-      ? "Puedes revelar resultados desde aquí."
-      : "Mira la TV para ver el resultado.";
+    document.getElementById("wait-subtitle").innerText = "Mira la TV para ver el resultado.";
 
     const points = document.getElementById("points-feedback");
     if (points) {
@@ -1561,7 +1444,6 @@ async function enviarRespuesta(answer, button = null) {
 
     safeSound(data.correct ? "correct" : "wrong");
     vibrate(data.correct ? [35, 40, 35] : [80, 50, 80]);
-    showHostPanels(myIsHost);
   } catch (error) {
     hasAnsweredCurrentRound = false;
 
@@ -1577,139 +1459,6 @@ async function enviarRespuesta(answer, button = null) {
   }
 }
 
-async function hostStartSelectedGame() {
-  if (!myIsHost || !myRoom || !myHostToken) return;
-
-  const select = document.getElementById("host-game-select");
-  const gameId = select ? select.value : "trivia_magica";
-
-  safeSound("click");
-
-  try {
-    const res = await fetch(`/api/mobile/host/${myRoom}/start_game/${gameId}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        player_name: myName,
-        host_token: myHostToken,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert("No se pudo iniciar: " + JSON.stringify(data.detail || data));
-      safeSound("wrong");
-      return;
-    }
-
-    clearHostExtraActions();
-    safeSound("start");
-  } catch (error) {
-    alert("Error al iniciar minijuego.");
-    safeSound("wrong");
-  }
-}
-
-async function hostRevealResults() {
-  if (!myIsHost || !myRoom || !myHostToken) return;
-
-  safeSound("click");
-
-  try {
-    const res = await fetch(`/api/mobile/host/${myRoom}/reveal`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        player_name: myName,
-        host_token: myHostToken,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert("No se pudo revelar: " + JSON.stringify(data.detail || data));
-      safeSound("wrong");
-      return;
-    }
-
-    safeSound("reveal");
-  } catch (error) {
-    alert("Error al revelar resultados.");
-    safeSound("wrong");
-  }
-}
-
-async function hostReturnLobby() {
-  if (!myIsHost || !myRoom || !myHostToken) return;
-
-  safeSound("click");
-
-  try {
-    const res = await fetch(`/api/mobile/host/${myRoom}/return_lobby`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        player_name: myName,
-        host_token: myHostToken,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert("No se pudo volver al lobby: " + JSON.stringify(data.detail || data));
-      safeSound("wrong");
-      return;
-    }
-
-    clearHostExtraActions();
-    safeSound("start");
-  } catch (error) {
-    alert("Error al volver al lobby.");
-    safeSound("wrong");
-  }
-}
-
-async function hostTriviaNext() {
-  if (!myIsHost || !myRoom || !myHostToken) return;
-
-  safeSound("click");
-
-  try {
-    const res = await fetch(`/api/mobile/host/${myRoom}/start_game/trivia_magica`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        player_name: myName,
-        host_token: myHostToken,
-      }),
-    });
-
-    const data = await res.json();
-
-    if (!res.ok) {
-      alert("No se pudo avanzar: " + JSON.stringify(data.detail || data));
-      safeSound("wrong");
-      return;
-    }
-
-    clearHostExtraActions();
-    safeSound("start");
-  } catch (error) {
-    alert("Error al avanzar pregunta.");
-    safeSound("wrong");
-  }
-}
 
 function escapeHTML(value) {
   return String(value ?? "")

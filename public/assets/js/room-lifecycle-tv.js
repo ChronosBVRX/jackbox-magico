@@ -5,7 +5,7 @@
   let statusTimer = null;
 
   function uuidLike() {
-    if (crypto?.randomUUID) return crypto.randomUUID();
+    if (globalThis.crypto?.randomUUID) return globalThis.crypto.randomUUID();
     return `tv-${Date.now()}-${Math.random().toString(16).slice(2)}`;
   }
 
