@@ -64,6 +64,7 @@ async def join_room(info: PlayerJoinInfo):
             "room_id": room_id,
             "name": name,
             "house": info.house,
+            "gender": info.gender or "wizard"
         }).execute()
 
     # Actualizar estado usando el servicio con bloqueo optimista

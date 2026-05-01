@@ -12,6 +12,7 @@ let roomSocket = null;
 let roomSocketRetryTimer = null;
 let lastVoicePhase = "";
 let threatVoiceTimer = null;
+let lastPlayersHash = "";
 
 const houseIcons = {
   Gryffindor: "🦁",
@@ -1178,27 +1179,36 @@ function renderLobby(data) {
   const lista = document.getElementById("lista-jugadores");
 
   if (lista) {
-    lista.innerHTML = "";
+    const currentPlayers = data.players || [];
+    const currentHash = JSON.stringify(currentPlayers.map(p => ({ 
+      n: p.name, 
+      h: p.house, 
+      g: p.gender || "wizard" 
+    })));
 
-    (data.players || []).forEach((player, idx) => {
-      const item = document.createElement("div");
-      item.className = "player-magic-card";
-      
-      // Estabilidad visual: alternamos mago/maga de forma determinista basada en el índice
-      const isMaga = (idx % 2 === 0);
-      const label = isMaga ? "Una maga" : "Un mago";
-      const avatar = isMaga ? "🧙‍♀️" : "🧙‍♂️";
-      
-      item.style.setProperty("--house-color", houseColors[player.house] || "#facc15");
-      item.innerHTML = `
-        <div class="mago-avatar">${avatar}</div>
-        <div class="mago-info">
-          <span class="mago-label">${label} de ${player.house}</span>
-          <span class="mago-name">${escapeHTML(player.name)}</span>
-        </div>
-      `;
-      lista.appendChild(item);
-    });
+    if (lastPlayersHash !== currentHash) {
+      lastPlayersHash = currentHash;
+      lista.innerHTML = "";
+
+      currentPlayers.forEach((player, idx) => {
+        const item = document.createElement("div");
+        item.className = "player-magic-card";
+        
+        const isWitch = (player.gender === "witch");
+        const label = isWitch ? "Una maga" : "Un mago";
+        const avatar = isWitch ? "🧙‍♀️" : "🧙‍♂️";
+        
+        item.style.setProperty("--house-color", houseColors[player.house] || "#facc15");
+        item.innerHTML = `
+          <div class="mago-avatar">${avatar}</div>
+          <div class="mago-info">
+            <span class="mago-label">${label} de ${player.house}</span>
+            <span class="mago-name">${escapeHTML(player.name)}</span>
+          </div>
+        `;
+        lista.appendChild(item);
+      });
+    }
   }
 
   const controls = document.getElementById("controles-host");

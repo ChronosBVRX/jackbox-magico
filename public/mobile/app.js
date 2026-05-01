@@ -65,6 +65,12 @@ if (savedHouse) {
   if (select) select.value = savedHouse;
 }
 
+const savedGender = localStorage.getItem("jackbox_magico_gender");
+if (savedGender) {
+  const genderInput = document.querySelector(`input[name="m-gender"][value="${savedGender}"]`);
+  if (genderInput) genderInput.checked = true;
+}
+
 function injectTriviaMobileStyles() {
   if (document.getElementById("trivia-mobile-premium-styles")) return;
 
@@ -391,6 +397,10 @@ async function joinRoom(auto = false) {
   myRoom = document.getElementById("m-room").value.trim().toUpperCase();
   myName = document.getElementById("m-name").value.trim();
   myHouse = document.getElementById("m-house").value;
+  
+  const genderInput = document.querySelector('input[name="m-gender"]:checked');
+  const myGender = genderInput ? genderInput.value : "wizard";
+  
   myHostToken = localStorage.getItem(`jackbox_magico_host_token_${myRoom}`) || "";
 
   if (!myRoom || !myName) {
@@ -403,6 +413,7 @@ async function joinRoom(auto = false) {
   localStorage.setItem("jackbox_magico_room", myRoom);
   localStorage.setItem("jackbox_magico_name", myName);
   localStorage.setItem("jackbox_magico_house", myHouse);
+  localStorage.setItem("jackbox_magico_gender", myGender);
 
   if (btn) {
     btn.innerText = auto ? "Reconectando..." : "Conectando...";
@@ -419,6 +430,7 @@ async function joinRoom(auto = false) {
         room_code: myRoom,
         player_name: myName,
         house: myHouse,
+        gender: myGender,
         host_token: myHostToken || null,
       }),
     });
@@ -1476,76 +1488,4 @@ function escapeAttribute(value) {
     .replaceAll("'", "\\'")
     .replaceAll("\n", " ")
     .replaceAll("\r", " ");
-}
-
-async function markReady() {
-  const btn = document.getElementById("btn-ready");
-  if (btn) {
-    btn.disabled = true;
-    btn.textContent = "Lanzando hechizo...";
-  }
-
-  try {
-    const res = await fetch(`/api/story-ready/${myRoom}/player`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ player_name: myName, ready: true }),
-    });
-    
-    if (res.ok) {
-      if (btn) {
-        btn.textContent = "¡ESTÁS LISTO!";
-        btn.classList.add("btn-ready-confirmed");
-      }
-    } else {
-      if (btn) {
-        btn.disabled = false;
-        btn.textContent = "¡ESTOY LISTO!";
-      }
-    }
-  } catch (error) {
-    if (btn) {
-      btn.disabled = false;
-      btn.textContent = "¡ESTOY LISTO!";
-    }
-  }
-}
-
-function renderRulesMobile(state) {
-  hideGamePanels();
-  const container = document.getElementById("mobile-game-container");
-  if (!container) return;
-
-  container.innerHTML = `
-    <div class="lobby-card glass-card fade-in" style="text-align: center;">
-      <h2 style="font-size: 1.8rem; margin-bottom: 15px; color: #ffe7a3;">${escapeHTML(state.title || "Siguiente Prueba")}</h2>
-      <p style="font-size: 1rem; color: #e2e8f0; margin-bottom: 25px;">Lee las instrucciones en la pantalla principal y confirma cuando estés listo para iniciar.</p>
-      
-      <button id="btn-ready" class="btn-primary" onclick="markReady()" style="
-        font-size: 1.4rem; 
-        padding: 20px; 
-        width: 100%; 
-        border-radius: 16px;
-        box-shadow: 0 0 20px rgba(255, 216, 121, 0.4);
-        animation: pulseReady 2s infinite;
-      ">
-        ¡ESTOY LISTO!
-      </button>
-
-      <style>
-        @keyframes pulseReady {
-          0% { box-shadow: 0 0 0 0 rgba(255, 216, 121, 0.4); transform: scale(1); }
-          50% { box-shadow: 0 0 0 15px rgba(255, 216, 121, 0); transform: scale(1.02); }
-          100% { box-shadow: 0 0 0 0 rgba(255, 216, 121, 0); transform: scale(1); }
-        }
-        .btn-ready-confirmed {
-          background: #4ade80 !important;
-          color: #064e3b !important;
-          animation: none !important;
-          box-shadow: 0 0 15px rgba(74, 222, 128, 0.6) !important;
-          transform: scale(0.98);
-        }
-      </style>
-    </div>
-  `;
 }

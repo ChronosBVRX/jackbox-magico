@@ -18,6 +18,7 @@ class PlayerJoinInfo(BaseModel):
     room_code: str
     player_name: str
     house: str
+    gender: Optional[str] = "wizard"
     host_token: Optional[str] = None
 
 
