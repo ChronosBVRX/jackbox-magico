@@ -15,6 +15,13 @@ from api.database import supabase
 from api.story_orchestrator import build_story_state, get_story, get_story_public_payload
 from api.story_api import start_step_for_story, build_game_state_for_game, attach_story_metadata, DEFAULT_TRIVIA_GAME_ID
 from api.services import room_service, player_service
+from api.flow_engine import (
+    build_scene_before_game, 
+    build_scene_after_round, 
+    build_next_game_transition, 
+    build_intro_sequence, 
+    build_rules_sequence
+)
 from api.scenes.instructions_scene import build_instruction_scene
 from api.scenes.scoreboard_scene import build_scoreboard_scene
 from api.scenes.transition_scene import build_transition_scene
@@ -149,13 +156,7 @@ async def start_story_from_tv(room_code: str, info: TvStoryInfo):
     story_state = get_story_state_or_fail(previous_state)
     tv_host = room_service.make_tv_host(info.tv_token)
 
-    game_state = start_step_for_story(
-        room_code=room_code,
-        previous_state=previous_state,
-        story_state=story_state,
-        host=tv_host,
-        random_seed=info.random_seed,
-    )
+    game_state = build_intro_sequence(previous_state)
     game_state["host"] = tv_host
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
@@ -300,8 +301,25 @@ async def continue_from_tv(room_code: str, info: TvStoryInfo):
     players = player_service.get_players_in_room(room["id"])
     phase = state.get("phase")
 
-    # 1. Si estamos en instrucciones -> Iniciar el juego real
-    if phase == "scene_instructions":
+    # 1. Escena de Introducción -> Ir a Reglas
+    if phase == "scene_intro":
+        new_state = build_rules_sequence(state)
+
+    # 2. Escena de Reglas -> Ir a Instrucciones del primer juego
+    elif phase == "scene_rules":
+        story_state = state.get("story")
+        # El primer paso de la historia nos da el primer juego
+        start_state = start_step_for_story(
+            room_code=room_code,
+            previous_state=state,
+            story_state=story_state,
+            host=state.get("host")
+        )
+        game_id = start_state.get("current_game_id") or DEFAULT_TRIVIA_GAME_ID
+        new_state = build_scene_before_game(game_id, state)
+
+    # 3. Si estamos en instrucciones -> Iniciar el juego real
+    elif phase == "scene_instructions":
         game_id = state.get("current_game_id")
         if not game_id:
             raise HTTPException(status_code=400, detail="No hay current_game_id para iniciar")

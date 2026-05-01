@@ -1813,3 +1813,203 @@ p {
   box-shadow: 0 0 20px rgba(250, 204, 21, 0.5);
   transition: width 0.4s ease;
 }
+
+/* ==========================================================================
+   SISTEMA DE ESCENAS (Jackbox Style)
+   ========================================================================== */
+
+.scene-card {
+  width: min(1100px, 94vw);
+  padding: 60px;
+  text-align: center;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid rgba(255, 216, 121, 0.28);
+  border-radius: 42px;
+  background: 
+    radial-gradient(circle at 50% 0%, rgba(255, 216, 121, 0.12), transparent 40%),
+    linear-gradient(180deg, rgba(12, 16, 33, 0.96), rgba(6, 9, 20, 0.98));
+  box-shadow: 
+    0 45px 120px rgba(0,0,0,0.65),
+    inset 0 0 0 1px rgba(255,255,255,0.04);
+  backdrop-filter: blur(28px);
+  animation: sceneEnter 0.7s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes sceneEnter {
+  from { 
+    opacity: 0; 
+    transform: translateY(35px) scale(0.96); 
+    filter: blur(15px);
+  }
+  to { 
+    opacity: 1; 
+    transform: translateY(0) scale(1); 
+    filter: blur(0);
+  }
+}
+
+.scene-subtitle {
+  font-size: 1.55rem;
+  color: rgba(255, 247, 220, 0.75);
+  margin-bottom: 42px;
+  font-weight: 600;
+  max-width: 820px;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.scene-content-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+  max-width: 860px;
+  margin: 0 auto 50px;
+  text-align: left;
+}
+
+.scene-line-item {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 18px 24px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.045);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: transform 0.2s ease, background 0.2s ease;
+}
+
+.scene-line-item:hover {
+  transform: translateX(8px);
+  background: rgba(255, 255, 255, 0.07);
+  border-color: rgba(255, 216, 121, 0.25);
+}
+
+.scene-line-item p {
+  margin: 0;
+  font-size: 1.28rem;
+  color: #fff;
+  font-weight: 700;
+}
+
+.scene-line-item.rule {
+  border-left: 5px solid var(--gold);
+}
+
+.intro-scene {
+  background: 
+    radial-gradient(circle at 100% 0%, rgba(124, 58, 237, 0.12), transparent 40%),
+    linear-gradient(180deg, rgba(8, 12, 28, 0.97), rgba(4, 6, 15, 0.99));
+}
+
+.rules-scene {
+  background: 
+    radial-gradient(circle at 0% 100%, rgba(251, 191, 36, 0.08), transparent 40%),
+    linear-gradient(180deg, rgba(10, 14, 30, 0.97), rgba(5, 7, 16, 0.99));
+}
+
+.scoreboard-list {
+  display: grid;
+  gap: 14px;
+  max-width: 880px;
+  margin: 0 auto 40px;
+}
+
+.scoreboard-row {
+  display: grid;
+  grid-template-columns: 60px 1fr 140px;
+  align-items: center;
+  gap: 20px;
+  padding: 16px 24px;
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+}
+
+.scoreboard-row.leader {
+  background: linear-gradient(90deg, rgba(255, 216, 121, 0.15), rgba(255, 255, 255, 0.05));
+  border-color: rgba(255, 216, 121, 0.35);
+  box-shadow: 0 12px 30px rgba(255, 216, 121, 0.08);
+}
+
+.scoreboard-position {
+  font-size: 1.8rem;
+  font-weight: 1000;
+  color: rgba(255, 247, 220, 0.5);
+}
+
+.leader .scoreboard-position {
+  color: var(--gold);
+}
+
+.scoreboard-house {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: left;
+}
+
+.scoreboard-house span {
+  font-size: 2.2rem;
+}
+
+.scoreboard-house strong {
+  font-size: 1.6rem;
+  color: #fff;
+}
+
+.scoreboard-points {
+  font-size: 1.8rem;
+  font-weight: 1000;
+  color: var(--gold);
+  text-align: right;
+}
+
+.leader-banner, .top-player-banner {
+  display: inline-block;
+  margin: 10px;
+  padding: 12px 24px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 216, 121, 0.2);
+  font-weight: 900;
+  color: #fff;
+}
+
+.leader-banner {
+  border-color: var(--gold);
+  box-shadow: 0 0 20px rgba(255, 216, 121, 0.15);
+}
+
+.magic-loader {
+  display: flex;
+  justify-content: center;
+  gap: 15px;
+  margin: 40px 0;
+}
+
+.magic-loader span {
+  width: 16px;
+  height: 16px;
+  background: var(--gold);
+  border-radius: 50%;
+  animation: magicPulse 1.2s ease-in-out infinite;
+}
+
+.magic-loader span:nth-child(2) { animation-delay: 0.2s; }
+.magic-loader span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes magicPulse {
+  0%, 100% { transform: scale(0.8); opacity: 0.3; filter: blur(2px); }
+  50% { transform: scale(1.4); opacity: 1; filter: blur(0); }
+}
+
+.tv-controls-hint.large {
+  font-size: 1.4rem;
+  padding: 15px 30px;
+  background: rgba(255, 216, 121, 0.1);
+  border-radius: 20px;
+  width: fit-content;
+  margin: 0 auto;
+}
+

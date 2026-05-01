@@ -1,6 +1,19 @@
 from api.scenes.instructions_scene import build_instruction_scene
 from api.scenes.scoreboard_scene import build_scoreboard_scene
 from api.scenes.transition_scene import build_transition_scene
+from api.scenes.intro_scene import build_general_intro_scene, build_general_rules_scene
+
+def build_intro_sequence(previous_state: dict) -> dict:
+    """
+    Inicia la secuencia de bienvenida después del lobby.
+    """
+    return build_general_intro_scene(previous_state)
+
+def build_rules_sequence(previous_state: dict) -> dict:
+    """
+    Muestra las reglas generales después de la bienvenida.
+    """
+    return build_general_rules_scene(previous_state)
 
 def build_scene_before_game(game_id: str, previous_state: dict) -> dict:
     """

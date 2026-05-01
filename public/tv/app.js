@@ -1,4 +1,4 @@
-let bgMusicStarted = false;
+﻿let bgMusicStarted = false;
 let currentRoom = "";
 let radarInterval = null;
 let lastPlayKey = "";
@@ -17,10 +17,10 @@ let lastHouseScoresHash = "";
 let lastTriviaPlayersHash = "";
 
 const houseIcons = {
-  Gryffindor: "🦁",
-  Slytherin: "🐍",
-  Ravenclaw: "🦅",
-  Hufflepuff: "🦡",
+  Gryffindor: "ðŸ¦",
+  Slytherin: "ðŸ",
+  Ravenclaw: "ðŸ¦…",
+  Hufflepuff: "ðŸ¦¡",
 };
 
 const houseNames = {
@@ -47,20 +47,20 @@ const houseGradients = {
 const answerLetters = ["A", "B", "C", "D"];
 
 const difficultyLabels = {
-  facil: "Fácil",
-  fácil: "Fácil",
+  facil: "FÃ¡cil",
+  fÃ¡cil: "FÃ¡cil",
   media: "Media",
-  dificil: "Difícil",
-  difícil: "Difícil",
+  dificil: "DifÃ­cil",
+  difÃ­cil: "DifÃ­cil",
   experto: "Experto",
 };
 
 const difficultyClass = {
   facil: "easy",
-  fácil: "easy",
+  fÃ¡cil: "easy",
   media: "medium",
   dificil: "hard",
-  difícil: "hard",
+  difÃ­cil: "hard",
   experto: "expert",
 };
 
@@ -720,7 +720,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (audio) {
     audio.addEventListener("error", () => {
-      console.error("Audio de fondo no encontrado o inválido.");
+      console.error("Audio de fondo no encontrado o invÃ¡lido.");
     });
   }
 
@@ -730,11 +730,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnMute && window.VoiceLinesTv) {
     const isMuted = window.VoiceLinesTv.isMuted();
-    btnMute.textContent = isMuted ? "🔇" : "🔊";
+    btnMute.textContent = isMuted ? "ðŸ”‡" : "ðŸ”Š";
 
     btnMute.addEventListener("click", () => {
       const muted = window.VoiceLinesTv.toggleMute();
-      btnMute.textContent = muted ? "🔇" : "🔊";
+      btnMute.textContent = muted ? "ðŸ”‡" : "ðŸ”Š";
     });
   }
 
@@ -780,7 +780,7 @@ function escapeHTML(value) {
 }
 
 function getQuestion(state) {
-  return state.question || state.attack_msg || "¡Responde!";
+  return state.question || state.attack_msg || "Â¡Responde!";
 }
 
 function getRoundKey(state) {
@@ -790,8 +790,8 @@ function getRoundKey(state) {
 function normalizeDifficulty(value) {
   return safeText(value || "media")
     .toLowerCase()
-    .replaceAll("í", "i")
-    .replaceAll("á", "a");
+    .replaceAll("Ã­", "i")
+    .replaceAll("Ã¡", "a");
 }
 
 function getDifficultyLabel(value) {
@@ -828,7 +828,7 @@ function renderHouseScoreboard(players = []) {
     .sort((a, b) => Number(scores[b] || 0) - Number(scores[a] || 0))
     .map((house) => `
       <div class="trivia-house-row" style="box-shadow: inset 4px 0 0 ${houseColors[house] || "#facc15"};">
-        <div class="name">${houseIcons[house] || "✨"} ${escapeHTML(houseNames[house] || house)}</div>
+        <div class="name">${houseIcons[house] || "âœ¨"} ${escapeHTML(houseNames[house] || house)}</div>
         <div class="score">${Number(scores[house] || 0)}</div>
       </div>
     `)
@@ -891,7 +891,7 @@ function renderCarousel() {
     card.id = `story-card-${idx}`;
     card.innerHTML = `
       <h3>${escapeHTML(story.title)}</h3>
-      <p>${escapeHTML(story.description || "Una aventura mágica interactiva.")}</p>
+      <p>${escapeHTML(story.description || "Una aventura mÃ¡gica interactiva.")}</p>
     `;
     container.appendChild(card);
   });
@@ -1069,7 +1069,7 @@ async function crearSala() {
       qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
     }
 
-    // VOZ: Forzar reglas generales de Dumbledore sí o sí al crear la sala
+    // VOZ: Forzar reglas generales de Dumbledore sÃ­ o sÃ­ al crear la sala
     if (window.VoiceLinesTv) {
       window.VoiceLinesTv.playInstruction("intro_general", "init", true);
       window.currentGameInstructionId = "intro_general";
@@ -1124,6 +1124,16 @@ function renderRoomPayload(data) {
     const phase = state.phase || "lobby";
     
     // Fases de Escenas Especiales (Jackbox Style)
+    if (phase === "scene_intro") {
+      renderIntroScene(state);
+      return;
+    }
+
+    if (phase === "scene_rules") {
+      renderRulesScene(state);
+      return;
+    }
+
     if (phase === "scene_instructions") {
       renderInstructionsScene(state);
       return;
@@ -1188,10 +1198,10 @@ function renderLobby(data) {
     } else {
       hostBox.style.display = "block";
       if (data.host && data.host.claimed && data.host.name) {
-        hostBox.textContent = `Capitán de la sala: ${data.host.name}. Mira la pantalla principal para seguir la aventura.`;
+        hostBox.textContent = `CapitÃ¡n de la sala: ${data.host.name}. Mira la pantalla principal para seguir la aventura.`;
         hostBox.classList.add("claimed");
       } else {
-        hostBox.textContent = "El primer celular que entre será el host de la partida.";
+        hostBox.textContent = "El primer celular que entre serÃ¡ el host de la partida.";
         hostBox.classList.remove("claimed");
       }
     }
@@ -1222,7 +1232,7 @@ function renderLobby(data) {
         
         const isWitch = (player.gender === "witch");
         const label = isWitch ? "Una maga" : "Un mago";
-        const avatar = isWitch ? "🧙‍♀️" : "🧙‍♂️";
+        const avatar = isWitch ? "ðŸ§™â€â™€ï¸" : "ðŸ§™â€â™‚ï¸";
         
         item.style.setProperty("--house-color", houseColors[player.house] || "#facc15");
         item.innerHTML = `
@@ -1343,8 +1353,8 @@ function updateTriviaPlayers(state, players) {
 
     item.className = `trivia-player-row ${hasAnswered ? "answered" : ""}`;
     item.innerHTML = `
-      <span>${houseIcons[player.house] || "✨"} ${escapeHTML(player.name)}</span>
-      <span class="status">${hasAnswered ? "Respondió" : "Pensando..."}</span>
+      <span>${houseIcons[player.house] || "âœ¨"} ${escapeHTML(player.name)}</span>
+      <span class="status">${hasAnswered ? "RespondiÃ³" : "Pensando..."}</span>
     `;
 
     box.appendChild(item);
@@ -1463,10 +1473,10 @@ function renderGenericGame(state, players = []) {
 
   container.innerHTML = `
     <section class="generic-card">
-      <div class="badge">✨ Minijuego activo</div>
+      <div class="badge">âœ¨ Minijuego activo</div>
       <h2 class="question-title">${escapeHTML(getQuestion(state))}</h2>
       <div class="options-grid" id="tv-opciones"></div>
-      <div class="host-help">La TV revelará los resultados pronto. Prepárense.</div>
+      <div class="host-help">La TV revelarÃ¡ los resultados pronto. PrepÃ¡rense.</div>
     </section>
   `;
 
@@ -1499,7 +1509,7 @@ function renderResults(data) {
     window.destroySnitchTv();
   }
 
-  // Lógica de alternancia: Resultados -> Marcador Global
+  // LÃ³gica de alternancia: Resultados -> Marcador Global
   const elapsed = Date.now() - (window.resultsPhaseStartAt || 0);
   if (elapsed > 9000 && window.SceneLeaderboard) {
     window.SceneLeaderboard.render(data);
@@ -1549,19 +1559,19 @@ function renderTriviaResults(state, players = []) {
         </div>
 
         <p class="trivia-results-comment">
-          “${escapeHTML(commentary)}”
+          â€œ${escapeHTML(commentary)}â€
         </p>
 
         ${
           fastest
             ? `
               <div class="trivia-fastest-banner">
-                ⚡ Respuesta correcta más rápida: ${escapeHTML(fastest.player_name)} · ${Number(fastest.elapsed_seconds || 0).toFixed(2)}s · +40
+                âš¡ Respuesta correcta mÃ¡s rÃ¡pida: ${escapeHTML(fastest.player_name)} Â· ${Number(fastest.elapsed_seconds || 0).toFixed(2)}s Â· +40
               </div>
             `
             : `
               <div class="trivia-fastest-banner">
-                💨 Nadie acertó lo suficientemente rápido. El pergamino está decepcionado.
+                ðŸ’¨ Nadie acertÃ³ lo suficientemente rÃ¡pido. El pergamino estÃ¡ decepcionado.
               </div>
             `
         }
@@ -1570,7 +1580,7 @@ function renderTriviaResults(state, players = []) {
           ${
             playerResults.length
               ? playerResults.map((row) => renderTriviaResultCard(row)).join("")
-              : `<div class="trivia-result-card wrong">Nadie respondió esta pregunta.</div>`
+              : `<div class="trivia-result-card wrong">Nadie respondiÃ³ esta pregunta.</div>`
           }
         </div>
       </section>
@@ -1593,10 +1603,10 @@ function renderTriviaResultCard(row) {
       <div class="trivia-result-top">
         <div>
           <div class="trivia-result-name">
-            ${isCorrect ? "✅" : row.answered ? "❌" : "⏳"} ${escapeHTML(row.player_name || "Jugador")}
+            ${isCorrect ? "âœ…" : row.answered ? "âŒ" : "â³"} ${escapeHTML(row.player_name || "Jugador")}
           </div>
           <div class="trivia-result-house">
-            ${houseIcons[row.house] || "✨"} ${escapeHTML(row.house || "Sin casa")}
+            ${houseIcons[row.house] || "âœ¨"} ${escapeHTML(row.house || "Sin casa")}
           </div>
         </div>
 
@@ -1655,7 +1665,7 @@ function renderGenericResults(state, players) {
 
 function renderScoreGrid(players = []) {
   if (!players.length) {
-    return `<div class="score-card">Sin jugadores todavía</div>`;
+    return `<div class="score-card">Sin jugadores todavÃ­a</div>`;
   }
 
   const sorted = [...players].sort((a, b) => Number(b.score || 0) - Number(a.score || 0));
@@ -1663,7 +1673,7 @@ function renderScoreGrid(players = []) {
   return sorted.map((player, index) => `
     <div class="score-card" style="border-color:${houseColors[player.house] || "#facc15"};">
       <div class="score-rank">#${index + 1}</div>
-      <div class="score-name">${houseIcons[player.house] || "✨"} ${escapeHTML(player.name)}</div>
+      <div class="score-name">${houseIcons[player.house] || "âœ¨"} ${escapeHTML(player.name)}</div>
       <div class="score-points">${Number(player.score || 0)} pts</div>
     </div>
   `).join("");
@@ -1727,7 +1737,7 @@ async function continueTvFlow() {
       return;
     }
 
-    // El polling ya refrescará, pero forzamos un tick rápido
+    // El polling ya refrescarÃ¡, pero forzamos un tick rÃ¡pido
     setTimeout(() => {
       refreshRoomStatus();
     }, 100);
@@ -1746,9 +1756,9 @@ function renderInstructionsScene(state) {
 
   container.innerHTML = `
     <section class="scene-card instructions-scene ${state.instruction_visual_theme || "default"}">
-      <div class="badge">📖 Instrucciones</div>
+      <div class="badge">ðŸ“– Instrucciones</div>
       <h1>${escapeHTML(state.instruction_title || "Siguiente Prueba")}</h1>
-      <p class="scene-subtitle">${escapeHTML(state.instruction_subtitle || "Prepárate para continuar.")}</p>
+      <p class="scene-subtitle">${escapeHTML(state.instruction_subtitle || "PrepÃ¡rate para continuar.")}</p>
       <div class="instruction-list">
         ${lines.map((line, index) => `
           <div class="instruction-item">
@@ -1775,23 +1785,23 @@ function renderScoreboardScene(state) {
 
   container.innerHTML = `
     <section class="scene-card scoreboard-scene">
-      <div class="badge">🏆 Copa de las Casas</div>
+      <div class="badge">ðŸ† Copa de las Casas</div>
       <h1>${escapeHTML(state.scoreboard_title || "Marcador general")}</h1>
-      <p class="scene-subtitle">${escapeHTML(state.scoreboard_subtitle || "Así va la competencia.")}</p>
+      <p class="scene-subtitle">${escapeHTML(state.scoreboard_subtitle || "AsÃ­ va la competencia.")}</p>
       <div class="scoreboard-list">
         ${scores.map((item, index) => `
           <div class="scoreboard-row ${index === 0 ? "leader" : ""}">
             <div class="scoreboard-position">${index + 1}</div>
             <div class="scoreboard-house">
-              <span>${escapeHTML(item.icon || "✨")}</span>
+              <span>${escapeHTML(item.icon || "âœ¨")}</span>
               <strong>${escapeHTML(item.label || item.house)}</strong>
             </div>
             <div class="scoreboard-points">${Number(item.score || 0)} pts</div>
           </div>
         `).join("")}
       </div>
-      ${leader ? `<div class="leader-banner">Casa líder: ${escapeHTML(leader.icon || "✨")} ${escapeHTML(leader.label || leader.house)}</div>` : ""}
-      ${topPlayer ? `<div class="top-player-banner">Jugador destacado: ${escapeHTML(topPlayer.icon || "✨")} ${escapeHTML(topPlayer.name || "")} · ${Number(topPlayer.score || 0)} pts</div>` : ""}
+      ${leader ? `<div class="leader-banner">Casa lÃ­der: ${escapeHTML(leader.icon || "âœ¨")} ${escapeHTML(leader.label || leader.house)}</div>` : ""}
+      ${topPlayer ? `<div class="top-player-banner">Jugador destacado: ${escapeHTML(topPlayer.icon || "âœ¨")} ${escapeHTML(topPlayer.name || "")} Â· ${Number(topPlayer.score || 0)} pts</div>` : ""}
       <div class="tv-controls-hint large">
         <span class="key-hint">OK</span> ${escapeHTML(state.cta || "Continuar")}
       </div>
@@ -1806,8 +1816,8 @@ function renderTransitionScene(state) {
 
   container.innerHTML = `
     <section class="scene-card transition-scene">
-      <div class="badge">✨ Transición</div>
-      <h1>${escapeHTML(state.transition_title || "La historia continúa...")}</h1>
+      <div class="badge">âœ¨ TransiciÃ³n</div>
+      <h1>${escapeHTML(state.transition_title || "La historia continÃºa...")}</h1>
       <p class="scene-subtitle">${escapeHTML(state.transition_subtitle || "")}</p>
       <div class="magic-loader">
         <span></span>
@@ -1821,11 +1831,74 @@ function renderTransitionScene(state) {
   `;
 }
 
+function renderIntroScene(state) {
+  showScreen("view-game");
+  const container = document.getElementById("game-container");
+  if (!container) return;
+
+  const lines = state.intro_lines || [];
+
+  container.innerHTML = `
+    <section class="scene-card intro-scene">
+      <div class="badge gold">âœ¨ BIENVENIDA</div>
+      <h1>${escapeHTML(state.intro_title || "Â¡Bienvenidos!")}</h1>
+      <p class="scene-subtitle">${escapeHTML(state.intro_subtitle || "")}</p>
+      <div class="scene-content-list">
+        ${lines.map(line => `
+          <div class="scene-line-item">
+            <p>${escapeHTML(line)}</p>
+          </div>
+        `).join("")}
+      </div>
+      <div class="tv-controls-hint large">
+        <span class="key-hint">OK</span> ${escapeHTML(state.cta || "Continuar")}
+      </div>
+    </section>
+  `;
+
+  if (lastVoicePhase !== "scene_intro") {
+    lastVoicePhase = "scene_intro";
+    window.VoiceLinesTv?.playInstruction("intro_general", "1", true);
+  }
+}
+
+function renderRulesScene(state) {
+  showScreen("view-game");
+  const container = document.getElementById("game-container");
+  if (!container) return;
+
+  const lines = state.rules_lines || [];
+
+  container.innerHTML = `
+    <section class="scene-card rules-scene">
+      <div class="badge">ðŸ“– REGLAS DEL CASTILLO</div>
+      <h1>${escapeHTML(state.rules_title || "Reglas")}</h1>
+      <p class="scene-subtitle">${escapeHTML(state.rules_subtitle || "")}</p>
+      <div class="scene-content-list">
+        ${lines.map(line => `
+          <div class="scene-line-item rule">
+            <p>${escapeHTML(line)}</p>
+          </div>
+        `).join("")}
+      </div>
+      <div class="tv-controls-hint large">
+        <span class="key-hint">OK</span> ${escapeHTML(state.cta || "Entendido")}
+      </div>
+    </section>
+  `;
+
+  if (lastVoicePhase !== "scene_rules") {
+    lastVoicePhase = "scene_rules";
+    window.VoiceLinesTv?.playInstruction("intro_general", "2", true);
+  }
+}
+
 document.addEventListener("keydown", (event) => {
   if (event.key === "Enter" || event.key === " ") {
-    // Solo si el lobby o alguna escena está activa y requiere confirmación
     const phase = window.currentGameState?.phase;
     if (
+      phase === "scene_intro" ||
+      phase === "scene_rules" ||
       phase === "scene_instructions" ||
       phase === "scene_scoreboard" ||
       phase === "scene_transition" ||
