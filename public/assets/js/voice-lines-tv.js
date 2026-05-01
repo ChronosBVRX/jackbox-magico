@@ -160,8 +160,72 @@
   document.addEventListener("DOMContentLoaded", init);
   setTimeout(init, 800);
 
+  const INSTRUCTION_VOICES = {
+    "intro_general": "/assets/audio/voice_lines/00_intro_general_dumbledore.mp3",
+    "trivia": "/assets/audio/voice_lines/01_trivia_magica_hermione.mp3",
+    "atrapa_snitch": "/assets/audio/voice_lines/02_atrapa_snitch_harry.mp3",
+    "duelo": "/assets/audio/voice_lines/03_duelo_hechizos_snape.mp3",
+    "sombrero": "/assets/audio/voice_lines/04_sombrero_burlon_sombrero.mp3",
+    "clase_pociones": "/assets/audio/voice_lines/05_clase_pociones_snape.mp3",
+    "artes_ridiculas": "/assets/audio/voice_lines/06_artes_ridiculas_ron.mp3",
+    "mapa_travieso": "/assets/audio/voice_lines/07_mapa_travieso_luna.mp3",
+    "retratos_chismosos": "/assets/audio/voice_lines/08_retratos_chismosos_hagrid.mp3",
+    "hechizo_incompleto": "/assets/audio/voice_lines/09_hechizo_incompleto_mcgonagall.mp3",
+    "caldero_mentiroso": "/assets/audio/voice_lines/10_caldero_mentiroso_dobby.mp3",
+    "patronus_personalizado": "/assets/audio/voice_lines/11_patronus_personalizado_luna.mp3",
+    "copa_final": "/assets/audio/voice_lines/12_copa_final_dumbledore.mp3",
+    "cierre_ganador": "/assets/audio/voice_lines/13_cierre_ganador_sombrero.mp3"
+  };
+
+  let lastInstructionPlayed = "";
+  let instructionsMuted = localStorage.getItem("jackbox_magico_narrator_muted") === "true";
+
+  function toggleMute() {
+    instructionsMuted = !instructionsMuted;
+    localStorage.setItem("jackbox_magico_narrator_muted", instructionsMuted.toString());
+    
+    // Si se silencia mientras habla una instrucción, detenerla
+    if (instructionsMuted && currentAudio) {
+      // Verificamos si el audio actual es una instrucción revisando si su source está en el diccionario
+      const isInstruction = Object.values(INSTRUCTION_VOICES).some(p => currentAudio.src.includes(p));
+      if (isInstruction) {
+        currentAudio.pause();
+        currentAudio = null;
+      }
+    }
+    
+    return instructionsMuted;
+  }
+
+  function playInstruction(gameId, roundId = "1", force = false) {
+    if (!gameId) return false;
+    
+    // Normalizar ID del juego (algunos lados lo llaman trivia_magica o trivia, duelo_hechizos o duelo)
+    let normalizedId = gameId;
+    if (gameId === "trivia_magica") normalizedId = "trivia";
+    if (gameId === "duelo_hechizos") normalizedId = "duelo";
+
+    const audioPath = INSTRUCTION_VOICES[normalizedId];
+    if (!audioPath) return false;
+
+    const playKey = `${normalizedId}-${roundId}`;
+    
+    if (!force) {
+      if (instructionsMuted) return false;
+      if (lastInstructionPlayed === playKey) return false;
+    }
+
+    lastInstructionPlayed = playKey;
+    
+    playbackChain = Promise.resolve().then(() => playPath(audioPath, 1.0));
+    return playbackChain;
+  }
+
   window.VoiceLinesTv = {
     play,
+    playInstruction,
+    toggleMute,
+    isMuted: () => instructionsMuted,
     loadCatalog,
     unlock,
     isUnlocked: () => unlocked,

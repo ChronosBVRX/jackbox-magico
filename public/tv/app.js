@@ -701,7 +701,11 @@ function unlockMagicSound() {
 
     if (lastVoicePhase !== "boot") {
       lastVoicePhase = "boot";
-      window.VoiceLinesTv?.play("boot", { volume: 0.95 });
+      const played = window.VoiceLinesTv?.playInstruction("intro_general");
+      if (!played) {
+        window.VoiceLinesTv?.play("boot", { volume: 0.95 });
+      }
+      window.currentGameInstructionId = "intro_general";
     }
   } catch (error) {}
 }
@@ -714,6 +718,28 @@ document.addEventListener("DOMContentLoaded", () => {
   if (audio) {
     audio.addEventListener("error", () => {
       console.error("Audio de fondo no encontrado o inválido.");
+    });
+  }
+
+  // Bind audio controls
+  const btnMute = document.getElementById("btn-mute-instruction");
+  const btnRepeat = document.getElementById("btn-repeat-instruction");
+
+  if (btnMute && window.VoiceLinesTv) {
+    const isMuted = window.VoiceLinesTv.isMuted();
+    btnMute.textContent = isMuted ? "🔇" : "🔊";
+
+    btnMute.addEventListener("click", () => {
+      const muted = window.VoiceLinesTv.toggleMute();
+      btnMute.textContent = muted ? "🔇" : "🔊";
+    });
+  }
+
+  if (btnRepeat) {
+    btnRepeat.addEventListener("click", () => {
+      if (window.VoiceLinesTv && window.currentGameInstructionId) {
+        window.VoiceLinesTv.playInstruction(window.currentGameInstructionId, "1", true);
+      }
     });
   }
 });
@@ -1137,7 +1163,15 @@ function renderRules(data) {
     }
   if (lastVoicePhase !== "rules") {
     lastVoicePhase = "rules";
-    window.VoiceLinesTv?.play("rules", { volume: 0.95 });
+    const gameId = state.current_game_id || state.mode || "trivia";
+    // Si no hay instrucción (ej. es otra pantalla genérica), sonará "rules" como fallback
+    const played = window.VoiceLinesTv?.playInstruction(gameId);
+    if (!played) {
+      window.VoiceLinesTv?.play("rules", { volume: 0.95 });
+    }
+    
+    // Guardamos el id del juego actual para el botón de repetir
+    window.currentGameInstructionId = gameId;
   }
 }
 
