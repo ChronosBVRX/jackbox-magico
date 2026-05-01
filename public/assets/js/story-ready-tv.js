@@ -115,11 +115,13 @@
     panel = document.createElement("div");
     panel.id = "story-ready-tv-panel";
     panel.innerHTML = `
-      <div class="story-ready-tv-title">¿Todos listos?</div>
       <div class="story-ready-tv-count">0/0</div>
-      <div class="story-ready-tv-pending"></div>
-      <div class="story-ready-tv-timer"></div>
-      <div class="story-ready-tv-bar"><span></span></div>
+      <div class="story-ready-tv-info">
+        <div class="story-ready-tv-title">¿Todos listos?</div>
+        <div class="story-ready-tv-pending"></div>
+        <div class="story-ready-tv-timer"></div>
+        <div class="story-ready-tv-bar"><span></span></div>
+      </div>
     `;
     document.body.appendChild(panel);
     return panel;
@@ -260,55 +262,64 @@
     style.textContent = `
       #story-ready-tv-panel {
         position: fixed;
-        right: clamp(12px, 2vw, 24px);
-        top: 50%;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%) translateY(30px) scale(0.95);
         z-index: 10020;
-        width: min(280px, 30vw);
-        transform: translateY(-50%) translateX(18px);
+        width: min(600px, 90vw);
         opacity: 0;
         pointer-events: none;
-        padding: 16px;
-        border-radius: 22px;
+        padding: 18px 28px;
+        border-radius: 30px;
         color: #fff7dc;
+        display: flex;
+        align-items: center;
+        gap: 24px;
         background:
-          radial-gradient(circle at 15% 0%, rgba(255,216,121,.22), transparent 36%),
-          rgba(5, 10, 24, .82);
-        border: 1px solid rgba(255,216,121,.28);
-        box-shadow: 0 18px 60px rgba(0,0,0,.42);
-        backdrop-filter: blur(14px);
-        transition: opacity .25s ease, transform .25s ease;
+          radial-gradient(circle at top right, rgba(255,216,121,.15), transparent 45%),
+          rgba(10, 15, 30, .9);
+        border: 1px solid rgba(255,216,121,.2);
+        box-shadow: 0 15px 45px rgba(0,0,0,.6);
+        backdrop-filter: blur(20px);
+        transition: opacity .35s ease, transform .35s cubic-bezier(0.2, 0.8, 0.2, 1);
       }
       #story-ready-tv-panel.visible {
         opacity: 1;
-        transform: translateY(-50%) translateX(0);
+        transform: translateX(-50%) translateY(0) scale(1);
       }
       .story-ready-tv-title {
         color: #ffe7a3;
-        font-weight: 1000;
-        font-size: clamp(1rem, 1.5vw, 1.35rem);
-        margin-bottom: 8px;
+        font-weight: 900;
+        font-size: 1.1rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 4px;
       }
       .story-ready-tv-count {
-        font-size: clamp(2rem, 3vw, 3.2rem);
+        font-size: 3rem;
         font-weight: 1000;
         line-height: 1;
+        flex-shrink: 0;
+      }
+      .story-ready-tv-info {
+        flex-grow: 1;
+        text-align: left;
       }
       .story-ready-tv-pending,
       .story-ready-tv-timer {
-        margin-top: 8px;
         color: rgba(255,248,221,.76);
-        font-weight: 850;
-        font-size: clamp(.72rem, 1vw, .9rem);
-        line-height: 1.2;
+        font-weight: 600;
+        font-size: 0.95rem;
+        line-height: 1.4;
       }
       .story-ready-tv-timer {
         color: #bbf7d0;
       }
       .story-ready-tv-bar {
-        height: 7px;
+        height: 6px;
         margin-top: 10px;
         border-radius: 999px;
-        background: rgba(255,255,255,.10);
+        background: rgba(255,255,255,.08);
         overflow: hidden;
       }
       .story-ready-tv-bar span {
@@ -321,15 +332,8 @@
       }
       @media (max-width: 900px) {
         #story-ready-tv-panel {
-          top: auto;
-          bottom: 12px;
-          left: 50%;
-          right: auto;
-          width: min(520px, calc(100vw - 28px));
-          transform: translateX(-50%) translateY(18px);
-        }
-        #story-ready-tv-panel.visible {
-          transform: translateX(-50%) translateY(0);
+          bottom: 20px;
+          padding: 14px 20px;
         }
       }
     `;
