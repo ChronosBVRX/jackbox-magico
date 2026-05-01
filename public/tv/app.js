@@ -10,6 +10,8 @@ let triviaSparklesInterval = null;
 let lottieFx = null;
 let roomSocket = null;
 let roomSocketRetryTimer = null;
+let lastVoicePhase = "";
+let threatVoiceTimer = null;
 
 const houseIcons = {
   Gryffindor: "🦁",
@@ -690,6 +692,17 @@ function unlockMagicSound() {
     if (window.MagicSound && typeof window.MagicSound.unlock === "function") {
       window.MagicSound.unlock();
     }
+    const bgMusic = document.getElementById("tv-bg-music");
+    if (bgMusic && bgMusic.paused && !bgMusicStarted) {
+      bgMusicStarted = true;
+      bgMusic.volume = 0.3;
+      bgMusic.play().catch(() => {});
+    }
+
+    if (lastVoicePhase !== "boot") {
+      lastVoicePhase = "boot";
+      window.VoiceLinesTv?.play("boot", { volume: 0.95 });
+    }
   } catch (error) {}
 }
 
@@ -1053,6 +1066,10 @@ function startPollingFallback() {
       renderRoomPayload(data);
     } catch (error) {
       console.error("Polling fallback error", error);
+      if (lastVoicePhase !== "system_error") {
+        lastVoicePhase = "system_error";
+        window.VoiceLinesTv?.play("system", { volume: 0.8 });
+      }
     }
   }, 900);
 }
@@ -1118,6 +1135,9 @@ function renderRules(data) {
     } else {
       rulesListEl.style.display = "none";
     }
+  if (lastVoicePhase !== "rules") {
+    lastVoicePhase = "rules";
+    window.VoiceLinesTv?.play("rules", { volume: 0.95 });
   }
 }
 
@@ -1127,6 +1147,11 @@ function renderLobby(data) {
   lastResultsKey = "";
 
   showScreen("view-lobby");
+
+  if (lastVoicePhase !== "lobby") {
+    lastVoicePhase = "lobby";
+    window.VoiceLinesTv?.play("lobby", { volume: 0.7 });
+  }
 
   const hostBox = document.getElementById("host-status");
 
@@ -1225,6 +1250,17 @@ function renderPlaying(data) {
 function renderTrivia(state, players) {
   const container = document.getElementById("game-container");
   if (!container) return;
+
+  const currentPhaseKey = "round_start_" + (state.round_id || "1");
+  if (lastVoicePhase !== currentPhaseKey) {
+    lastVoicePhase = currentPhaseKey;
+    window.VoiceLinesTv?.play("round_start", { volume: 0.75 });
+    
+    if (threatVoiceTimer) clearTimeout(threatVoiceTimer);
+    threatVoiceTimer = setTimeout(() => {
+      window.VoiceLinesTv?.play("threat", { volume: 0.85 });
+    }, 3500); // offset para threat
+  }
 
   const options = state.options || [];
   const roundNumber = Number(state.round_number || 1);
@@ -1408,10 +1444,54 @@ function updateGenericTimer(state) {
   }
 }
 
+function playResultVoiceLine(state, players) {
+  if (!window.VoiceLinesTv) return;
+  const result = state.trivia_result || state.result || {};
+  const playerResults = result.player_results || result.players || [];
+  
+  const totalAnswers = playerResults.length;
+  if (totalAnswers === 0) {
+    window.VoiceLinesTv.play("timeout");
+  } else {
+    const anyStreak = playerResults.some((p) => p.streak >= 3);
+    const anyHumor = playerResults.some((p) => p.humor_bonus || p.points_humor);
+    const hasFastest = !!result.fastest_correct;
+    const anyCorrect = playerResults.some((p) => p.correct);
+
+    if (anyStreak) window.VoiceLinesTv.play("streak_bonus");
+    else if (anyHumor) window.VoiceLinesTv.play("humor_bonus");
+    else if (hasFastest) window.VoiceLinesTv.play("fast_bonus");
+    else if (anyCorrect) window.VoiceLinesTv.play("correct");
+    else window.VoiceLinesTv.play("wrong");
+  }
+
+  // Chaining explanation and leaderboard
+  setTimeout(() => {
+    if (state.explanation || state.narrator || result.commentary) {
+      window.VoiceLinesTv?.play("explanation", { volume: 0.85 });
+    }
+  }, 4000);
+
+  setTimeout(() => {
+    window.VoiceLinesTv?.play("leaderboard", { volume: 0.9 });
+  }, 8500);
+}
+
 function renderGenericGame(state, players = []) {
   const container = document.getElementById("game-container");
 
   if (!container) return;
+
+  const currentPhaseKey = "round_start_" + (state.round_id || "1");
+  if (lastVoicePhase !== currentPhaseKey) {
+    lastVoicePhase = currentPhaseKey;
+    window.VoiceLinesTv?.play("round_start", { volume: 0.75 });
+    
+    if (threatVoiceTimer) clearTimeout(threatVoiceTimer);
+    threatVoiceTimer = setTimeout(() => {
+      window.VoiceLinesTv?.play("threat", { volume: 0.85 });
+    }, 3500); // offset para threat
+  }
 
   container.innerHTML = `
     <section class="generic-card">
@@ -1443,6 +1523,7 @@ function renderResults(data) {
   if (lastResultsKey !== resultKey) {
     lastResultsKey = resultKey;
     playMagicSound("reveal");
+    setTimeout(() => playResultVoiceLine(state, players), 500);
   }
 
   showScreen("view-results");

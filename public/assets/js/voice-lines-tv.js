@@ -81,6 +81,12 @@
   async function playPath(path, volume = 1) {
     if (!path || failed.has(path)) return false;
 
+    if (currentAudio) {
+      currentAudio.pause();
+      currentAudio.currentTime = 0;
+      currentAudio = null;
+    }
+
     try {
       const cached = preloadCache.get(path);
       const audio = cached || new Audio(path);
@@ -95,6 +101,7 @@
         const done = () => {
           audio.removeEventListener("ended", done);
           audio.removeEventListener("error", done);
+          if (currentAudio === audio) currentAudio = null;
           resolve();
         };
         audio.addEventListener("ended", done, { once: true });
@@ -135,9 +142,7 @@
   }
 
   function play(event, options = {}) {
-    playbackChain = playbackChain
-      .then(() => playNow(event, options))
-      .catch(() => playNow(event, options));
+    playbackChain = Promise.resolve().then(() => playNow(event, options));
     return playbackChain;
   }
 
@@ -146,72 +151,10 @@
     unlocked = true;
   }
 
-  function bindLifecycleHooks() {
-    const originalCrearSala = window.crearSala;
-    if (typeof originalCrearSala === "function" && !originalCrearSala.__voiceWrapped) {
-      const wrapped = async function voiceWrappedCrearSala(...args) {
-        const result = await originalCrearSala.apply(this, args);
-        setTimeout(() => play("lobby"), 600);
-        return result;
-      };
-      wrapped.__voiceWrapped = true;
-      window.crearSala = wrapped;
-    }
-
-    const originalStartStory = window.StoryTvControls?.startStory;
-    if (typeof originalStartStory === "function" && !originalStartStory.__voiceWrapped) {
-      const wrapped = async function voiceWrappedStartStory(...args) {
-        await play("rules", { volume: 0.95 });
-        const result = await originalStartStory.apply(this, args);
-        setTimeout(() => play("round_start"), 1200);
-        return result;
-      };
-      wrapped.__voiceWrapped = true;
-      window.StoryTvControls.startStory = wrapped;
-    }
-  }
-
-  function inferEventFromPhase(phase) {
-    if (!phase) return "";
-    if (phase === "lobby") return "lobby";
-    if (String(phase).startsWith("results_")) return "leaderboard";
-    if (["trivia", "duelo", "sombrero", "clase_pociones", "atrapa_snitch", "retratos_chismosos", "mapa_travieso", "hechizo_incompleto", "artes_ridiculas", "patronus_personalizado"].includes(phase)) {
-      return "round_start";
-    }
-    return "";
-  }
-
-  let lastPhase = "";
-
-  function observePhase() {
-    const gameContainer = document.getElementById("game-container");
-    const currentText = [
-      document.body.className,
-      gameContainer?.textContent?.slice(0, 80),
-    ].join("|");
-
-    let phase = "";
-    if (document.body.classList.contains("tv-story-mode")) phase = "story";
-    if (document.getElementById("view-lobby")?.classList.contains("visible")) phase = "lobby";
-    if (document.getElementById("view-results")?.classList.contains("visible")) phase = "results";
-    if (document.getElementById("view-game")?.classList.contains("visible")) phase = "game";
-
-    const key = `${phase}|${currentText}`;
-    if (key === lastPhase) return;
-    lastPhase = key;
-
-    if (phase === "lobby") play("lobby", { volume: 0.7 });
-    if (phase === "results") play("leaderboard", { volume: 0.9 });
-    if (phase === "game") play("round_start", { volume: 0.75 });
-  }
-
   function init() {
     loadCatalog()
       .then(() => buildPreloadCache())
       .catch((error) => log("catalog_error", { error: String(error?.message || error) }));
-
-    setInterval(bindLifecycleHooks, 1000);
-    setInterval(observePhase, 1800);
   }
 
   document.addEventListener("DOMContentLoaded", init);

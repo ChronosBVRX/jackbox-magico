@@ -68,7 +68,28 @@
     return frame(`${header(state, "Pregunta revelada")}<div class="copa-grid"><div class="copa-card"><h2 class="copa-question">${esc(state.question || "Pregunta final")}</h2>${sequence}<div class="copa-options">${options}</div><div class="copa-narrator">“${esc(state.narrator || "Una sola pregunta puede cambiar la historia de la Copa.")}”</div></div><aside class="copa-side"><h3 class="copa-side-title">Respuestas de casa</h3>${houseCards(state, players, "answer")}<div class="copa-progress"><div style="width:${pct}%"></div></div></aside></div>`);
   }
   function renderResults(data) {
-    const state = data.game_state || {}; const result = state.copa_final_result || {}; const houses = result.houses || []; const key = `${state.phase}-${houses.map(h=>h.delta).join("|")}`; if (key !== lastCueKey) { lastCueKey = key; play("applause"); }
+    const state = data.game_state || {}; const result = state.copa_final_result || {}; const houses = result.houses || []; const key = `${state.phase}-${houses.map(h=>h.delta).join("|")}`;
+    if (key !== lastCueKey) {
+      lastCueKey = key;
+      play("applause");
+      
+      const totals = scores(data.players || []);
+      const houseList = Object.keys(totals);
+      if (houseList.length > 0) {
+        const topScore = Math.max(...houseList.map(h => totals[h]));
+        const winners = houseList.filter(h => totals[h] === topScore);
+        
+        if (winners.length > 1) {
+          window.VoiceLinesTv?.play("winner", { voice_key: "empate" });
+        } else {
+          window.VoiceLinesTv?.play("winner", { voice_key: winners[0].toLowerCase() });
+        }
+        
+        setTimeout(() => {
+          window.VoiceLinesTv?.play("final", { volume: 0.9 });
+        }, 9000);
+      }
+    }
     const cards = houses.map((h)=>`<div class="copa-result-house ${Number(h.delta || 0) >= 0 ? "good" : "bad"}"><div class="copa-house-top"><div class="copa-house-name">${houseIcons[h.house] || "✨"} ${esc(h.house)}</div><div class="copa-delta">${Number(h.delta || 0) >= 0 ? "+" : ""}${Number(h.delta || 0)}</div></div><div class="copa-answer-line">Apuesta: ${esc(h.wager?.label || "0 puntos")} ${h.wager?.all_in ? "· Todo o nada" : ""}</div><div class="copa-answer-line">Respuesta: ${esc(h.answer || "Sin respuesta")}</div><div class="copa-answer-line">${h.correct ? "✅ Correcta" : "❌ Incorrecta"}${h.bonus ? ` · Bonus +${h.bonus}` : ""}</div>${h.narrator ? `<div class="copa-narrator">${esc(h.narrator)}</div>` : ""}</div>`).join("");
     return frame(`<div class="copa-pill" style="margin:auto">🏆 Resultado final</div><h1 class="copa-result-title">${esc(result.title || "Resultado de la Pregunta Final")}</h1><div class="copa-card" style="margin-bottom:14px;text-align:center"><h2 class="copa-question" style="font-size:clamp(1.7rem,3vw,3.2rem)">${esc(result.question || state.question || "Pregunta final")}</h2><div class="copa-narrator">Respuesta correcta: <strong>${esc(result.correct_answer || state.correct_label || "")}</strong><br>${esc(result.explanation || "")}</div></div><div class="copa-results-grid">${cards}</div><div class="copa-narrator" style="text-align:center;margin-top:16px">${esc(result.narrator || state.narrator || "La Copa de las Casas ha decidido.")}</div>`);
   }
