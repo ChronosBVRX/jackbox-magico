@@ -1150,6 +1150,11 @@ function renderLobby(data) {
   const state = data.game_state || {};
   const isStoryMode = state.mode === "story";
 
+  const storyTitle = document.getElementById("lobby-story-title");
+  if (storyTitle) {
+    storyTitle.textContent = state.story_title || "Esperando jugadores...";
+  }
+
   if (hostBox) {
     if (isStoryMode) {
       hostBox.style.display = "none";

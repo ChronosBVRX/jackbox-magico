@@ -64,30 +64,51 @@
   </div>
 
   <div id="view-lobby" class="screen">
-    <section class="lobby-card">
-      <div class="badge">📱 Únete desde tu celular</div>
-      <h2 id="lobby-story-title" class="lobby-story-title">Esperando jugadores...</h2>
+    <div class="lobby-modern-container">
+      <!-- Columna Izquierda: Instrucciones y Conexión -->
+      <aside class="lobby-side-panel">
+        <div class="magic-card connection-card">
+          <div class="badge">🪄 Portal de Entrada</div>
+          <h2 id="lobby-story-title" class="lobby-story-title">Cargando aventura...</h2>
+          
+          <div class="qr-section">
+            <div class="qr-glow-wrap">
+              <img id="tv-qr" src="" alt="Código QR para unirse">
+            </div>
+            <div class="room-code-display">
+              <span class="code-label">Código de Sala</span>
+              <div class="room-code" id="tv-code">----</div>
+            </div>
+          </div>
 
-      <div class="room-code" id="tv-code">----</div>
+          <div class="join-instructions">
+            <p>Escanea el código o entra en:</p>
+            <p class="join-url" id="join-url"></p>
+          </div>
 
-      <div class="qr-wrap">
-        <img id="tv-qr" src="" alt="Código QR para unirse">
-      </div>
-
-      <p class="join-url" id="join-url"></p>
-
-      <div id="host-status" class="host-status">
-        La TV controla la partida. Los celulares solo responden.
-      </div>
-
-      <div id="lista-jugadores" class="players-list"></div>
-
-      <div id="controles-host" class="host-controls">
-        <div class="tv-controls-hint large">
-          <span class="key-hint">OK</span> INICIAR PARTIDA
+          <div id="host-status" class="host-status">
+            La TV es el Gran Comedor. Los celulares son sus varitas.
+          </div>
         </div>
-      </div>
-    </section>
+      </aside>
+
+      <!-- Columna Derecha: Jugadores -->
+      <main class="lobby-main-content">
+        <div class="players-section">
+          <div class="section-header">
+            <div class="badge gold">🧙‍♂️ Magos en la sala</div>
+          </div>
+          <div id="lista-jugadores" class="players-grid"></div>
+        </div>
+
+        <div id="controles-host" class="lobby-actions">
+          <div class="magic-button-hint">
+            <span class="key-hint">OK</span>
+            <span class="hint-text">Iniciar Partida</span>
+          </div>
+        </div>
+      </main>
+    </div>
   </div>
 
   <div id="view-game" class="screen">
