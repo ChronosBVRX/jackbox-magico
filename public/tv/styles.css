@@ -994,3 +994,199 @@ p {
   margin-bottom: 12px;
   line-height: 1.4;
 }
+/* ==========================================================================
+   SCENE: LEADERBOARD (Marcador Global)
+   ========================================================================== */
+
+#view-leaderboard {
+  display: none;
+  background: 
+    radial-gradient(circle at top right, rgba(124, 58, 237, 0.2), transparent 50%),
+    radial-gradient(circle at bottom left, rgba(255, 216, 121, 0.15), transparent 50%);
+  position: fixed;
+  inset: 0;
+  z-index: 100;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+}
+
+#view-leaderboard.visible {
+  display: flex;
+}
+
+.leaderboard-full-container {
+  width: 100%;
+  max-width: 1300px;
+  padding: 40px;
+}
+
+.house-standings {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 30px;
+  margin: 40px 0;
+}
+
+.house-rank-card {
+  display: grid;
+  grid-template-columns: 80px 80px 1fr 140px;
+  align-items: center;
+  padding: 20px 30px;
+  background: rgba(15, 14, 24, 0.8);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-left: 8px solid var(--house-color);
+  box-shadow: 0 10px 30px rgba(0,0,0,0.3);
+  animation: slideInRank 0.6s cubic-bezier(0.2, 0.8, 0.2, 1) both;
+}
+
+.house-rank-card .rank { font-size: 2.2rem; font-weight: 1000; opacity: 0.5; }
+.house-rank-card .icon { font-size: 3.5rem; }
+.house-rank-card .name { font-size: 2.4rem; font-weight: 800; text-align: left; padding-left: 20px; }
+.house-rank-card .score { font-size: 2.2rem; font-weight: 900; color: #ffd879; text-align: right; }
+
+.player-mini-grid {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 15px;
+  margin-top: 40px;
+}
+
+.player-mini-card {
+  padding: 12px 20px;
+  background: rgba(255,255,255,0.08);
+  border-radius: 15px;
+  border: 1px solid rgba(255,255,255,0.1);
+  font-size: 1.2rem;
+}
+
+/* ==========================================================================
+   SCENE: CLEAN TRIVIA (Trivia sin superposiciones)
+   ========================================================================== */
+
+.clean-trivia {
+  width: 100%;
+  max-width: 1400px;
+  height: 90vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  padding: 40px;
+  background: none;
+  box-shadow: none;
+  border: none;
+}
+
+.trivia-header-clean {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+}
+
+.trivia-question-main {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 40px;
+}
+
+.trivia-question-text-large {
+  font-size: clamp(3rem, 6vw, 5.2rem);
+  line-height: 1.1;
+  font-weight: 1000;
+  color: #fff;
+  text-shadow: 0 0 40px rgba(255,255,255,0.1);
+  max-width: 1100px;
+  margin: 0;
+}
+
+.trivia-options-grid-clean {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 24px;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.trivia-option-clean {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 24px 32px;
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,216,121,0.2);
+  border-radius: 24px;
+  text-align: left;
+  font-size: 2rem;
+  font-weight: 800;
+  backdrop-filter: blur(10px);
+}
+
+.trivia-option-clean .letter {
+  width: 55px;
+  height: 55px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--gold);
+  color: #000;
+  border-radius: 15px;
+  font-weight: 1000;
+  font-size: 1.5rem;
+}
+
+.trivia-footer-clean {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  width: 100%;
+  margin-top: 40px;
+  color: rgba(255,248,221,0.7);
+  font-size: 1.2rem;
+}
+
+.trivia-narrator-box {
+  font-style: italic;
+  max-width: 700px;
+  text-align: right;
+}
+
+.trivia-timer-circle {
+  position: relative;
+  width: 100px;
+  height: 100px;
+}
+
+.trivia-timer-circle svg {
+  transform: rotate(-90deg);
+}
+
+.trivia-timer-circle .circle-bg {
+  fill: none;
+  stroke: rgba(255,255,255,0.1);
+  stroke-width: 3;
+}
+
+.trivia-timer-circle .circle {
+  fill: none;
+  stroke: var(--gold);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 0.3s linear;
+}
+
+.trivia-timer-circle strong {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2rem;
+  font-weight: 1000;
+}
+

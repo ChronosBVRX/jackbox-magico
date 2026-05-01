@@ -218,7 +218,12 @@
 
   async function advanceAfterReady(room, status, ready) {
     const timedOut = isReadyTimedOut();
+    const voiceBusy = window.VoiceLinesTv?.isProcessing?.() || false;
+
+    // Si terminó el tiempo pero la voz sigue hablando, esperamos a que termine.
+    // Si todos están listos (ready.all_ready), avanzamos de inmediato (consenso).
     if ((!ready.all_ready && !timedOut) || advancingKey === ready.ready_key) return;
+    if (voiceBusy && !ready.all_ready) return; 
     advancingKey = ready.ready_key;
 
     window.setTimeout(async () => {

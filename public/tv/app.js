@@ -1128,52 +1128,8 @@ function renderRoomPayload(data) {
 }
 
 function renderRules(data) {
-  const state = data.game_state || {};
-  showScreen("view-rules");
-
-  const titleEl = document.getElementById("rules-title");
-  const reasonEl = document.getElementById("rules-reason");
-  let rulesListEl = document.getElementById("rules-list");
-
-  // Create rules list element if it doesn't exist
-  if (!rulesListEl) {
-    rulesListEl = document.createElement("ul");
-    rulesListEl.id = "rules-list";
-    rulesListEl.className = "rules-list";
-    if (reasonEl && reasonEl.parentNode) {
-      reasonEl.parentNode.insertBefore(rulesListEl, reasonEl.nextSibling);
-    }
-  }
-
-  if (titleEl) titleEl.textContent = state.story_selected_minigame_name || state.title || "Siguiente Prueba";
-  if (reasonEl) reasonEl.textContent = state.story_transition_reason || state.subtitle || "Prepárate para la siguiente dinámica...";
-  
-  if (rulesListEl) {
-    rulesListEl.innerHTML = "";
-    const rules = state.rules_text || [];
-    if (rules.length > 0) {
-      rules.forEach(rule => {
-        const li = document.createElement("li");
-        li.textContent = rule;
-        rulesListEl.appendChild(li);
-      });
-      rulesListEl.style.display = "block";
-    } else {
-      rulesListEl.style.display = "none";
-    }
-  }
-  
-  if (lastVoicePhase !== "rules") {
-    lastVoicePhase = "rules";
-    const gameId = state.current_game_id || state.mode || "trivia";
-    // Si no hay instrucción (ej. es otra pantalla genérica), sonará "rules" como fallback
-    const played = window.VoiceLinesTv?.playInstruction(gameId);
-    if (!played) {
-      window.VoiceLinesTv?.play("rules", { volume: 0.95 });
-    }
-    
-    // Guardamos el id del juego actual para el botón de repetir
-    window.currentGameInstructionId = gameId;
+  if (window.SceneRules) {
+    window.SceneRules.render(data);
   }
 }
 
@@ -1284,102 +1240,9 @@ function renderPlaying(data) {
 }
 
 function renderTrivia(state, players) {
-  const container = document.getElementById("game-container");
-  if (!container) return;
-
-  const currentPhaseKey = "round_start_" + (state.round_id || "1");
-  if (lastVoicePhase !== currentPhaseKey) {
-    lastVoicePhase = currentPhaseKey;
-    window.VoiceLinesTv?.play("round_start", { volume: 0.75 });
-    
-    if (threatVoiceTimer) clearTimeout(threatVoiceTimer);
-    threatVoiceTimer = setTimeout(() => {
-      window.VoiceLinesTv?.play("threat", { volume: 0.85 });
-    }, 3500); // offset para threat
+  if (window.SceneTrivia) {
+    window.SceneTrivia.render(state, players);
   }
-
-  const options = state.options || [];
-  const roundNumber = Number(state.round_number || 1);
-  const totalQuestions = Number(state.trivia_session?.total_questions || 25);
-  const category = state.category || state.question_payload?.categoria || "Mundo mágico";
-  const difficulty = state.difficulty || state.question_payload?.dificultad || "media";
-  const difficultyLabel = getDifficultyLabel(difficulty);
-  const diffClass = getDifficultyClass(difficulty);
-  const basePoints = Number(state.points_correct || state.question_payload?.puntosBase || 100);
-
-  container.innerHTML = `
-    <section id="trivia-board" class="trivia-board">
-      ${renderCandles()}
-
-      <div class="trivia-content">
-        <header class="trivia-header">
-          <div>
-            <div class="trivia-badge-row">
-              <div class="trivia-pill">🏰 Trivia del Mundo Mágico</div>
-              <div class="trivia-pill category">📜 ${escapeHTML(category)}</div>
-              <div class="trivia-pill ${diffClass}">⚡ ${escapeHTML(difficultyLabel)} · +${basePoints}</div>
-            </div>
-
-            <h1 class="trivia-title">Pregunta ${roundNumber}</h1>
-            <p class="trivia-subtitle">
-              Modo principal de Copa de las Casas · Responde desde tu celular · Rápida +40 · Racha de 3 +100
-            </p>
-          </div>
-
-          <div class="trivia-timer-card">
-            <span>Tiempo</span>
-            <strong id="trivia-time">20.0</strong>
-          </div>
-        </header>
-
-        <div class="trivia-main-grid">
-          <div class="trivia-question-card">
-            <div class="trivia-round-line">
-              <span>Ronda ${roundNumber} de ${totalQuestions}</span>
-              <span id="trivia-answered-count">0/${players.length || 0} respondieron</span>
-            </div>
-
-            <h2 class="trivia-question-text">${escapeHTML(getQuestion(state))}</h2>
-
-            <div class="trivia-options">
-              ${options.map((option, index) => `
-                <div class="trivia-option" style="animation-delay:${index * 70}ms;">
-                  <div class="trivia-option-letter">${answerLetters[index] || "?"}</div>
-                  <div class="trivia-option-text">${escapeHTML(option)}</div>
-                </div>
-              `).join("")}
-            </div>
-
-            <div class="trivia-progress">
-              <div id="trivia-progress-bar"></div>
-            </div>
-
-            <div class="trivia-narrator">
-              “${escapeHTML(state.narrator || "El Gran Comedor está esperando sus respuestas.")}”
-            </div>
-          </div>
-
-          <aside class="trivia-side">
-            <div class="trivia-side-card">
-              <h3 class="trivia-side-title">Marcador de casas</h3>
-              <div id="trivia-house-score" class="trivia-house-score">
-                ${renderHouseScoreboard(players)}
-              </div>
-            </div>
-
-            <div class="trivia-side-card">
-              <h3 class="trivia-side-title">Jugadores</h3>
-              <div id="trivia-players" class="trivia-players"></div>
-            </div>
-          </aside>
-        </div>
-      </div>
-    </section>
-  `;
-
-  updateTriviaTimer(state);
-  updateTriviaPlayers(state, players);
-  updateTriviaHouseScores(players);
 }
 
 function updateTriviaHouseScores(players) {
@@ -1559,14 +1422,22 @@ function renderResults(data) {
   if (lastResultsKey !== resultKey) {
     lastResultsKey = resultKey;
     playMagicSound("reveal");
+    window.resultsPhaseStartAt = Date.now();
     setTimeout(() => playResultVoiceLine(state, players), 500);
   }
-
-  showScreen("view-results");
 
   if (typeof window.destroySnitchTv === "function") {
     window.destroySnitchTv();
   }
+
+  // Lógica de alternancia: Resultados -> Marcador Global
+  const elapsed = Date.now() - (window.resultsPhaseStartAt || 0);
+  if (elapsed > 9000 && window.SceneLeaderboard) {
+    window.SceneLeaderboard.render(data);
+    return;
+  }
+
+  showScreen("view-results");
 
   if (phase === "results_trivia") {
     renderTriviaResults(state, players);

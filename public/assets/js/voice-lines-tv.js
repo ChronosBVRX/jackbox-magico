@@ -289,5 +289,7 @@
     loadCatalog,
     unlock,
     isUnlocked: () => unlocked,
+    isProcessing: () => isProcessing || playbackQueue.length > 0,
+    getQueueLength: () => playbackQueue.length,
   };
 })();
