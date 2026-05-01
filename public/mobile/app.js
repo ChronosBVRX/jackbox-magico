@@ -702,17 +702,15 @@ function renderLobbyWait(data) {
   showScreen("view-wait");
 
   if (myIsHost) {
-    document.getElementById("wait-pill").innerText = "👑 Host";
-    document.getElementById("wait-msg").innerText = "Tú controlas la partida";
+    document.getElementById("wait-pill").innerText = "👑 Capitán";
+    document.getElementById("wait-msg").innerText = "Liderando la sala";
     document.getElementById("wait-subtitle").innerText =
-      "Cuando todos estén listos, inicia un minijuego.";
+      "La TV iniciará la partida. Prepárate para jugar.";
   } else {
     document.getElementById("wait-pill").innerText = "🕯️ Conectado";
     document.getElementById("wait-msg").innerText = "¡Estás dentro!";
     document.getElementById("wait-subtitle").innerText =
-      data.host && data.host.name
-        ? `Espera a que ${data.host.name} inicie la partida.`
-        : "Esperando host...";
+      "Espera a que la TV inicie la historia.";
   }
 
   const feedback = document.getElementById("points-feedback");
@@ -727,11 +725,9 @@ function renderLobbyWait(data) {
 function renderAnsweredWait(state) {
   showScreen("view-wait");
 
-  document.getElementById("wait-pill").innerText = myIsHost ? "👑 Host" : "🕯️ Conectado";
-  document.getElementById("wait-msg").innerText = "¡Respuesta enviada!";
-  document.getElementById("wait-subtitle").innerText = myIsHost
-    ? "Puedes revelar resultados desde aquí cuando quieras."
-    : "Mira la TV para seguir la ronda.";
+  document.getElementById("wait-pill").innerText = myIsHost ? "👑 Capitán" : "🕯️ Conectado";
+  document.getElementById("wait-msg").innerText = "¡Hechizo enviado!";
+  document.getElementById("wait-subtitle").innerText = "Mira la TV para ver los resultados.";
 
   showHostPanels(myIsHost);
 }
@@ -751,19 +747,10 @@ function renderResultsWait(state = {}) {
   document.getElementById("wait-msg").innerText = "¡Mira la TV!";
 
   if (myIsHost && state.phase === "results_trivia") {
-    document.getElementById("wait-subtitle").innerText =
-      "Puedes avanzar a la siguiente pregunta o volver al lobby.";
-
-    setHostExtraActions(`
-      <button class="trivia-next-btn" onclick="hostTriviaNext()">
-        Siguiente pregunta de trivia
-      </button>
-    `);
+    document.getElementById("wait-subtitle").innerText = "La TV mostrará el siguiente paso pronto.";
+    clearHostExtraActions();
   } else {
-    document.getElementById("wait-subtitle").innerText = myIsHost
-      ? "Puedes volver al lobby e iniciar otro minijuego."
-      : "La ronda terminó. Revisa los resultados.";
-
+    document.getElementById("wait-subtitle").innerText = "La ronda terminó. Revisa la TV.";
     clearHostExtraActions();
   }
 
@@ -1757,11 +1744,11 @@ async function markReady() {
   const btn = document.getElementById("btn-ready");
   if (btn) {
     btn.disabled = true;
-    btn.textContent = "Confirmando...";
+    btn.textContent = "Lanzando hechizo...";
   }
 
   try {
-    const res = await fetch(`/api/story-ready/${currentRoom}/player`, {
+    const res = await fetch(`/api/story-ready/${myRoom}/player`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ player_name: myName, ready: true }),
@@ -1787,6 +1774,7 @@ async function markReady() {
 }
 
 function renderRulesMobile(state) {
+  hideGamePanels();
   const container = document.getElementById("mobile-game-container");
   if (!container) return;
 

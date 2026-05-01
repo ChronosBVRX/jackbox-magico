@@ -1200,7 +1200,7 @@ function renderLobby(data) {
     } else {
       hostBox.style.display = "block";
       if (data.host && data.host.claimed && data.host.name) {
-        hostBox.textContent = `Host de la partida: ${data.host.name}. Él/ella puede iniciar desde su celular.`;
+        hostBox.textContent = `Capitán de la sala: ${data.host.name}. Mira la pantalla principal para seguir la aventura.`;
         hostBox.classList.add("claimed");
       } else {
         hostBox.textContent = "El primer celular que entre será el host de la partida.";
@@ -1328,7 +1328,7 @@ function renderTrivia(state, players) {
 
           <div class="trivia-timer-card">
             <span>Tiempo</span>
-            <strong id="trivia-time">10.0</strong>
+            <strong id="trivia-time">20.0</strong>
           </div>
         </header>
 
@@ -1534,7 +1534,7 @@ function renderGenericGame(state, players = []) {
       <div class="badge">✨ Minijuego activo</div>
       <h2 class="question-title">${escapeHTML(getQuestion(state))}</h2>
       <div class="options-grid" id="tv-opciones"></div>
-      <div class="host-help">El host puede revelar resultados desde su celular.</div>
+      <div class="host-help">La TV revelará los resultados pronto. Prepárense.</div>
     </section>
   `;
 

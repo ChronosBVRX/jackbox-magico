@@ -81,6 +81,8 @@
   async function playPath(path, volume = 1) {
     if (!path || failed.has(path)) return false;
 
+    // Si ya hay algo sonando y no queremos interrumpir, el queue se encarga.
+    // Pero por seguridad, si entramos aquí, reseteamos el anterior.
     if (currentAudio) {
       currentAudio.pause();
       currentAudio.currentTime = 0;
@@ -116,6 +118,27 @@
     }
   }
 
+  const playbackQueue = [];
+  let isProcessing = false;
+
+  async function processQueue() {
+    if (isProcessing) return;
+    isProcessing = true;
+    while (playbackQueue.length > 0) {
+      const { path, volume, resolve } = playbackQueue.shift();
+      const ok = await playPath(path, volume);
+      resolve(ok);
+    }
+    isProcessing = false;
+  }
+
+  function enqueuePlayback(path, volume = 1) {
+    return new Promise((resolve) => {
+      playbackQueue.push({ path, volume, resolve });
+      processQueue();
+    });
+  }
+
   async function playNow(event, options = {}) {
     try {
       await loadCatalog();
@@ -125,16 +148,16 @@
         return false;
       }
 
-      for (const path of candidatePaths(line)) {
-        const ok = await playPath(path, options.volume ?? 1);
-        if (ok) {
-          recentlyPlayed.push(line.id);
-          while (recentlyPlayed.length > 12) recentlyPlayed.shift();
-          return true;
-        }
-      }
+      const paths = candidatePaths(line);
+      if (!paths.length) return false;
 
-      return false;
+      // Usamos solo el primer path válido para la cola
+      const ok = await enqueuePlayback(paths[0], options.volume ?? 1);
+      if (ok) {
+        recentlyPlayed.push(line.id);
+        while (recentlyPlayed.length > 12) recentlyPlayed.shift();
+      }
+      return ok;
     } catch (error) {
       log("play_error", { event, error: String(error?.message || error) });
       return false;
@@ -142,8 +165,7 @@
   }
 
   function play(event, options = {}) {
-    playbackChain = Promise.resolve().then(() => playNow(event, options));
-    return playbackChain;
+    return playNow(event, options);
   }
 
   function unlock() {
@@ -217,8 +239,7 @@
 
     lastInstructionPlayed = playKey;
     
-    playbackChain = Promise.resolve().then(() => playPath(audioPath, 1.0));
-    return playbackChain;
+    return enqueuePlayback(audioPath, 1.0);
   }
 
   window.VoiceLinesTv = {

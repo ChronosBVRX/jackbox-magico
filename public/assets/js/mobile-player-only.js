@@ -1,14 +1,14 @@
 (() => {
   const PLAYER_WAIT = {
-    pill: "🕯️ Jugador",
-    title: "¡Estás dentro!",
-    subtitle: "Mira la TV. La pantalla principal controla la historia y las rondas.",
+    pill: "🕯️ Aspirante",
+    title: "¡Sala preparada!",
+    subtitle: "Observa la Gran Pantalla. Tu destino y la historia se revelarán allí.",
   };
-
+ 
   const PLAYER_RESULTS = {
-    pill: "🏆 Resultados",
-    title: "¡Mira la TV!",
-    subtitle: "La TV controla los resultados y el avance de la partida.",
+    pill: "🏆 Sabiduría",
+    title: "¡Hechizos resueltos!",
+    subtitle: "Los resultados están apareciendo en la TV. ¿Habrás ganado puntos para tu casa?",
   };
 
   function purgeHostTokens() {
