@@ -93,28 +93,6 @@
     });
   }
 
-  function normalizeWaitingCopy() {
-    const waitPill = document.getElementById("wait-pill");
-    const waitMsg = document.getElementById("wait-msg");
-    const waitSubtitle = document.getElementById("wait-subtitle");
-
-    const text = [waitPill?.innerText, waitMsg?.innerText, waitSubtitle?.innerText]
-      .join(" ")
-      .toLowerCase();
-
-    const isResults = text.includes("resultado") || text.includes("mira la tv") || text.includes("ronda terminó");
-
-    if (isResults) {
-      setText("wait-pill", PLAYER_RESULTS.pill);
-      setText("wait-msg", PLAYER_RESULTS.title);
-      setText("wait-subtitle", PLAYER_RESULTS.subtitle);
-      return;
-    }
-
-    setText("wait-pill", PLAYER_WAIT.pill);
-    setText("wait-msg", PLAYER_WAIT.title);
-    setText("wait-subtitle", PLAYER_WAIT.subtitle);
-  }
 
   function patchHostFunctions() {
     if (window.__mobilePlayerOnlyPatched) return;
@@ -169,14 +147,11 @@
     patchHostFunctions();
     purgeHostTokens();
     hideLegacyHostUi();
-    normalizeWaitingCopy();
   }
 
   document.addEventListener("DOMContentLoaded", () => {
     tick();
-    setInterval(tick, 300);
   });
 
   setTimeout(tick, 100);
-  setTimeout(tick, 700);
 })();

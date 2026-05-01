@@ -362,13 +362,9 @@ function showHostPanels(show) {
   const hostPanel = document.getElementById("host-panel");
   const hostGamePanel = document.getElementById("host-game-panel");
 
-  if (hostPanel) {
-    hostPanel.classList.toggle("visible", show);
-  }
-
-  if (hostGamePanel) {
-    hostGamePanel.classList.toggle("visible", show);
-  }
+  // Forzar ocultamiento en modo historia / jugador único controlado por TV
+  if (hostPanel) hostPanel.classList.remove("visible");
+  if (hostGamePanel) hostGamePanel.classList.remove("visible");
 }
 
 function ensureTriviaPanel() {
@@ -701,17 +697,9 @@ function renderLobbyWait(data) {
 
   showScreen("view-wait");
 
-  if (myIsHost) {
-    document.getElementById("wait-pill").innerText = "👑 Capitán";
-    document.getElementById("wait-msg").innerText = "Liderando la sala";
-    document.getElementById("wait-subtitle").innerText =
-      "La TV iniciará la partida. Prepárate para jugar.";
-  } else {
-    document.getElementById("wait-pill").innerText = "🕯️ Conectado";
-    document.getElementById("wait-msg").innerText = "¡Estás dentro!";
-    document.getElementById("wait-subtitle").innerText =
-      "Espera a que la TV inicie la historia.";
-  }
+  document.getElementById("wait-pill").innerText = "🕯️ Aspirante";
+  document.getElementById("wait-msg").innerText = "¡Sala preparada!";
+  document.getElementById("wait-subtitle").innerText = "Tu destino se revelará en la Gran Pantalla.";
 
   const feedback = document.getElementById("points-feedback");
   if (feedback) {
@@ -725,7 +713,7 @@ function renderLobbyWait(data) {
 function renderAnsweredWait(state) {
   showScreen("view-wait");
 
-  document.getElementById("wait-pill").innerText = myIsHost ? "👑 Capitán" : "🕯️ Conectado";
+  document.getElementById("wait-pill").innerText = "🕯️ Aspirante";
   document.getElementById("wait-msg").innerText = "¡Hechizo enviado!";
   document.getElementById("wait-subtitle").innerText = "Mira la TV para ver los resultados.";
 

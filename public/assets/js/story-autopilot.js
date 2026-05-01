@@ -79,38 +79,8 @@
     }
   }
 
-  function updateMobileUi(data) {
-    const story = isStoryState(data);
-    const tvControlled = story && isTvControlled(data);
-    const running = story && data?.status === "playing" && getPhase(data) !== "lobby";
-    const prepared = story && !running;
-
-    document.body.classList.toggle("story-mode-prepared", prepared);
-    document.body.classList.toggle("story-mode-running", running);
-    document.body.classList.toggle("story-mode-any", story);
-    document.body.classList.toggle("story-tv-controlled", tvControlled);
-
-    const hostPanel = document.getElementById("host-panel");
-    const hostGamePanel = document.getElementById("host-game-panel");
-
-    if (tvControlled) {
-      if (hostPanel) hostPanel.classList.remove("visible");
-      if (hostGamePanel) hostGamePanel.classList.remove("visible");
-
-      const waitMsg = document.getElementById("wait-msg");
-      const waitSubtitle = document.getElementById("wait-subtitle");
-      const waitPill = document.getElementById("wait-pill");
-
-      if (waitPill) waitPill.innerText = "📖 Historia";
-      if (waitMsg && running) waitMsg.innerText = "¡Mira la TV!";
-      if (waitSubtitle && running) waitSubtitle.innerText = "La historia avanza cuando todos confirman que están listos.";
-      if (waitMsg && prepared) waitMsg.innerText = "Historia preparada";
-      if (waitSubtitle && prepared) waitSubtitle.innerText = "La TV iniciará la aventura cuando todos estén listos.";
-    }
-  }
 
   async function runAutopilot(data) {
-    updateMobileUi(data);
 
     if (!autopilotEnabled || !isHost() || !isStoryState(data)) return;
 
