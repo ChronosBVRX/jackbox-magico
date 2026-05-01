@@ -17,10 +17,6 @@
       "use": "@vercel/python"
     },
     {
-      "src": "api/mobile_host_guard_api.py",
-      "use": "@vercel/python"
-    },
-    {
       "src": "api/caldero_api.py",
       "use": "@vercel/python"
     },
@@ -77,10 +73,6 @@
     {
       "src": "/api/room/([^/]+)/status",
       "dest": "api/room_status_api.py"
-    },
-    {
-      "src": "/api/mobile/host/(.*)",
-      "dest": "api/mobile_host_guard_api.py"
     },
     {
       "src": "/api/caldero/(.*)",
