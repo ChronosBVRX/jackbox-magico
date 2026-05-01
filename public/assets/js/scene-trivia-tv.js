@@ -42,7 +42,7 @@
 
           <div class="trivia-footer-clean">
             <div id="trivia-answered-count">0/${players.length} respondieron</div>
-            <div class="trivia-narrator-box">“${window.escapeHTML(state.narrator || "El Gran Comedor espera...H")}”</div>
+            <div class="trivia-narrator-box">“${window.escapeHTML(state.narrator || "El Gran Comedor espera...")}”</div>
           </div>
         </div>
       </section>
