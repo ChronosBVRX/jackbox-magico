@@ -478,12 +478,24 @@
     return GAME_ID_ALIASES[raw] || raw;
   }
 
+  // Protección: intro_general solo puede sonar si view-rules está visible
+  function isRulesScreenVisible() {
+    const rules = document.getElementById("view-rules");
+    return Boolean(rules && rules.classList.contains("visible"));
+  }
+
   async function playInstructionVoice(gameId, roundId = "1", forceRepeat = false) {
     try {
       if (!isVoiceEnabled()) return false;
 
       const normalizedId = normalizeGameId(gameId);
       if (!normalizedId) return false;
+
+      // BLOQUEO DE SEGURIDAD: intro_general solo puede sonar en view-rules
+      if (normalizedId === "intro_general" && !isRulesScreenVisible()) {
+        log("intro_general_blocked_outside_rules", { gameId, roundId });
+        return false;
+      }
 
       const map = await loadInstructionMap();
       const audioPath = normalizeInstructionPath(map[normalizedId]);
@@ -540,7 +552,13 @@
     if (btnRepeat && !btnRepeat.__voiceRepeatBound) {
       btnRepeat.__voiceRepeatBound = true;
       btnRepeat.addEventListener("click", () => {
-        const gameId = window.currentGameInstructionId || "intro_general";
+        // Solo repetir si view-rules está visible
+        if (!isRulesScreenVisible()) {
+          log("repeat_blocked_not_in_rules");
+          return;
+        }
+        const gameId = window.currentGameInstructionId;
+        if (!gameId) return;
         const roundId = window.currentInstructionRoundId || window.currentRoundId || "1";
         playInstructionVoice(gameId, roundId, true);
       });

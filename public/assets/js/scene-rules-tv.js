@@ -18,17 +18,33 @@
         : (state.story_transition_reason || state.subtitle || "Prepárate para la siguiente dinámica...");
     }
     
-    // Gestión de audio: instrucciones completas por game_id y round_id.
-    if (window.lastVoicePhase !== "rules") {
+    // Gestión de audio: instrucciones por gameId+roundId (clave granular para evitar repetir en polling).
+    // Esta es la ÚNICA pantalla donde intro_general (Dumbledore) puede sonar.
+    // view-rules está visible en este punto, así que el bloqueo en voice-lines-tv.js lo permitirá.
+    const gameId =
+      state.current_game_id ||
+      state.game_id ||
+      state.mode ||
+      "intro_general";
+
+    const roundId =
+      state.round_id ||
+      state.round_number ||
+      "1";
+
+    const instructionKey = `${gameId}_${roundId}`;
+
+    if (window.lastInstructionScreenVoiceKey !== instructionKey) {
+      window.lastInstructionScreenVoiceKey = instructionKey;
       window.lastVoicePhase = "rules";
-      const gameId = state.current_game_id || state.game_id || state.mode || "trivia_magica";
-      const roundId = state.round_id || state.round_number || "1";
-      const played = window.VoiceLinesTv?.playInstructionVoice?.(gameId, roundId);
-      if (!played) {
-        window.VoiceLinesTv?.playVoiceLine?.("rules", { volume: 0.95, dedupeKey: `rules_${roundId}` });
-      }
+
       window.currentGameInstructionId = gameId;
       window.currentInstructionRoundId = roundId;
+
+      const played = window.VoiceLinesTv?.playInstructionVoice?.(gameId, roundId);
+      if (!played) {
+        window.VoiceLinesTv?.playVoiceLine?.("rules", { volume: 0.95 });
+      }
     }
 
     // Función global para que story-ready la llame al avanzar

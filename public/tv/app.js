@@ -704,11 +704,8 @@ function unlockMagicSound() {
 
     if (lastVoicePhase !== "boot") {
       lastVoicePhase = "boot";
-      const played = window.VoiceLinesTv?.playInstruction("intro_general");
-      if (!played) {
-        window.VoiceLinesTv?.play("boot", { volume: 0.95 });
-      }
-      window.currentGameInstructionId = "intro_general";
+      // Solo reproducir audio de arranque genérico — NO intro_general aquí
+      window.VoiceLinesTv?.playVoiceLine?.("boot", { volume: 0.95 });
     }
   } catch (error) {}
 }
@@ -740,9 +737,17 @@ document.addEventListener("DOMContentLoaded", () => {
 
   if (btnRepeat) {
     btnRepeat.addEventListener("click", () => {
-      if (window.VoiceLinesTv && window.currentGameInstructionId) {
-        window.VoiceLinesTv.playInstruction(window.currentGameInstructionId, "1", true);
+      // Solo repetir instrucciones si view-rules está visible
+      const rulesScreen = document.getElementById("view-rules");
+      const isOnRules = Boolean(rulesScreen && rulesScreen.classList.contains("visible"));
+      if (window.VoiceLinesTv && window.currentGameInstructionId && isOnRules) {
+        window.VoiceLinesTv.playInstructionVoice(
+          window.currentGameInstructionId,
+          window.currentInstructionRoundId || "1",
+          true
+        );
       }
+      // Si no está en view-rules, no hacer nada (no reproducir intro_general en lobby)
     });
   }
 });
@@ -1029,10 +1034,12 @@ async function crearSala() {
       qr.src = `https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=${encodeURIComponent(urlUnirse)}`;
     }
 
-    // VOZ: Forzar reglas generales de Dumbledore sí o sí al crear la sala
-    if (window.VoiceLinesTv) {
-      window.VoiceLinesTv.playInstruction("intro_general", "init", true);
-      window.currentGameInstructionId = "intro_general";
+    // VOZ: Al entrar al lobby solo se reproduce audio de sala de espera
+    // intro_general (Dumbledore) NO debe sonar aquí, solo en view-rules
+    const lobbyVoiceKey = `lobby_${currentRoom || "default"}`;
+    if (window.lastLobbyVoiceKey !== lobbyVoiceKey) {
+      window.lastLobbyVoiceKey = lobbyVoiceKey;
+      window.VoiceLinesTv?.playVoiceLine?.("lobby", { volume: 0.85 });
     }
 
     iniciarRadar();
@@ -1819,7 +1826,9 @@ function renderIntroScene(state) {
 
   if (lastVoicePhase !== "scene_intro") {
     lastVoicePhase = "scene_intro";
-    window.VoiceLinesTv?.playInstruction("intro_general", "1", true);
+    // Esta escena usa view-game, no view-rules → solo audio genérico de reglas
+    // intro_general solo se permite en view-rules (protegido también en voice-lines-tv.js)
+    window.VoiceLinesTv?.playVoiceLine?.("rules", { volume: 0.95 });
   }
 }
 
@@ -1850,7 +1859,9 @@ function renderRulesScene(state) {
 
   if (lastVoicePhase !== "scene_rules") {
     lastVoicePhase = "scene_rules";
-    window.VoiceLinesTv?.playInstruction("intro_general", "2", true);
+    // Esta escena usa view-game, no view-rules → solo audio genérico de reglas
+    // intro_general solo se permite en view-rules (protegido también en voice-lines-tv.js)
+    window.VoiceLinesTv?.playVoiceLine?.("rules", { volume: 0.95 });
   }
 }
 
