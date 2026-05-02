@@ -1,4 +1,77 @@
 (() => {
+  let lastTriviaRenderKey = "";
+  let finishingTriviaKey = "";
+
+  function getTriviaRenderKey(state) {
+    return `${state.phase}:${state.round_id || ""}:${state.question || ""}`;
+  }
+
+  function getAnsweredCount(state) {
+    const answered = state.answered || state.answers || {};
+    return Object.keys(answered).length;
+  }
+
+  function updateTimer(state) {
+    const timeEl = document.getElementById("trivia-time");
+    const pathEl = document.getElementById("timer-path");
+
+    if (!timeEl || state.phase !== "trivia") return 0;
+
+    const duration = Number(state.duration_seconds || 20);
+    const startedAt = Number(state.started_at || 0) * 1000;
+    const elapsed = startedAt > 0 ? Math.max(0, Date.now() - startedAt) / 1000 : 0;
+    const left = startedAt > 0 ? Math.max(0, duration - elapsed) : duration;
+    const pct = duration > 0 ? Math.max(0, Math.min(1, left / duration)) : 0;
+
+    timeEl.textContent = String(Math.ceil(left));
+
+    if (pathEl) {
+      pathEl.setAttribute("stroke-dasharray", `${pct * 100}, 100`);
+    }
+
+    return left;
+  }
+
+  async function finishTriviaFromTv(state) {
+    const room = window.getRoomCodeFromTv ? window.getRoomCodeFromTv() : (localStorage.getItem("jackbox_magico_room") || "");
+    const token = window.getTvTokenFromTv ? window.getTvTokenFromTv() : (localStorage.getItem("jackbox_tv_token") || "");
+
+    const key = `${room}:${state.round_id || state.question}`;
+
+    if (finishingTriviaKey === key) return;
+    finishingTriviaKey = key;
+
+    try {
+      await fetch(`/api/trivia/${room}/finish`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tv_token: token })
+      });
+    } catch (e) {
+      console.error("Failed to finish trivia", e);
+      finishingTriviaKey = ""; // Reset on error so we can retry
+    }
+  }
+
+  function maybeAutoClose(state) {
+    if (state.phase !== "trivia") return;
+
+    const left = updateTimer(state);
+
+    if (left <= 0 && state.started_at) {
+      finishTriviaFromTv(state);
+    }
+  }
+
+  function updateAnsweredCount(state, players) {
+    const answeredCountEl = document.getElementById("trivia-answered-count");
+    if (answeredCountEl) {
+      const answeredCount = getAnsweredCount(state);
+      const totalPlayers = players.length;
+      answeredCountEl.textContent = `${answeredCount}/${totalPlayers} respondieron`;
+    }
+  }
+
   function render(state, players) {
     const container = document.getElementById("game-container");
     if (!container) return;
@@ -6,11 +79,24 @@
     window.SceneTransition?.hide();
     window.showScreen("view-game");
 
+    const key = getTriviaRenderKey(state);
+
+    if (key === lastTriviaRenderKey) {
+      updateTimer(state);
+      updateAnsweredCount(state, players);
+      maybeAutoClose(state);
+      return;
+    }
+
+    lastTriviaRenderKey = key;
+
     const options = state.options || [];
     const roundNumber = Number(state.round_number || 1);
     const roundId = state.round_id || state.round_number || roundNumber;
     const totalQuestions = Number(state.trivia_session?.total_questions || 25);
     const category = state.category || state.question_payload?.categoria || "Mundo mágico";
+    const totalPlayers = players.length;
+    const answeredCount = getAnsweredCount(state);
 
     container.innerHTML = `
       <section id="trivia-board" class="trivia-board clean-trivia">
@@ -41,7 +127,7 @@
           </div>
 
           <div class="trivia-footer-clean">
-            <div id="trivia-answered-count">0/${players.length} respondieron</div>
+            <div id="trivia-answered-count">${answeredCount}/${totalPlayers} respondieron</div>
             <div class="trivia-narrator-box">“${window.escapeHTML(state.narrator || "El Gran Comedor espera...")}”</div>
           </div>
         </div>
@@ -61,7 +147,9 @@
         window.VoiceLinesTv?.playVoiceLine?.("threat", { volume: 0.75, dedupeKey: threatVoiceKey });
       }, 900);
     }
+    
+    updateTimer(state);
   }
 
-  window.SceneTrivia = { render };
+  window.SceneTrivia = { render, updateTimer, maybeAutoClose };
 })();

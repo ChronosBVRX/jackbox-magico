@@ -1570,3 +1570,64 @@ async def trivia_answer_endpoint(request: Request):
         "saved": player_name in saved_answers,
         "answer_saved": saved_answers.get(player_name),
     }
+
+@router.post("/api/trivia/{room_code}/finish")
+async def finish_trivia_endpoint(request: Request, room_code: str):
+    if not supabase:
+        raise HTTPException(status_code=500, detail="Faltan credenciales")
+
+    try:
+        payload = await request.json()
+    except Exception:
+        payload = {}
+
+    tv_token = payload.get("tv_token")
+    if not tv_token:
+        raise HTTPException(status_code=403, detail="Falta tv_token. Solo la TV puede cerrar la pregunta.")
+
+    room_code = str(room_code).upper().strip()
+
+    room = (
+        supabase.table("rooms")
+        .select("id, game_state")
+        .eq("room_code", room_code)
+        .execute()
+    )
+
+    if not room.data:
+        raise HTTPException(status_code=404, detail="Sala no encontrada")
+
+    room_id = room.data[0]["id"]
+    state = room.data[0].get("game_state") or {}
+
+    if state.get("phase") != "trivia":
+        return {"phase": state.get("phase")}
+
+    if state.get("scored") or state.get("results_applied"):
+        return {"phase": state.get("phase")}
+
+    # Validar si el tiempo realmente terminó o si podemos forzarlo
+    # Para forzar el cierre sin validación de tiempo exacta (a solicitud de la TV que lo cuenta) 
+    # procedemos a cerrarlo
+
+    players = (
+        supabase.table("players")
+        .select("name, house, score")
+        .eq("room_id", room_id)
+        .execute()
+    ).data or []
+
+    new_state, point_events, scored = resolve_for_reveal(state, players)
+
+    if point_events:
+        # Import local para no causar ciclos si main lo tiene
+        from api.main import apply_point_events
+        apply_point_events(room_id, point_events)
+
+    new_state["results_applied"] = True
+
+    supabase.table("rooms").update({
+        "game_state": new_state,
+    }).eq("room_code", room_code).execute()
+
+    return {"phase": "results_trivia"}

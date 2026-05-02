@@ -1251,13 +1251,14 @@ function renderPlaying(data) {
       lastTickSecond = null;
       autoRevealLock = false;
       playMagicSound("start");
-      renderTrivia(state, players);
     }
 
-    updateTriviaTimer(state);
-    updateTriviaPlayers(state, players);
-    updateTriviaHouseScores(players);
-    return;
+    if (window.SceneTrivia && typeof window.SceneTrivia.render === "function") {
+      window.SceneTrivia.render(state, players);
+      window.SceneTrivia.updateTimer?.(state);
+      window.SceneTrivia.maybeAutoClose?.(state);
+      return;
+    }
   }
 
   if (lastPlayKey !== key) {
