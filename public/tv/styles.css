@@ -129,7 +129,7 @@ body::after {
   padding: 60px 80px;
   text-align: center;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   border: 1px solid rgba(255, 216, 121, 0.3);
   border-radius: 40px;
   background: 

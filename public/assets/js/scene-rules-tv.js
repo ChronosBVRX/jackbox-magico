@@ -24,12 +24,10 @@
           state.story_selected_minigame_name || state.instruction_title || state.title || "Siguiente Prueba";
 
       if (reasonEl) {
-        const isWaiting = window.VoiceLinesTv?.isProcessing?.();
-        reasonEl.textContent = isWaiting
-          ? "Escuchando instrucciones del narrador..."
-          : state.story_transition_reason ||
-            state.subtitle ||
-            "Prepárate para la siguiente dinámica...";
+        reasonEl.textContent =
+          state.story_transition_reason ||
+          state.subtitle ||
+          "Prepárate para la siguiente dinámica...";
       }
 
       // ── Audio: instrucciones por gameId+roundId ──────────────────────────
