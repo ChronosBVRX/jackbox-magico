@@ -1,4 +1,6 @@
 (() => {
+  if (window.JACKBOX_VISUAL_CLEAN_MODE) return;
+
   const HOUSE_ICONS = {
     Gryffindor: "🦁",
     Slytherin: "🐍",

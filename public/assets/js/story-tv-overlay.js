@@ -1,4 +1,9 @@
 (() => {
+  if (window.JACKBOX_VISUAL_CLEAN_MODE) {
+    window.StoryTvOverlay = { pollStoryState: () => {} };
+    return;
+  }
+
   const HOUSE_ICONS = {
     Gryffindor: "🦁",
     Slytherin: "🐍",

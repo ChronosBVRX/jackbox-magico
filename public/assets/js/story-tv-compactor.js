@@ -1,4 +1,6 @@
 (() => {
+  if (window.JACKBOX_VISUAL_CLEAN_MODE) return;
+
   let lastRoom = "";
 
   function getRoomCode() {

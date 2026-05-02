@@ -62,6 +62,12 @@
     },
   };
 
+  window.JACKBOX_GAME_RULES = GAME_RULES;
+
+  if (window.JACKBOX_VISUAL_CLEAN_MODE) {
+    return;
+  }
+
   const HOUSE_COMMENTS = [
     "{house} toma ventaja. La Copa intenta no mostrar favoritismo, pero se le nota tantito.",
     "{house} va arriba. Alguien en otra mesa acaba de decir ‘era de esperarse’. Qué veneno.",
