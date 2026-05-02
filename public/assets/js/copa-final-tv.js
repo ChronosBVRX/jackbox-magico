@@ -80,9 +80,9 @@
         const winners = houseList.filter(h => totals[h] === topScore);
         
         if (winners.length > 1) {
-          window.VoiceLinesTv?.play("winner", { voice_key: "empate" });
+          window.VoiceLinesTv?.playWinnerVoice("empate");
         } else {
-          window.VoiceLinesTv?.play("winner", { voice_key: winners[0].toLowerCase() });
+          window.VoiceLinesTv?.playWinnerVoice(winners[0]);
         }
         
         setTimeout(() => {

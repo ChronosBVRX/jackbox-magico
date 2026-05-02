@@ -721,34 +721,9 @@ document.addEventListener("DOMContentLoaded", () => {
     });
   }
 
-  // Bind audio controls
-  const btnMute = document.getElementById("btn-mute-instruction");
-  const btnRepeat = document.getElementById("btn-repeat-instruction");
-
-  if (btnMute && window.VoiceLinesTv) {
-    const isMuted = window.VoiceLinesTv.isMuted();
-    btnMute.textContent = isMuted ? "”‡" : "”Š";
-
-    btnMute.addEventListener("click", () => {
-      const muted = window.VoiceLinesTv.toggleMute();
-      btnMute.textContent = muted ? "”‡" : "”Š";
-    });
-  }
-
-  if (btnRepeat) {
-    btnRepeat.addEventListener("click", () => {
-      // Solo repetir instrucciones si view-rules está visible
-      const rulesScreen = document.getElementById("view-rules");
-      const isOnRules = Boolean(rulesScreen && rulesScreen.classList.contains("visible"));
-      if (window.VoiceLinesTv && window.currentGameInstructionId && isOnRules) {
-        window.VoiceLinesTv.playInstructionVoice(
-          window.currentGameInstructionId,
-          window.currentInstructionRoundId || "1",
-          true
-        );
-      }
-      // Si no está en view-rules, no hacer nada (no reproducir intro_general en lobby)
-    });
+  // Los controles de voz (mute/repeat) se inicializan en voice-lines-tv.js
+  if (window.VoiceLinesTv?.updateVoiceControls) {
+    window.VoiceLinesTv.updateVoiceControls();
   }
 });
 

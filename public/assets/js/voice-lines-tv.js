@@ -399,6 +399,52 @@
     }
   }
 
+  async function playWinnerVoice(houseName) {
+    if (!isVoiceEnabled()) return false;
+    const house = String(houseName || "").toLowerCase();
+    
+    await loadCatalog();
+    const lines = catalog?.voice_lines || [];
+    
+    // El empate tiene su propia lógica
+    if (house === "empate") {
+      const tieLine = lines.find(line => line.id === "winner.sombrero.empate" || line.audio_file.includes("empate"));
+      if (tieLine) {
+        const paths = candidatePaths(tieLine);
+        return enqueuePlayback(paths[0], 1.0, { clearQueue: true });
+      }
+      return playVoiceLine("winner", { voice_key: "sombrero", clearQueue: true });
+    }
+
+    // Buscar la línea de Dumbledore para la casa específica
+    const selected = lines.find(line => 
+      line.event === "winner" && 
+      line.voice_key === "dumbledore" &&
+      line.audio_file.toLowerCase().includes(house)
+    );
+    
+    if (!selected) {
+      log("winner_house_not_found", { house });
+      return playVoiceLine("winner", { clearQueue: true });
+    }
+
+    const paths = candidatePaths(selected);
+    if (!paths.length) return false;
+
+    log("playing_winner_house", { house, path: paths[0] });
+    return enqueuePlayback(paths[0], 1.0, { clearQueue: true });
+  }
+
+  async function playAudioFile(path, options = {}) {
+    if (!isVoiceEnabled()) return false;
+    const fullPath = normalizeInstructionPath(path);
+    if (!fullPath) return false;
+    
+    return enqueuePlayback(fullPath, options.volume ?? 1.0, { 
+      clearQueue: Boolean(options.clearQueue || options.interrupt) 
+    });
+  }
+
   async function processQueue() {
     if (isProcessing) return;
     isProcessing = true;
@@ -588,6 +634,14 @@
         playInstructionVoice(gameId, roundId, true);
       });
     }
+
+    const btnMute = document.getElementById("btn-mute-instruction");
+    if (btnMute && !btnMute.__voiceMuteBound) {
+      btnMute.__voiceMuteBound = true;
+      btnMute.addEventListener("click", () => {
+        toggleMute();
+      });
+    }
   });
 
   window.addEventListener("storage", (event) => {
@@ -623,6 +677,8 @@
     playInstructionVoice,
     interruptAndPlayInstruction,
     interruptAndPlay,
+    playWinnerVoice,
+    playAudioFile,
     toggleMute,
     isMuted: () => !isVoiceEnabled(),
     isVoiceEnabled,
