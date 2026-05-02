@@ -359,10 +359,6 @@
 
     if (stepLines.length) return stepLines.join(" ");
 
-    if (state.phase === "trivia") {
-      return "La trivia continúa. Responde con sabiduría, reflejos y un poquito de dignidad mágica.";
-    }
-
     if (state.phase && state.phase !== "lobby") {
       return "La historia abrió una prueba inesperada. La Copa de las Casas no está emocionalmente estable.";
     }
@@ -391,11 +387,35 @@
       .join("");
   }
 
+  const GAMEPLAY_PHASES = new Set([
+    "trivia",
+    "artes_ridiculas",
+    "atrapa_snitch",
+    "clase_pociones",
+    "duelo",
+    "duelo_clash",
+    "sombrero",
+    "sombrero_tiebreak",
+    "mapa_travieso",
+    "retratos_chismosos",
+    "hechizo_incompleto",
+    "caldero_mentiroso",
+    "patronus_personalizado",
+    "copa_final",
+  ]);
+
   function renderOverlay(data) {
     const state = data.game_state || {};
     const overlay = ensureOverlay();
 
     if (state.mode !== "story") {
+      overlay.classList.remove("visible", "compact", "cinematic");
+      overlay.innerHTML = "";
+      return;
+    }
+
+    // Ocultar overlay durante fases jugables activas — la pantalla debe verse limpia
+    if (GAMEPLAY_PHASES.has(state.phase)) {
       overlay.classList.remove("visible", "compact", "cinematic");
       overlay.innerHTML = "";
       return;
