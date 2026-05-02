@@ -161,7 +161,8 @@
     if (key === lastGameKey) return;
     lastGameKey = key;
 
-    if (String(phase).startsWith("results_") || phase === "lobby") return;
+    const noExtraOverlayPhases = new Set(["scene_instructions", "scene_rules", "rules", "lobby", "trivia"]);
+    if (noExtraOverlayPhases.has(phase) || String(phase).startsWith("results_")) return;
 
     const rules = GAME_RULES[gameId] || GAME_RULES[phase];
     if (!rules) return;
@@ -349,4 +350,7 @@
     setInterval(tick, 1000);
     setTimeout(tick, 700);
   });
+
+  window.JACKBOX_GAME_RULES = GAME_RULES;
+
 })();

@@ -5,7 +5,7 @@
   <title>Jackbox Mágico - TV</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-  <link rel="stylesheet" href="/tv/styles.css?v=lobby-clean-1">
+  <link rel="stylesheet" href="/tv/styles.css?v=clean-instructions-1">
   <link rel="stylesheet" href="/assets/css/duelo.css?v=hechizo-incompleto-1">
   <link rel="stylesheet" href="/assets/css/sombrero.css?v=hechizo-incompleto-1">
   <link rel="stylesheet" href="/assets/css/pociones.css?v=hechizo-incompleto-1">
@@ -155,16 +155,18 @@
 
   <!-- PANTALLA DE REGLAS -->
   <div id="view-rules" class="screen">
-    <section class="rules-card-container">
-      <div class="glass-card rules-card">
+    <section class="rules-clean-screen">
+      <div class="rules-clean-card">
         <div class="badge">📖 Instrucciones</div>
-        <h2 id="rules-title" class="rules-title">Siguiente Prueba</h2>
-        <p id="rules-reason" class="rules-reason">Cargando...</p>
+        <h1 id="rules-title">Siguiente Prueba</h1>
+        <p id="rules-reason">Cargando...</p>
         
-        <div class="rules-actions">
-          <div class="tv-controls-hint large">
-            <span class="key-hint">OK</span> EMPEZAR PARTIDA
-          </div>
+        <div class="instruction-list" id="rules-list">
+          <!-- JS insertará las reglas aquí -->
+        </div>
+
+        <div id="rules-vote-panel-container">
+          <!-- JS montará el ready check integrado aquí -->
         </div>
       </div>
     </section>
@@ -192,13 +194,13 @@
   <script src="/assets/js/hechizo-incompleto.js?v=hechizo-incompleto-1"></script>
 
   <!-- Módulos de Escenas Independientes -->
-  <script src="/assets/js/scene-rules-tv.js?v=scene-rules-no-timer-1"></script>
+  <script src="/assets/js/scene-rules-tv.js?v=rules-clean-single-1"></script>
   <script src="/assets/js/scene-leaderboard-tv.js?v=scene-leader-1"></script>
   <script src="/assets/js/scene-trivia-tv.js?v=scene-trivia-fix-timer-2"></script>
   <script src="/assets/js/scene-transition-tv.js?v=scene-trans-1"></script>
 
   <script src="/assets/js/player-emoji-fix.js?v=player-emoji-fix-1"></script>
-  <script src="/tv/app.js?v=jackbox-pro-trivia-fix-1"></script>
+  <script src="/tv/app.js?v=app-clean-instructions-1"></script>
 
   <script src="/assets/js/mapa-travieso-bridge.js?v=hechizo-incompleto-1"></script>
   <script src="/assets/js/retratos-tv.js?v=hechizo-incompleto-1"></script>

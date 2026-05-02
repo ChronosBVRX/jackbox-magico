@@ -384,6 +384,12 @@
   }
 
   function showPanel(ready, phase) {
+    const noExtraOverlayPhases = new Set(["scene_instructions", "scene_rules", "rules"]);
+    if (noExtraOverlayPhases.has(phase)) {
+      hidePanel();
+      return;
+    }
+
     const panel = ensurePanel();
     panel.classList.add("visible");
 

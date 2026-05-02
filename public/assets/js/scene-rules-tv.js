@@ -19,15 +19,30 @@
       const titleEl  = document.getElementById("rules-title");
       const reasonEl = document.getElementById("rules-reason");
 
-      if (titleEl)
-        titleEl.textContent =
-          state.story_selected_minigame_name || state.instruction_title || state.title || "Siguiente Prueba";
+      if (titleEl) {
+        // Obtenemos las reglas del juego actual
+        const gameId = state.current_game_id || state.game_id || state.mode || "intro_general";
+        const gameRules = window.JACKBOX_GAME_RULES?.[gameId] || window.JACKBOX_GAME_RULES?.[state.phase];
+        
+        titleEl.textContent = gameRules?.title || state.story_selected_minigame_name || state.instruction_title || state.title || "Siguiente Prueba";
+      }
 
       if (reasonEl) {
-        reasonEl.textContent =
-          state.story_transition_reason ||
-          state.subtitle ||
-          "Prepárate para la siguiente dinámica...";
+        const gameId = state.current_game_id || state.game_id || state.mode || "intro_general";
+        const gameRules = window.JACKBOX_GAME_RULES?.[gameId] || window.JACKBOX_GAME_RULES?.[state.phase];
+
+        reasonEl.textContent = gameRules?.rule || state.story_transition_reason || state.subtitle || "Prepárate para la siguiente dinámica...";
+
+        const rulesList = document.getElementById("rules-list");
+        if (rulesList) {
+          rulesList.innerHTML = "";
+          if (gameRules?.points) {
+            const items = gameRules.points.split("·").map(s => s.trim()).filter(Boolean);
+            items.forEach((item, index) => {
+              rulesList.innerHTML += `<div>${index + 1}. ${escapeHTML(item)}</div>`;
+            });
+          }
+        }
       }
 
       // ── Audio: instrucciones por gameId+roundId ──────────────────────────
@@ -111,9 +126,13 @@
       <div class="rvp-hint">Esperando a todos los jugadores</div>
     `;
 
-    const card = document.querySelector(".rules-card");
-    if (card) card.appendChild(panel);
-    else document.querySelector(".rules-card-container")?.appendChild(panel);
+    const container = document.getElementById("rules-vote-panel-container");
+    if (container) {
+      container.appendChild(panel);
+    } else {
+      const card = document.querySelector(".rules-clean-card") || document.querySelector(".rules-card");
+      if (card) card.appendChild(panel);
+    }
 
     injectVotePanelStyles();
   }
