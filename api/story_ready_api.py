@@ -26,6 +26,10 @@ app.add_middleware(
 )
 
 
+HOUSE_ORDER = ["Gryffindor", "Slytherin", "Ravenclaw", "Hufflepuff"]
+MIN_PLAYERS_TO_START = 4
+
+
 class ReadyInfo(BaseModel):
     player_name: Optional[str] = None
     ready: bool = True
@@ -33,8 +37,6 @@ class ReadyInfo(BaseModel):
 
 class ResetInfo(BaseModel):
     tv_token: Optional[str] = None
-
-
 
 
 def get_players(room_id: int):
@@ -71,6 +73,41 @@ def get_ready_state(state: dict) -> dict:
     return ready_state if isinstance(ready_state, dict) else {}
 
 
+def get_house_coverage(players):
+    """Calcula qué casas están presentes entre todos los jugadores."""
+    houses_present = set()
+    for player in players or []:
+        house = player.get("house")
+        if house in HOUSE_ORDER:
+            houses_present.add(house)
+
+    missing_houses = [house for house in HOUSE_ORDER if house not in houses_present]
+
+    return {
+        "houses_present": list(houses_present),
+        "missing_houses": missing_houses,
+        "has_all_houses": len(missing_houses) == 0,
+    }
+
+
+def get_ready_house_coverage(players, ready_players):
+    """Calcula qué casas tienen al menos un jugador listo."""
+    ready_set = set(ready_players or [])
+    ready_houses = set()
+
+    for player in players or []:
+        if player.get("name") in ready_set and player.get("house") in HOUSE_ORDER:
+            ready_houses.add(player.get("house"))
+
+    missing_ready_houses = [house for house in HOUSE_ORDER if house not in ready_houses]
+
+    return {
+        "ready_houses": list(ready_houses),
+        "missing_ready_houses": missing_ready_houses,
+        "has_ready_house_coverage": len(missing_ready_houses) == 0,
+    }
+
+
 def build_payload(room: dict, state: dict):
     players = get_players(room["id"])
     player_names = [player.get("name") for player in players if player.get("name")]
@@ -85,6 +122,20 @@ def build_payload(room: dict, state: dict):
     pending_players = [name for name in player_names if name not in ready_players]
     all_ready = bool(player_names) and len(pending_players) == 0
 
+    # Cobertura de casas general (todos los jugadores)
+    house_cov = get_house_coverage(players)
+    # Cobertura de casas en los jugadores listos
+    ready_house_cov = get_ready_house_coverage(players, ready_players)
+
+    has_minimum_players = len(player_names) >= MIN_PLAYERS_TO_START
+    has_house_coverage = house_cov["has_all_houses"]
+
+    # minimum_ready_met: al menos 4 listos Y una casa representada por cada casa
+    minimum_ready_met = (
+        len(ready_players) >= MIN_PLAYERS_TO_START
+        and ready_house_cov["has_ready_house_coverage"]
+    )
+
     return {
         "room_code": room.get("room_code"),
         "ready_key": ready_key,
@@ -96,6 +147,17 @@ def build_payload(room: dict, state: dict):
         "phase": state.get("phase"),
         "story_mode": state.get("mode") == "story",
         "story_controlled_by": state.get("story_controlled_by") or state.get("managed_by"),
+        # Cobertura de casas (todos los jugadores)
+        "has_minimum_players": has_minimum_players,
+        "has_house_coverage": has_house_coverage,
+        "houses_present": house_cov["houses_present"],
+        "missing_houses": house_cov["missing_houses"],
+        # Cobertura de casas (jugadores listos)
+        "ready_houses": ready_house_cov["ready_houses"],
+        "missing_ready_houses": ready_house_cov["missing_ready_houses"],
+        "has_ready_house_coverage": ready_house_cov["has_ready_house_coverage"],
+        # Regla principal de avance
+        "minimum_ready_met": minimum_ready_met,
     }
 
 
@@ -142,8 +204,9 @@ async def player_ready(room_code: str, info: ReadyInfo):
     else:
         ready_players = [name for name in ready_players if name != player_name]
 
+    ready_state["players"] = ready_players
     state["story_ready"] = ready_state
-    
+
     room_service.update_room_with_version(room_code, state, room.get("state_version", 0))
 
     return build_payload(room, state)

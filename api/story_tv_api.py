@@ -156,14 +156,21 @@ async def start_story_from_tv(room_code: str, info: TvStoryInfo):
     story_state = get_story_state_or_fail(previous_state)
     tv_host = room_service.make_tv_host(info.tv_token)
 
-    game_state = build_intro_sequence(previous_state)
+    # Usar start_step_for_story -> produce scene_instructions del primer minijuego
+    # (antes usaba build_intro_sequence que mandaba a scene_intro, pantalla narrativa larga)
+    game_state = start_step_for_story(
+        room_code=room_code,
+        previous_state=previous_state,
+        story_state=story_state,
+        host=tv_host,
+        random_seed=info.random_seed,
+    )
     game_state["host"] = tv_host
     game_state["story_controlled_by"] = "tv"
     game_state["story_autopilot"] = True
     game_state["managed_by"] = "tv"
     game_state["host_authority"] = "tv"
 
-    # 3. Guardar estado y cambiar status a playing
     from api.database import supabase
     supabase.table("rooms").update({
         "game_state": game_state,

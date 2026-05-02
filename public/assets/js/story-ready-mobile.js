@@ -4,7 +4,7 @@
   let autoReadyTimer = null;      // setTimeout para auto-marcar listo a los 20s
   let autoReadyFired = false;     // Evitar disparar el auto-ready dos veces
 
-  const AUTO_READY_MS = 20_000;   // 20 segundos → listo automático
+  const AUTO_READY_MS = 20_000;   // 20 segundos → listo automático (no en lobby)
 
   // ─── Room / player helpers ────────────────────────────────────────────────
 
@@ -23,15 +23,20 @@
   }
 
   // ─── ¿Momento de mostrar "Listo"? ─────────────────────────────────────────
-  // FIX: Antes solo cubría results_*. Ahora también cubre instrucciones/reglas.
 
-  function isReadyMoment(data) {
+  function isReadyMoment(data, readyData) {
     const state = data?.game_state || {};
     const phase = state.phase || "";
-    if (phase === "lobby" || phase === "") return false;
 
-    // Fases de escena narrativa: siempre mostrar botón independientemente de mode.
-    // El campo mode puede no estar presente en el primer payload de scene_intro.
+    // Lobby en modo historia: mostrar si hay cobertura de casas
+    if (phase === "lobby") {
+      return state.mode === "story";
+      // La validación de has_house_coverage se hace en tick()
+    }
+
+    if (phase === "") return false;
+
+    // Fases de escena narrativa: siempre mostrar botón
     const narrativePhases = new Set([
       "scene_intro", "scene_rules", "scene_instructions", "rules",
     ]);
@@ -42,11 +47,11 @@
     return String(phase).startsWith("results_");
   }
 
-
   // ─── Etiqueta e ícono del botón según la fase ─────────────────────────────
 
   function getReadyLabel(phase, sent) {
     if (sent) return "Listo enviado ✨";
+    if (phase === "lobby")              return "⚡ ¡Estoy listo para empezar!";
     if (phase === "scene_instructions") return "⚡ ¡Entendido! Empieza ya";
     if (phase === "scene_intro")        return "🏰 ¡Adelante!";
     if (phase === "scene_rules")        return "📖 He leído las reglas";
@@ -55,12 +60,19 @@
   }
 
   function getPhaseBadge(phase) {
+    if (phase === "lobby")              return "🏰 Lobby";
     if (phase === "scene_instructions") return "⚡ Instrucciones";
     if (phase === "scene_intro")        return "🏰 Introducción";
     if (phase === "scene_rules")        return "📖 Reglas";
     if (phase === "rules")              return "🪄 ¿Listos?";
     if (String(phase).startsWith("results_")) return "🏆 Resultados";
     return "🪄 Siguiente ronda";
+  }
+
+  function getPhaseTitle(phase, sent) {
+    if (sent) return "¡Listo! Esperando al resto...";
+    if (phase === "lobby") return "¿Listos para empezar la aventura?";
+    return "¿Listo para continuar?";
   }
 
   // ─── Fetch helpers ────────────────────────────────────────────────────────
@@ -106,7 +118,6 @@
     const button = box?.querySelector("button");
     const isAuto = Boolean(options.auto);
 
-    // Deshabilitar botón visualmente
     if (button && !isAuto) {
       button.disabled = true;
       button.textContent = "Listo enviado ✨";
@@ -134,10 +145,11 @@
     }
   }
 
-  // ─── Auto-ready (si el jugador se va al baño 🚽) ─────────────────────────
+  // ─── Auto-ready (si el jugador se va al baño 🚽) — NO en lobby ─────────────
 
-  function scheduleAutoReady(readyKey) {
-    // Si ya se disparó para esta misma clave, no volver a programar
+  function scheduleAutoReady(readyKey, phase) {
+    // En lobby NO auto-ready — la decisión debe ser consciente
+    if (phase === "lobby") return;
     if (lastReadySentKey === readyKey) return;
     if (autoReadyFired) return;
 
@@ -145,7 +157,6 @@
     autoReadyFired = false;
 
     autoReadyTimer = setTimeout(() => {
-      // Verificar que no haya enviado ya
       if (lastReadySentKey === readyKey) return;
       autoReadyFired = true;
       sendReady({ auto: true });
@@ -163,13 +174,11 @@
   function ensureReadyBox() {
     let box = document.getElementById("story-ready-mobile-box");
 
-    // Target preferido: siempre view-wait .card
     const waitCard = document.querySelector("#view-wait .card");
     const gameCard = document.querySelector("#view-game .card");
     const preferredParent = waitCard || gameCard || document.body;
 
     if (box) {
-      // Si el box existe pero está en el contenedor equivocado, re-adjuntarlo
       if (box.parentElement !== preferredParent) {
         preferredParent.appendChild(box);
       }
@@ -183,6 +192,7 @@
       <div class="srmb-badge">🪄 ¿Listos?</div>
       <div class="srmb-title">¿Listo para continuar?</div>
       <p class="srmb-desc">Cuando todos confirmen, la TV avanzará automáticamente.</p>
+      <div class="srmb-house-wait" id="srmb-house-wait" style="display:none"></div>
       <button type="button" id="srmb-btn">✅ Listo para continuar</button>
       <small class="srmb-count"></small>
       <div class="srmb-auto-hint">Auto-listo en <span id="srmb-auto-counter">20</span>s</div>
@@ -197,37 +207,88 @@
     return box;
   }
 
+  // Mostrar mensaje de espera cuando faltan casas (solo en lobby)
+  function showWaitingForHouses(readyData) {
+    const box = ensureReadyBox();
+    box.classList.add("visible");
+
+    const badge    = box.querySelector(".srmb-badge");
+    const title    = box.querySelector(".srmb-title");
+    const desc     = box.querySelector(".srmb-desc");
+    const houseWait = box.querySelector("#srmb-house-wait");
+    const button   = box.querySelector("#srmb-btn");
+    const small    = box.querySelector(".srmb-count");
+    const autoHint = box.querySelector(".srmb-auto-hint");
+
+    const missing = readyData?.missing_houses || [];
+
+    if (badge)    badge.textContent = "🏰 Lobby";
+    if (title)    title.textContent = "Esperando más jugadores...";
+    if (desc)     desc.textContent  = "Se necesita al menos un jugador de cada casa para empezar.";
+    if (houseWait) {
+      houseWait.style.display = missing.length ? "block" : "none";
+      houseWait.textContent = missing.length
+        ? `Falta representante de: ${missing.join(", ")}`
+        : "";
+    }
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Esperando jugadores...";
+    }
+    if (small) {
+      const total = readyData?.total_players || 0;
+      small.textContent = `${total} jugador${total !== 1 ? "es" : ""} en sala`;
+    }
+    if (autoHint) autoHint.style.display = "none";
+  }
 
   function renderReadyBox(readyData, sent = false) {
     const box = ensureReadyBox();
-    const button   = box.querySelector("#srmb-btn");
-    const small    = box.querySelector(".srmb-count");
-    const badge    = box.querySelector(".srmb-badge");
-    const title    = box.querySelector(".srmb-title");
-    const autoHint = box.querySelector(".srmb-auto-hint");
+    const button    = box.querySelector("#srmb-btn");
+    const small     = box.querySelector(".srmb-count");
+    const badge     = box.querySelector(".srmb-badge");
+    const title     = box.querySelector(".srmb-title");
+    const desc      = box.querySelector(".srmb-desc");
+    const houseWait = box.querySelector("#srmb-house-wait");
+    const autoHint  = box.querySelector(".srmb-auto-hint");
 
-    // Obtener fase actual para personalizar labels
     const phase = readyData?.phase || "";
     const readyKey = readyData?.ready_key || lastReadyKey;
     const sentForThisKey = sent || (readyKey && readyKey === lastReadySentKey);
 
     if (badge)  badge.textContent  = getPhaseBadge(phase);
-    if (title)  title.textContent  = sentForThisKey ? "¡Listo! Esperando al resto..." : "¿Listo para continuar?";
+    if (title)  title.textContent  = getPhaseTitle(phase, sentForThisKey);
+    if (desc) {
+      desc.textContent = phase === "lobby"
+        ? "Cuando los 4 representantes de cada casa confirmen, la TV iniciará automáticamente."
+        : "Cuando todos confirmen, la TV avanzará automáticamente.";
+    }
+    if (houseWait) houseWait.style.display = "none"; // Solo visible en showWaitingForHouses
+
     if (button) {
-      button.disabled   = Boolean(sentForThisKey);
+      button.disabled    = Boolean(sentForThisKey);
       button.textContent = getReadyLabel(phase, sentForThisKey);
     }
 
     if (small) {
       const count = Number(readyData?.ready_count || 0);
       const total = Number(readyData?.total_players || 0);
-      small.textContent = total
-        ? `${count}/${total} jugadores listos`
-        : "Esperando jugadores...";
+      if (phase === "lobby") {
+        // Mostrar info de casas listas
+        const readyHouses = readyData?.ready_houses || [];
+        const missingReady = readyData?.missing_ready_houses || [];
+        small.textContent = missingReady.length
+          ? `Casas listas: ${readyHouses.join(", ") || "ninguna"} · Falta: ${missingReady.join(", ")}`
+          : `¡Las 4 casas confirmaron! (${count}/${total})`;
+      } else {
+        small.textContent = total
+          ? `${count}/${total} jugadores listos`
+          : "Esperando jugadores...";
+      }
     }
 
-    // Ocultar hint de auto-ready si ya envió
-    if (autoHint) autoHint.style.display = sentForThisKey ? "none" : "block";
+    // Ocultar hint de auto-ready si ya envió o si es lobby
+    if (autoHint) autoHint.style.display = (sentForThisKey || phase === "lobby") ? "none" : "block";
   }
 
   // ─── Cuenta regresiva del auto-ready ─────────────────────────────────────
@@ -237,7 +298,6 @@
     const counterEl = () => document.getElementById("srmb-auto-counter");
 
     const interval = setInterval(() => {
-      // Detener si ya se envió o cambió la clave
       if (lastReadySentKey === readyKey || lastReadyKey !== readyKey) {
         clearInterval(interval);
         return;
@@ -307,10 +367,20 @@
         margin-bottom: 6px;
       }
       .srmb-desc {
-        margin: 0 0 14px;
+        margin: 0 0 10px;
         color: rgba(255,248,221,.72);
         font-size: .9rem;
         line-height: 1.35;
+      }
+      .srmb-house-wait {
+        margin: 0 0 12px;
+        padding: 8px 12px;
+        border-radius: 14px;
+        background: rgba(252,165,165,.12);
+        border: 1px solid rgba(252,165,165,.22);
+        color: #fca5a5;
+        font-size: .82rem;
+        font-weight: 800;
       }
       .story-ready-mobile-box button {
         width: 100%;
@@ -342,7 +412,8 @@
         margin-top: 11px;
         color: rgba(255,248,221,.66);
         font-weight: 850;
-        font-size: .88rem;
+        font-size: .82rem;
+        line-height: 1.3;
       }
       .srmb-auto-hint {
         margin-top: 9px;
@@ -364,14 +435,52 @@
     injectStyles();
 
     const status = await fetchStatus();
-    if (!status || !isReadyMoment(status)) {
+    if (!status) {
       hideReadyBox();
       return;
     }
 
-    const phase = status?.game_state?.phase || "";
+    const state = status?.game_state || {};
+    const phase = state.phase || "";
+
+    // Solo actuar en modo historia
+    if (state.mode !== "story" && phase !== "lobby") {
+      if (!["scene_intro", "scene_rules", "scene_instructions", "rules"].includes(phase)) {
+        hideReadyBox();
+        return;
+      }
+    }
+
     const readyData = await fetchReadyStatus();
     if (!readyData) return;
+
+    // Caso lobby: verificar cobertura de casas primero
+    if (phase === "lobby") {
+      if (state.mode !== "story") {
+        hideReadyBox();
+        return;
+      }
+      if (!readyData.has_house_coverage) {
+        showWaitingForHouses(readyData);
+        return;
+      }
+      // Hay cobertura de casas: mostrar botón de listo
+      showReadyBox();
+      if (readyData.ready_key !== lastReadyKey) {
+        lastReadyKey = readyData.ready_key;
+        cancelAutoReady();
+        autoReadyFired = false;
+        // NO programar auto-ready en lobby
+        if (lastReadySentKey !== lastReadyKey) lastReadySentKey = "";
+      }
+      renderReadyBox({ ...readyData, phase }, false);
+      return;
+    }
+
+    if (!isReadyMoment(status, readyData)) {
+      hideReadyBox();
+      return;
+    }
 
     // Detectar nueva clave → reiniciar auto-ready
     if (readyData.ready_key !== lastReadyKey) {
@@ -379,13 +488,11 @@
       cancelAutoReady();
       autoReadyFired = false;
 
-      // Solo programar auto-ready si el jugador aún no está marcado
       if (lastReadySentKey !== lastReadyKey) {
-        scheduleAutoReady(lastReadyKey);
+        scheduleAutoReady(lastReadyKey, phase);
         startCountdownDisplay(lastReadyKey);
       }
 
-      // Reset el "sent" si es una nueva ronda
       if (lastReadySentKey !== lastReadyKey) lastReadySentKey = "";
     }
 

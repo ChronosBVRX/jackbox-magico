@@ -15,10 +15,12 @@
     rules:               10_000,
     results_trivia:      9_000,
     results_atrapa_snitch: 8_000,
+    lobby:               0,      // En lobby no hay tiempo mínimo forzado
     default:             6_000,
   };
 
   // Tiempo máximo de espera antes de avanzar solo (si alguien va al baño 🚽)
+  // En lobby NO hay auto-advance — debe ser una decisión consciente.
   const AUTO_ADVANCE_MS = 28_000;
 
   // ─── Utilidades ───────────────────────────────────────────────────────────
@@ -167,14 +169,26 @@
     if (!res.ok) throw new Error("No se pudo aceptar reglas");
   }
 
-  // ─── ¿Hay que esperar ready-check en esta fase? ───────────────────────────
-  // FIX CRÍTICO: Antes solo cubría results_* y rules.
-  // Ahora también cubre scene_instructions, scene_intro, scene_rules.
+  async function callStartStory(room) {
+    const res = await fetch(`/api/story-tv/${room}/start`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ tv_token: getTvToken() }),
+    });
+    if (!res.ok) throw new Error("No se pudo iniciar historia desde lobby");
+  }
 
-  function shouldWaitForReady(status) {
+  // ─── ¿Hay que esperar ready-check en esta fase? ───────────────────────────
+
+  function shouldWaitForReady(status, ready) {
     const state = status?.game_state || {};
     const phase = getPhase(status);
     if (state.mode !== "story") return false;
+
+    // En lobby: esperar solo si hay cobertura de casas (4 casas representadas)
+    if (phase === "lobby") {
+      return Boolean(ready?.has_house_coverage);
+    }
 
     return (
       String(phase).startsWith("results_") ||
@@ -256,7 +270,10 @@
 
   async function advanceAfterReady(room, status, ready) {
     const phase = getPhase(status);
-    const timedOut = Boolean(
+
+    // En lobby: NO avanzar por timeout — solo si minimum_ready_met
+    const isLobby = phase === "lobby";
+    const timedOut = !isLobby && Boolean(
       readyWindowStartedAt &&
         Date.now() - readyWindowStartedAt >= getAutoAdvanceMs()
     );
@@ -267,18 +284,37 @@
     if (voiceBusy && !timedOut) return;
     if (!minElapsed && !timedOut) return;
 
-    // Si terminó el tiempo o todos están listos, avanzamos.
-    if ((!ready.all_ready && !timedOut) || advancingKey === ready.ready_key) return;
+    // Usar minimum_ready_met como regla principal; all_ready como fallback
+    const readyEnough = ready.minimum_ready_met || ready.all_ready;
+
+    if ((!readyEnough && !timedOut) || advancingKey === ready.ready_key) return;
     advancingKey = ready.ready_key;
 
     window.setTimeout(async () => {
       try {
         const fresh = await fetchRoomStatus(room);
-        if (!fresh || !shouldWaitForReady(fresh)) return;
+        if (!fresh) return;
+
+        const freshReady = await fetchReadyStatus(room);
+        if (!freshReady) return;
+
+        if (!shouldWaitForReady(fresh, freshReady)) return;
 
         const freshPhase = getPhase(fresh);
+        const freshReadyEnough = freshReady.minimum_ready_met || freshReady.all_ready;
 
         recordTriviaResultLocally(fresh);
+
+        // Lobby con cobertura de casas → iniciar historia
+        if (freshPhase === "lobby") {
+          if (!freshReady.minimum_ready_met) {
+            advancingKey = ""; // Permitir reintentar
+            return;
+          }
+          await callStartStory(room);
+          await resetReady(room);
+          return;
+        }
 
         // Resultados de trivia → siguiente pregunta o siguiente step
         if (freshPhase === "results_trivia" && getStepType(fresh) === "trivia_block") {
@@ -322,7 +358,7 @@
       } catch (error) {
         advancingKey = "";
       }
-    }, ready.all_ready ? 900 : 1_600);
+    }, readyEnough ? 900 : 1_600);
   }
 
   // ─── Panel de TV (UI) ─────────────────────────────────────────────────────
@@ -339,6 +375,7 @@
       <div class="srtv-info">
         <div class="srtv-title">¿Todos listos?</div>
         <div class="srtv-pending"></div>
+        <div class="srtv-houses"></div>
         <div class="srtv-timer"></div>
         <div class="srtv-bar"><span></span></div>
       </div>
@@ -349,6 +386,7 @@
 
   /** Etiqueta de acción según la fase actual */
   function getPhaseLabel(phase) {
+    if (phase === "lobby")              return "🏰 ¿Todos listos para empezar?";
     if (phase === "scene_instructions") return "⚡ Entendidas las instrucciones";
     if (phase === "scene_intro")        return "🏰 Bienvenidos al castillo";
     if (phase === "scene_rules")        return "📖 Reglas leídas";
@@ -371,27 +409,35 @@
 
     // ── Anti-flicker: skip DOM updates si los datos no cambiaron ──
     const remaining = getRemainingSeconds();
-    const totalMs = getAutoAdvanceMs();
+    const totalMs = phase === "lobby" ? 0 : getAutoAdvanceMs(); // sin barra en lobby
     const elapsed = readyWindowStartedAt
-      ? Math.min(totalMs, Date.now() - readyWindowStartedAt)
+      ? Math.min(totalMs || 1, Date.now() - readyWindowStartedAt)
       : 0;
     const progress = totalMs
       ? Math.max(0, Math.min(100, (elapsed / totalMs) * 100))
       : 0;
 
-    const dataHash = `${phase}|${ready.ready_count || 0}/${ready.total_players || 0}|${(ready.pending_players || []).join(",")}|${ready.all_ready}`;
-    const barEl = panel.querySelector(".srtv-bar span");
-    const timerEl = panel.querySelector(".srtv-timer");
+    const readyEnough = ready.minimum_ready_met || ready.all_ready;
+    const dataHash = `${phase}|${ready.ready_count || 0}/${ready.total_players || 0}|${(ready.missing_ready_houses || []).join(",")}|${(ready.missing_houses || []).join(",")}|${readyEnough}`;
+    const barEl    = panel.querySelector(".srtv-bar span");
+    const timerEl  = panel.querySelector(".srtv-timer");
 
-    // La barra y el timer siempre se actualizan (son animaciones de tiempo)
+    // La barra y el timer siempre se actualizan
     if (barEl) barEl.style.width = `${progress}%`;
     if (timerEl) {
-      timerEl.textContent = ready.all_ready
-        ? "Avanzando en un momento..."
-        : `Avanza automáticamente en ${remaining}s`;
+      if (phase === "lobby") {
+        timerEl.textContent = readyEnough
+          ? "Iniciando historia..."
+          : ready.has_house_coverage
+            ? `Mínimo 4 listos (uno por casa) — ${ready.ready_count || 0}/4`
+            : "";
+      } else {
+        timerEl.textContent = readyEnough
+          ? "Avanzando en un momento..."
+          : `Avanza automáticamente en ${remaining}s`;
+      }
     }
 
-    // Los textos estáticos solo cambian cuando los datos cambian
     if (dataHash === lastPanelHash) return;
     lastPanelHash = dataHash;
 
@@ -399,27 +445,88 @@
     const countEl   = panel.querySelector(".srtv-count");
     const titleEl   = panel.querySelector(".srtv-title");
     const pendingEl = panel.querySelector(".srtv-pending");
+    const housesEl  = panel.querySelector(".srtv-houses");
 
-    // Ícono dinámico según fase
     if (iconEl) {
-      if (phase === "scene_instructions") iconEl.textContent = "⚡";
-      else if (phase === "scene_intro")   iconEl.textContent = "🏰";
-      else if (phase === "scene_rules")   iconEl.textContent = "📖";
+      if (phase === "lobby")               iconEl.textContent = "🏰";
+      else if (phase === "scene_instructions") iconEl.textContent = "⚡";
+      else if (phase === "scene_intro")    iconEl.textContent = "🏰";
+      else if (phase === "scene_rules")    iconEl.textContent = "📖";
       else if (String(phase).startsWith("results_")) iconEl.textContent = "🏆";
       else iconEl.textContent = "🪄";
     }
 
-    if (countEl) countEl.textContent = `${ready.ready_count || 0}/${ready.total_players || 0}`;
+    if (countEl) {
+      if (phase === "lobby" && !ready.has_house_coverage) {
+        countEl.textContent = `${ready.total_players || 0}`;
+      } else {
+        countEl.textContent = `${ready.ready_count || 0}/${ready.total_players || 0}`;
+      }
+    }
+
     if (titleEl) titleEl.textContent = getPhaseLabel(phase);
 
-    if (pendingEl) {
-      const pendingPlayers = ready.pending_players || [];
-      pendingEl.textContent = pendingPlayers.length
-        ? `Faltan: ${pendingPlayers.map(escapeHTML).join(", ")}`
-        : "¡Todos listos! Avanzando...";
-    }
+    // Panel de casas faltantes (solo en lobby)
+    if (housesEl) {
+      if (phase === "lobby" && !ready.has_house_coverage) {
+        const missing = (ready.missing_houses || []);
+        housesEl.textContent = missing.length
+          ? `Falta representante de: ${missing.join(", ")}`
+          : "";
+        housesEl.style.display = missing.length ? "block" : "none";
+      } else if (phase === "lobby" && ready.missing_ready_houses?.length) {
+        const missingReady = ready.missing_ready_houses;
+        housesEl.textContent = `Faltan casas listas: ${missingReady.join(", ")}`;
+        housesEl.style.display = "block";
+      } else {
+        housesEl.style.display = "none";
+        housesEl.textContent = "";
+      }
     }
 
+    if (pendingEl) {
+      if (phase === "lobby" && !ready.has_house_coverage) {
+        pendingEl.textContent = "Esperando más jugadores...";
+      } else {
+        const pendingPlayers = ready.pending_players || [];
+        pendingEl.textContent = pendingPlayers.length
+          ? `Faltan: ${pendingPlayers.map(escapeHTML).join(", ")}`
+          : "¡Todos listos! Avanzando...";
+      }
+    }
+  }
+
+  // Panel de espera en lobby cuando todavía faltan casas
+  function showLobbyWaitPanel(ready) {
+    const panel = ensurePanel();
+    panel.classList.add("visible");
+
+    const missing = ready.missing_houses || [];
+    const dataHash = `lobby-wait|${missing.join(",")}|${ready.total_players || 0}`;
+    if (dataHash === lastPanelHash) return;
+    lastPanelHash = dataHash;
+
+    const iconEl   = panel.querySelector(".srtv-icon");
+    const countEl  = panel.querySelector(".srtv-count");
+    const titleEl  = panel.querySelector(".srtv-title");
+    const pendEl   = panel.querySelector(".srtv-pending");
+    const housesEl = panel.querySelector(".srtv-houses");
+    const timerEl  = panel.querySelector(".srtv-timer");
+    const barEl    = panel.querySelector(".srtv-bar span");
+
+    if (iconEl)   iconEl.textContent = "🏰";
+    if (countEl)  countEl.textContent = `${ready.total_players || 0}`;
+    if (titleEl)  titleEl.textContent = "Esperando jugadores...";
+    if (pendEl)   pendEl.textContent = `${ready.total_players || 0} en sala`;
+    if (housesEl) {
+      housesEl.textContent = missing.length
+        ? `Falta representante de: ${missing.join(", ")}`
+        : "";
+      housesEl.style.display = missing.length ? "block" : "none";
+    }
+    if (timerEl) timerEl.textContent = "Se necesita al menos 1 jugador por casa";
+    if (barEl)   barEl.style.width = "0%";
+  }
 
   function hidePanel() {
     const panel = document.getElementById("story-ready-tv-panel");
@@ -441,7 +548,7 @@
         left: 50%;
         transform: translateX(-50%) translateY(40px) scale(0.93);
         z-index: 10020;
-        width: min(640px, 92vw);
+        width: min(680px, 92vw);
         opacity: 0;
         pointer-events: none;
         padding: 16px 24px 16px 20px;
@@ -495,11 +602,17 @@
         margin-bottom: 3px;
       }
       .srtv-pending,
+      .srtv-houses,
       .srtv-timer {
         color: rgba(255,248,221,.72);
         font-weight: 600;
         font-size: 0.88rem;
         line-height: 1.4;
+      }
+      .srtv-houses {
+        color: #fca5a5;
+        margin-top: 2px;
+        font-weight: 800;
       }
       .srtv-timer { color: #86efac; margin-top: 2px; }
       .srtv-bar {
@@ -533,8 +646,39 @@
     if (!room) return;
 
     const status = await fetchRoomStatus(room);
+    if (!status) {
+      hidePanel();
+      readyWindowStartedAt = 0;
+      sceneEnteredAt = 0;
+      return;
+    }
 
-    if (!status || !shouldWaitForReady(status)) {
+    const state = status?.game_state || {};
+    const phase = getPhase(status);
+
+    // Solo actuar en modo historia
+    if (state.mode !== "story") {
+      hidePanel();
+      readyWindowStartedAt = 0;
+      sceneEnteredAt = 0;
+      return;
+    }
+
+    const ready = await fetchReadyStatus(room);
+    if (!ready) return;
+
+    // En lobby sin cobertura de casas → mostrar panel de espera, no ready-check
+    if (phase === "lobby" && !ready.has_house_coverage) {
+      // Resetear timers si venimos de otra fase
+      readyWindowStartedAt = 0;
+      sceneEnteredAt = 0;
+      advancingKey = "";
+      lastReadyKey = "";
+      showLobbyWaitPanel(ready);
+      return;
+    }
+
+    if (!shouldWaitForReady(status, ready)) {
       hidePanel();
       readyWindowStartedAt = 0;
       sceneEnteredAt = 0;
@@ -543,16 +687,12 @@
 
     recordTriviaResultLocally(status);
 
-    const ready = await fetchReadyStatus(room);
-    if (!ready) return;
-
-    const phase = getPhase(status);
-
     // Detectar cambio de clave (nueva escena) → reiniciar temporizadores
     if (ready.ready_key !== lastReadyKey) {
       lastReadyKey = ready.ready_key;
       advancingKey = "";
-      readyWindowStartedAt = Date.now();
+      // En lobby no empezamos el countdown de auto-advance
+      readyWindowStartedAt = phase === "lobby" ? 0 : Date.now();
       sceneEnteredAt = Date.now();
     }
 
