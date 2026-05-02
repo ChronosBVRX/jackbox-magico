@@ -402,6 +402,9 @@
     "caldero_mentiroso",
     "patronus_personalizado",
     "copa_final",
+    "scene_instructions",
+    "scene_rules",
+    "rules"
   ]);
 
   function renderOverlay(data) {

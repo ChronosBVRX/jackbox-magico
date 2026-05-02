@@ -98,16 +98,17 @@
     panel.id = "rules-vote-panel";
     panel.className = "rules-vote-panel";
     panel.innerHTML = `
-      <div class="rvp-row">
-        <span class="rvp-icon">⚡</span>
-        <span class="rvp-label">Jugadores listos:</span>
-        <span class="rvp-count" id="rvp-count">…</span>
+      <div class="rvp-status-row">
+        <div class="rvp-count-badge">
+          <span class="rvp-icon">⚡</span>
+          <span id="rvp-count">0/0</span> listos
+        </div>
+        <div class="rvp-missing" id="rvp-names">Esperando a todos...</div>
       </div>
-      <div class="rvp-names" id="rvp-names"></div>
-      <div class="rvp-hint">Confirma desde tu celular cuando estés listo</div>
       <div class="rvp-bar-wrap">
         <div class="rvp-bar"><div class="rvp-bar-fill" id="rvp-bar-fill"></div></div>
       </div>
+      <div class="rvp-hint">La partida comenzará automáticamente cuando estén listos</div>
     `;
 
     const card = document.querySelector(".rules-card");
@@ -158,15 +159,14 @@
       if (countEl) countEl.textContent = `${readyCount}/${totalPlayers}`;
 
       if (namesEl) {
-        const readyNames   = ready.ready_players  || [];
         const pendingNames = ready.pending_players || [];
-        namesEl.innerHTML =
-          readyNames.map(
-            (n) => `<span class="rvp-name ready">${escapeHTML(n)} ✓</span>`
-          ).join("") +
-          pendingNames.map(
-            (n) => `<span class="rvp-name pending">${escapeHTML(n)}</span>`
-          ).join("");
+        if (pendingNames.length === 0) {
+          namesEl.textContent = "¡Todos listos!";
+          namesEl.className = "rvp-missing all-ready";
+        } else {
+          namesEl.textContent = `Faltan: ${pendingNames.map(escapeHTML).join(", ")}`;
+          namesEl.className = "rvp-missing";
+        }
       }
 
       if (barFillEl) barFillEl.style.width = `${pct}%`;
@@ -188,78 +188,70 @@
     style.id = "rules-vote-panel-style";
     style.textContent = `
       .rules-vote-panel {
-        margin-top: 22px;
-        padding: 16px 20px;
-        border-radius: 22px;
-        background:
-          radial-gradient(circle at 10% 0%, rgba(255,216,121,.16), transparent 40%),
-          rgba(255,255,255,.06);
-        border: 1px solid rgba(255,216,121,.22);
+        margin-top: 32px;
+        padding-top: 24px;
+        border-top: 1px solid rgba(255,216,121,.15);
         color: #fff7dc;
-        animation: rvp-in .4s cubic-bezier(0.18,0.89,0.32,1.28) both;
+        animation: rvp-in .5s ease both;
       }
       @keyframes rvp-in {
         from { opacity: 0; transform: translateY(10px); }
         to   { opacity: 1; transform: translateY(0); }
       }
-      .rvp-row {
+      .rvp-status-row {
         display: flex;
         align-items: center;
-        gap: 10px;
-        margin-bottom: 8px;
+        gap: 16px;
+        margin-bottom: 12px;
       }
-      .rvp-icon { font-size: 1.4rem; }
-      .rvp-label {
-        font-weight: 900;
-        font-size: .9rem;
-        text-transform: uppercase;
-        letter-spacing: .07em;
-        color: #ffe7a3;
-      }
-      .rvp-count {
-        margin-left: auto;
-        font-size: 1.6rem;
-        font-weight: 1000;
-        color: #facc15;
-        text-shadow: 0 0 14px rgba(250,204,21,.4);
-      }
-      .rvp-names {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 6px;
-        margin-bottom: 10px;
-        min-height: 26px;
-      }
-      .rvp-name {
-        padding: 4px 10px;
+      .rvp-count-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        padding: 6px 14px;
         border-radius: 999px;
-        font-size: .78rem;
+        background: rgba(250,204,21,.15);
+        border: 1px solid rgba(250,204,21,.3);
+        color: #fde047;
         font-weight: 900;
-        transition: background .3s ease, color .3s ease;
+        font-size: .85rem;
+        text-transform: uppercase;
+        letter-spacing: .05em;
       }
-      .rvp-name.ready {
-        background: rgba(34,197,94,.18);
-        border: 1px solid rgba(74,222,128,.30);
+      .rvp-icon { font-size: 1.1rem; }
+      #rvp-count {
+        font-size: 1.1rem;
+        color: #fff;
+      }
+      .rvp-missing {
+        font-size: .95rem;
+        font-weight: 700;
+        color: rgba(255,248,221,.65);
+      }
+      .rvp-missing.all-ready {
         color: #86efac;
       }
-      .rvp-name.pending {
-        background: rgba(255,255,255,.07);
-        border: 1px solid rgba(255,255,255,.10);
-        color: rgba(255,248,221,.55);
+      .rvp-bar-wrap {
+        margin-bottom: 10px;
       }
-      .rvp-hint {
-        font-size: .78rem;
-        color: rgba(255,248,221,.48);
-        font-weight: 700;
-        margin-bottom: 8px;
+      .rvp-bar { 
+        height: 6px; 
+        border-radius: 999px; 
+        background: rgba(255,255,255,.08); 
+        overflow: hidden; 
       }
-      .rvp-bar { height: 5px; border-radius: 999px; background: rgba(255,255,255,.08); overflow: hidden; }
       .rvp-bar-fill {
         height: 100%;
         border-radius: inherit;
-        background: linear-gradient(90deg, #86efac, #facc15);
+        background: linear-gradient(90deg, #86efac, #facc15, #f97316);
         transition: width .5s cubic-bezier(0.4,0,0.2,1);
         width: 0%;
+      }
+      .rvp-hint {
+        font-size: .8rem;
+        color: rgba(255,248,221,.5);
+        font-weight: 700;
+        text-align: center;
       }
     `;
     document.head.appendChild(style);

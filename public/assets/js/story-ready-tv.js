@@ -269,6 +269,8 @@
   // ─── Avanzar según la fase actual ─────────────────────────────────────────
 
   async function advanceAfterReady(room, status, ready) {
+    if (window.DEBUG_READY_PAUSED) return;
+
     const phase = getPhase(status);
 
     // En lobby: NO avanzar por timeout — solo si minimum_ready_met
@@ -696,7 +698,12 @@
       sceneEnteredAt = Date.now();
     }
 
-    showPanel(ready, phase);
+    if (["scene_instructions", "scene_rules", "rules"].includes(phase)) {
+      hidePanel();
+    } else {
+      showPanel(ready, phase);
+    }
+
     await advanceAfterReady(room, status, ready);
   }
 
