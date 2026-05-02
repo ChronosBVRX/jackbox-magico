@@ -268,6 +268,8 @@
     if (window.DEBUG_READY_PAUSED) return;
 
     const phase = getPhase(status);
+    const voiceBusy = window.VoiceLinesTv?.isProcessing?.() || false;
+    const minElapsed = isMinSceneElapsed(phase);
 
     // Esperar a que el audio termine Y a que la escena haya "respirado"
     if (voiceBusy) return;

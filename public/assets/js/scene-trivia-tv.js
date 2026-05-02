@@ -32,9 +32,43 @@
     return left;
   }
 
+  function getRoomCodeFromTv() {
+    try {
+      if (typeof currentRoom !== "undefined" && currentRoom) {
+        return String(currentRoom).trim().toUpperCase();
+      }
+    } catch (_) {}
+
+    const tvCode = document.getElementById("tv-code")?.textContent?.trim();
+    if (tvCode && tvCode !== "----") {
+      return tvCode.toUpperCase();
+    }
+
+    const bottomCode = document.querySelector(".room-code")?.textContent?.trim();
+    if (bottomCode && bottomCode !== "----") {
+      return bottomCode.toUpperCase();
+    }
+
+    return localStorage.getItem("jackbox_magico_room") || "";
+  }
+
+  function getTvTokenFromTv() {
+    try {
+      if (window.RoomLifecycleTv?.getTvToken) {
+        return window.RoomLifecycleTv.getTvToken();
+      }
+    } catch (_) {}
+    return localStorage.getItem("jackbox_magico_tv_token") || "";
+  }
+
   async function finishTriviaFromTv(state) {
-    const room = window.getRoomCodeFromTv ? window.getRoomCodeFromTv() : (localStorage.getItem("jackbox_magico_room") || "");
-    const token = window.getTvTokenFromTv ? window.getTvTokenFromTv() : (localStorage.getItem("jackbox_tv_token") || "");
+    const room = getRoomCodeFromTv();
+    const token = getTvTokenFromTv();
+
+    if (!room) {
+      console.error("No se pudo cerrar trivia: room_code vacío");
+      return;
+    }
 
     const key = `${room}:${state.round_id || state.question || "trivia"}`;
 

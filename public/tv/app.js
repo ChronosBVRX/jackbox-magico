@@ -1714,10 +1714,7 @@ async function continueTvFlow() {
       return;
     }
 
-    // El polling ya refrescará, pero forzamos un tick rápido
-    setTimeout(() => {
-      refreshRoomStatus();
-    }, 100);
+
 
   } catch (error) {
     console.error("Error continuando flujo:", error);

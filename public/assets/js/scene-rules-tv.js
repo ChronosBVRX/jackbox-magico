@@ -184,8 +184,8 @@
           </div>
 
           <div class="rules-ready-names">
-            ${readyPlayers.map(name => \`<span class="ready">✓ \${escapeHTML(name)}</span>\`).join("")}
-            ${pendingNames.map(name => \`<span class="pending">\${escapeHTML(name)}</span>\`).join("")}
+            ${readyPlayers.map(name => `<span class="ready">✓ ${escapeHTML(name)}</span>`).join("")}
+            ${pendingNames.map(name => `<span class="pending">${escapeHTML(name)}</span>`).join("")}
           </div>
 
           <div class="rules-ready-bar">
@@ -196,7 +196,7 @@
             ${ready.can_advance || ready.all_ready
               ? "Todos listos. Comenzando..."
               : pendingNames.length
-                ? \`Faltan: \${escapeHTML(pendingNames.join(", "))}\`
+                ? `Faltan: ${escapeHTML(pendingNames.join(", "))}`
                 : "Esperando confirmaciones..."}
           </p>
         </div>
