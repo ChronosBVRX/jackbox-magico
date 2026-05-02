@@ -13,6 +13,7 @@
   let flashUntil = 0;
   let lastFeedIds = new Set();
   let audioCtx = null;
+  let serverClockOffsetMs = 0;
 
   const houseIcons = {
     Gryffindor: "🦁",
@@ -118,8 +119,9 @@
   }
 
   function getElapsed(state) {
-    const startedAt = Number(state.started_at || Date.now() / 1000);
-    return Math.max(0, Date.now() / 1000 - startedAt);
+    const syncedNow = (Date.now() + serverClockOffsetMs) / 1000;
+    const startedAt = Number(state.started_at || syncedNow);
+    return Math.max(0, syncedNow - startedAt);
   }
 
   function getTimeInfo(state) {
@@ -578,7 +580,10 @@
       const map = state.attempts_by_player || {};
 
       attempts.innerHTML = (players || []).map((player) => {
-        const used = Number(map[player.name] || 0);
+        const rawAttempts = map[player.name];
+        const used = Array.isArray(rawAttempts)
+          ? rawAttempts.length
+          : Number(rawAttempts || 0);
 
         return `
           <div class="snitch-tv-player ${used >= total ? "done" : ""}">
@@ -685,6 +690,10 @@
 
     activeState = state;
     activePlayers = players || [];
+
+    if (options.server_epoch_ms || state.server_epoch_ms) {
+      serverClockOffsetMs = Number(options.server_epoch_ms || state.server_epoch_ms) - Date.now();
+    }
 
     if (snitchLastKey !== key) {
       snitchLastKey = key;

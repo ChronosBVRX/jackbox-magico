@@ -1212,6 +1212,7 @@ function renderPlaying(data) {
     if (typeof window.renderSnitchTv === "function") {
       window.renderSnitchTv(state, players, {
         reveal: revelarResultados,
+        server_epoch_ms: data.server_epoch_ms,
       });
     } else {
       renderGenericGame(state, players);

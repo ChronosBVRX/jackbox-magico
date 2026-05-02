@@ -14,7 +14,7 @@ ARENA_WIDTH = 100
 ARENA_HEIGHT = 100
 
 SNITCH_RADIUS = 3.2
-ZONE_RADIUS = 8.5
+ZONE_RADIUS = 9.5
 
 POINTS_LEGENDARY = 180
 POINTS_PERFECT = 130
@@ -179,22 +179,22 @@ def _build_motion_segments(rng, duration_seconds, kind="snitch"):
         remaining = duration_seconds - elapsed
 
         if kind == "snitch":
-            dash = rng.random() < 0.42
-            sudden_turn = rng.random() < 0.32
+            dash = rng.random() < 0.30
+            sudden_turn = rng.random() < 0.24
 
             if dash:
-                segment_duration = rng.uniform(0.28, 0.48)
-                wobble = rng.uniform(2.2, 4.2)
+                segment_duration = rng.uniform(0.42, 0.68)
+                wobble = rng.uniform(1.6, 3.2)
                 speed_label = "dash"
                 easing = rng.choice(["ease_out_cubic", "ease_out_quad", "linear"])
             elif sudden_turn:
-                segment_duration = rng.uniform(0.44, 0.72)
-                wobble = rng.uniform(3.0, 5.5)
+                segment_duration = rng.uniform(0.60, 0.92)
+                wobble = rng.uniform(2.2, 4.2)
                 speed_label = "quiebre"
                 easing = rng.choice(["ease_in_out_quad", "ease_out_cubic"])
             else:
-                segment_duration = rng.uniform(0.78, 1.35)
-                wobble = rng.uniform(2.0, 5.0)
+                segment_duration = rng.uniform(0.95, 1.55)
+                wobble = rng.uniform(1.6, 4.0)
                 speed_label = "fluida"
                 easing = rng.choice(["ease_in_out_sine", "ease_in_out_quad", "ease_in_out_cubic"])
 
@@ -344,7 +344,7 @@ def _elapsed_seconds(state, client_elapsed_ms=None):
 
 
 def _judge_distance(distance_units):
-    if distance_units <= 3.2:
+    if distance_units <= 3.8:
         return {
             "grade": "legendary",
             "label": random.choice(LEGENDARY_LINES),
@@ -353,7 +353,7 @@ def _judge_distance(distance_units):
             "precision": 100,
         }
 
-    if distance_units <= 5.2:
+    if distance_units <= 6.0:
         precision = int(max(92, 100 - distance_units * 1.1))
         return {
             "grade": "perfect",
@@ -363,7 +363,7 @@ def _judge_distance(distance_units):
             "precision": precision,
         }
 
-    if distance_units <= 8.8:
+    if distance_units <= 9.8:
         precision = int(max(74, 95 - distance_units * 2.2))
         return {
             "grade": "great",
@@ -373,7 +373,7 @@ def _judge_distance(distance_units):
             "precision": precision,
         }
 
-    if distance_units <= 13.5:
+    if distance_units <= 14.8:
         precision = int(max(48, 84 - distance_units * 2.4))
         return {
             "grade": "close",
@@ -501,6 +501,10 @@ def submit_catch(state, player_name, client_elapsed_ms=None):
         }
 
     elapsed = _elapsed_seconds(state, client_elapsed_ms)
+    
+    # Compensación de latencia humana/red/render (aprox 80ms)
+    elapsed = max(0, elapsed - 0.08)
+    
     duration = _safe_float(state.get("duration_seconds"), ROUND_DURATION_SECONDS)
 
     if elapsed > duration + 1.5:

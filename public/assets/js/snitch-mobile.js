@@ -9,6 +9,7 @@
   let watcherStarted = false;
   let snitchWasActive = false;
   let audioCtx = null;
+  let serverClockOffsetMs = 0;
 
   function ensureAudio() {
     try {
@@ -122,8 +123,9 @@
 
   function getSnitchTimeInfo(state) {
     const duration = Number(state.duration_seconds || 24);
-    const startedAt = Number(state.started_at || Date.now() / 1000);
-    const elapsed = Math.max(0, Date.now() / 1000 - startedAt);
+    const syncedNow = Date.now() + serverClockOffsetMs;
+    const startedAt = Number(state.started_at || syncedNow / 1000);
+    const elapsed = Math.max(0, syncedNow / 1000 - startedAt);
     const left = Math.max(0, duration - elapsed);
 
     return {
@@ -202,7 +204,7 @@
         <div class="snitch-party-wing right"></div>
       </div>
 
-      <button id="snitch-catch-button" class="snitch-party-catch-btn" onclick="sendSnitchCatch()">
+      <button id="snitch-catch-button" class="snitch-party-catch-btn" style="touch-action: manipulation">
         <span class="main">¡ATRAPAR!</span>
         <span class="sub">Toca cuando entre al aro</span>
       </button>
@@ -294,7 +296,7 @@
       snitchLastTick = null;
       snitchCatchCooldown = false;
       snitchAttemptsUsed = stateAttempts;
-      snitchRoundStartedMs = state.started_at ? Number(state.started_at) * 1000 : Date.now();
+      snitchRoundStartedMs = state.started_at ? Number(state.started_at) * 1000 : (Date.now() + serverClockOffsetMs);
 
       try {
         if (typeof currentRoundStartedMs !== "undefined") {
@@ -338,6 +340,15 @@
 
     if (snitchAttemptsUsed >= total) {
       renderCatchButton(panel, state);
+    }
+
+    const catchButton = document.getElementById("snitch-catch-button");
+    if (catchButton && !catchButton.dataset.bound) {
+      catchButton.dataset.bound = "1";
+      catchButton.addEventListener("pointerdown", (event) => {
+        event.preventDefault();
+        window.sendSnitchCatch();
+      }, { passive: false });
     }
 
     window.updateMobileSnitchTimer(state);
@@ -420,7 +431,8 @@
       );
     }
 
-    const elapsed = Math.max(0, Date.now() - snitchRoundStartedMs);
+    const syncedNow = Date.now() + serverClockOffsetMs;
+    const elapsed = Math.max(0, syncedNow - snitchRoundStartedMs);
 
     if (box) {
       box.className = "snitch-party-attempt-box feedback-loading";
@@ -500,6 +512,10 @@
       const data = await res.json();
       const state = data.game_state || {};
       const phase = state.phase || "lobby";
+
+      if (data.server_epoch_ms) {
+        serverClockOffsetMs = Number(data.server_epoch_ms) - Date.now();
+      }
 
       if (data.status === "playing" && phase === "atrapa_snitch") {
         window.renderSnitchMobile(state);

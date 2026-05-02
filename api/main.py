@@ -618,6 +618,7 @@ def get_public_room_snapshot(room_code: str):
             "managed_by": "tv",
         },
         "server_ts": int(asyncio.get_event_loop().time() * 1000),
+        "server_epoch_ms": int(time.time() * 1000),
     }
 
 
