@@ -544,7 +544,17 @@ def resolve_for_reveal(state, players=None):
         "difficulty": state.get("difficulty"),
     }
 
-    return state, [], True
+    point_events = []
+    for name, item in answers.items():
+        if isinstance(item, dict):
+            pts = int(item.get("points") or 0)
+            if pts != 0:
+                point_events.append({
+                    "player_name": name,
+                    "points": pts,
+                })
+
+    return state, point_events, True
 
 
 POOL = DEFAULT_POOL

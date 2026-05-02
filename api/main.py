@@ -1181,8 +1181,30 @@ async def submit_answer(request: Request):
             "game_state": result["state"],
         }).eq("room_code", room_code).execute()
 
+        # Verificación de persistencia para Hechizo Incompleto
+        verify_room = (
+            supabase.table("rooms")
+            .select("game_state")
+            .eq("room_code", room_code)
+            .execute()
+        )
+        if verify_room.data:
+            verify_state = verify_room.data[0].get("game_state") or {}
+            saved_answers = verify_state.get("answers") or verify_state.get("answered") or {}
+            
+            if result.get("accepted") and player_name not in saved_answers:
+                print(f"HECHIZO RETRY UPDATE for {player_name}", flush=True)
+                supabase.table("rooms").update({
+                    "game_state": result["state"],
+                }).eq("room_code", room_code).execute()
+
+        print("HECHIZO SUBMIT:", room_code, player_name, answer, flush=True)
+        print("HECHIZO PHASE:", phase, flush=True)
+        print("HECHIZO ACCEPTED:", result.get("accepted"), flush=True)
+        print("HECHIZO ANSWERS:", result["state"].get("answers"), flush=True)
+
         return {
-            "message": result.get("message", "Respuesta guardada"),
+            "message": result.get("message", "Hechizo registrado."),
             "accepted": result.get("accepted", False),
             "points": result.get("points", 0),
             "correct": result.get("correct", False),

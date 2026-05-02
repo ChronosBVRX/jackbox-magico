@@ -492,6 +492,7 @@
 
   function updateTvOnly(data) {
     const state = data.game_state || {};
+    console.log("[hechizo-tv] answers", state.answers, state.answered);
     const info = getPhaseInfo(state);
 
     const seconds = document.getElementById("hechizo-tv-seconds");
@@ -650,6 +651,8 @@
     }
 
     const key = roundKey(state);
+    window.currentHechizoRoundId = state.round_id || "";
+    window.currentHechizoPhase = state.phase || "";
 
     if (key !== localRoundKey) {
       forceResetAnsweredForNewRound(state);
@@ -745,6 +748,7 @@
           player_name: playerName,
           answer,
           client_elapsed_ms: elapsedMs,
+          round_id: window.currentHechizoRoundId || null,
         }),
       });
 
@@ -1076,16 +1080,14 @@
 
   window.enviarHechizoRespuesta = enviarHechizoRespuesta;
 
-  let attempts = 0;
+  document.addEventListener("DOMContentLoaded", () => {
+    const bridgeTimer = setInterval(() => {
+      const installed = installBridge();
+      if (installed) {
+        clearInterval(bridgeTimer);
+      }
+    }, 250);
 
-  const timer = setInterval(() => {
-    attempts += 1;
-
-    if (installBridge() || attempts > 100) {
-      clearInterval(timer);
-    }
-  }, 100);
-
-  document.addEventListener("DOMContentLoaded", installBridge);
-  window.addEventListener("load", installBridge);
+    setTimeout(() => clearInterval(bridgeTimer), 10000);
+  });
 })();
