@@ -130,7 +130,16 @@ def build_payload(room: dict, state: dict):
     has_minimum_players = len(player_names) >= MIN_PLAYERS_TO_START
     has_house_coverage = house_cov["has_all_houses"]
 
-    # minimum_ready_met: al menos 4 listos Y una casa representada por cada casa
+    phase = state.get("phase")
+
+    if phase == "lobby":
+        can_show_ready = has_minimum_players and has_house_coverage
+        can_advance = can_show_ready and all_ready
+    else:
+        can_show_ready = len(player_names) > 0
+        can_advance = all_ready
+
+    # minimum_ready_met: mantenido solo como informativo (NO usar para avanzar)
     minimum_ready_met = (
         len(ready_players) >= MIN_PLAYERS_TO_START
         and ready_house_cov["has_ready_house_coverage"]
@@ -144,7 +153,9 @@ def build_payload(room: dict, state: dict):
         "ready_count": len(ready_players),
         "total_players": len(player_names),
         "all_ready": all_ready,
-        "phase": state.get("phase"),
+        "can_show_ready": can_show_ready,
+        "can_advance": can_advance,
+        "phase": phase,
         "story_mode": state.get("mode") == "story",
         "story_controlled_by": state.get("story_controlled_by") or state.get("managed_by"),
         # Cobertura de casas (todos los jugadores)
@@ -156,7 +167,7 @@ def build_payload(room: dict, state: dict):
         "ready_houses": ready_house_cov["ready_houses"],
         "missing_ready_houses": ready_house_cov["missing_ready_houses"],
         "has_ready_house_coverage": ready_house_cov["has_ready_house_coverage"],
-        # Regla principal de avance
+        # Informativo
         "minimum_ready_met": minimum_ready_met,
     }
 

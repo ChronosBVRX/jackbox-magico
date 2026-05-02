@@ -108,7 +108,7 @@
       <div class="rvp-bar-wrap">
         <div class="rvp-bar"><div class="rvp-bar-fill" id="rvp-bar-fill"></div></div>
       </div>
-      <div class="rvp-hint">La partida comenzará automáticamente cuando estén listos</div>
+      <div class="rvp-hint">Esperando a todos los jugadores</div>
     `;
 
     const card = document.querySelector(".rules-card");

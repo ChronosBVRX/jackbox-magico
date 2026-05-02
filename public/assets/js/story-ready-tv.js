@@ -19,9 +19,7 @@
     default:             6_000,
   };
 
-  // Tiempo máximo de espera antes de avanzar solo (si alguien va al baño 🚽)
-  // En lobby NO hay auto-advance — debe ser una decisión consciente.
-  const AUTO_ADVANCE_MS = 28_000;
+  // Tiempo máximo eliminado: ahora se espera indefinidamente a que todos voten.
 
   // ─── Utilidades ───────────────────────────────────────────────────────────
 
@@ -34,9 +32,7 @@
     }
   }
 
-  function getAutoAdvanceMs() {
-    return isDebugMode() ? 8_000 : AUTO_ADVANCE_MS;
-  }
+
 
   function getMinSceneMs(phase) {
     if (isDebugMode()) return 2_000;
@@ -273,23 +269,13 @@
 
     const phase = getPhase(status);
 
-    // En lobby: NO avanzar por timeout — solo si minimum_ready_met
-    const isLobby = phase === "lobby";
-    const timedOut = !isLobby && Boolean(
-      readyWindowStartedAt &&
-        Date.now() - readyWindowStartedAt >= getAutoAdvanceMs()
-    );
-    const voiceBusy = window.VoiceLinesTv?.isProcessing?.() || false;
-    const minElapsed = isMinSceneElapsed(phase);
-
     // Esperar a que el audio termine Y a que la escena haya "respirado"
-    if (voiceBusy && !timedOut) return;
-    if (!minElapsed && !timedOut) return;
+    if (voiceBusy) return;
+    if (!minElapsed) return;
 
-    // Usar minimum_ready_met como regla principal; all_ready como fallback
-    const readyEnough = ready.minimum_ready_met || ready.all_ready;
+    if (!ready.can_advance) return;
 
-    if ((!readyEnough && !timedOut) || advancingKey === ready.ready_key) return;
+    if (advancingKey === ready.ready_key) return;
     advancingKey = ready.ready_key;
 
     window.setTimeout(async () => {
@@ -309,7 +295,7 @@
 
         // Lobby con cobertura de casas → iniciar historia
         if (freshPhase === "lobby") {
-          if (!freshReady.minimum_ready_met) {
+          if (!freshReady.can_advance) {
             advancingKey = ""; // Permitir reintentar
             return;
           }
@@ -360,7 +346,7 @@
       } catch (error) {
         advancingKey = "";
       }
-    }, readyEnough ? 900 : 1_600);
+    }, 900);
   }
 
   // ─── Panel de TV (UI) ─────────────────────────────────────────────────────
@@ -397,47 +383,24 @@
     return "✅ Listos";
   }
 
-  function getRemainingSeconds() {
-    if (!readyWindowStartedAt) return Math.ceil(getAutoAdvanceMs() / 1000);
-    return Math.max(
-      0,
-      Math.ceil((getAutoAdvanceMs() - (Date.now() - readyWindowStartedAt)) / 1000)
-    );
-  }
-
   function showPanel(ready, phase) {
     const panel = ensurePanel();
     panel.classList.add("visible");
 
-    // ── Anti-flicker: skip DOM updates si los datos no cambiaron ──
-    const remaining = getRemainingSeconds();
-    const totalMs = phase === "lobby" ? 0 : getAutoAdvanceMs(); // sin barra en lobby
-    const elapsed = readyWindowStartedAt
-      ? Math.min(totalMs || 1, Date.now() - readyWindowStartedAt)
-      : 0;
-    const progress = totalMs
-      ? Math.max(0, Math.min(100, (elapsed / totalMs) * 100))
-      : 0;
+    const readyCount = Number(ready.ready_count || 0);
+    const totalPlayers = Number(ready.total_players || 0);
+    const progress = totalPlayers ? Math.min(100, (readyCount / totalPlayers) * 100) : 0;
 
-    const readyEnough = ready.minimum_ready_met || ready.all_ready;
-    const dataHash = `${phase}|${ready.ready_count || 0}/${ready.total_players || 0}|${(ready.missing_ready_houses || []).join(",")}|${(ready.missing_houses || []).join(",")}|${readyEnough}`;
+    const dataHash = `${phase}|${readyCount}/${totalPlayers}|${ready.can_advance}`;
     const barEl    = panel.querySelector(".srtv-bar span");
     const timerEl  = panel.querySelector(".srtv-timer");
 
     // La barra y el timer siempre se actualizan
     if (barEl) barEl.style.width = `${progress}%`;
     if (timerEl) {
-      if (phase === "lobby") {
-        timerEl.textContent = readyEnough
-          ? "Iniciando historia..."
-          : ready.has_house_coverage
-            ? `Mínimo 4 listos (uno por casa) — ${ready.ready_count || 0}/4`
-            : "";
-      } else {
-        timerEl.textContent = readyEnough
-          ? "Avanzando en un momento..."
-          : `Avanza automáticamente en ${remaining}s`;
-      }
+      timerEl.textContent = ready.can_advance 
+        ? "Todos listos. Continuando..." 
+        : "Esperando confirmación de todos";
     }
 
     if (dataHash === lastPanelHash) return;
@@ -466,7 +429,9 @@
       }
     }
 
-    if (titleEl) titleEl.textContent = getPhaseLabel(phase);
+    if (titleEl) {
+      titleEl.textContent = ready.can_advance ? "¡Todos listos!" : "¿Todos listos?";
+    }
 
     // Panel de casas faltantes (solo en lobby)
     if (housesEl) {
@@ -487,13 +452,13 @@
     }
 
     if (pendingEl) {
-      if (phase === "lobby" && !ready.has_house_coverage) {
-        pendingEl.textContent = "Esperando más jugadores...";
+      if (ready.can_advance) {
+        pendingEl.textContent = "Todos listos. Continuando...";
       } else {
         const pendingPlayers = ready.pending_players || [];
         pendingEl.textContent = pendingPlayers.length
           ? `Faltan: ${pendingPlayers.map(escapeHTML).join(", ")}`
-          : "¡Todos listos! Avanzando...";
+          : "";
       }
     }
   }

@@ -1,10 +1,6 @@
 (() => {
   let lastReadyKey = "";
   let lastReadySentKey = "";
-  let autoReadyTimer = null;      // setTimeout para auto-marcar listo a los 20s
-  let autoReadyFired = false;     // Evitar disparar el auto-ready dos veces
-
-  const AUTO_READY_MS = 20_000;   // 20 segundos → listo automático (no en lobby)
 
   // ─── Room / player helpers ────────────────────────────────────────────────
 
@@ -145,29 +141,7 @@
     }
   }
 
-  // ─── Auto-ready (si el jugador se va al baño 🚽) — NO en lobby ─────────────
 
-  function scheduleAutoReady(readyKey, phase) {
-    // En lobby NO auto-ready — la decisión debe ser consciente
-    if (phase === "lobby") return;
-    if (lastReadySentKey === readyKey) return;
-    if (autoReadyFired) return;
-
-    clearTimeout(autoReadyTimer);
-    autoReadyFired = false;
-
-    autoReadyTimer = setTimeout(() => {
-      if (lastReadySentKey === readyKey) return;
-      autoReadyFired = true;
-      sendReady({ auto: true });
-    }, AUTO_READY_MS);
-  }
-
-  function cancelAutoReady() {
-    clearTimeout(autoReadyTimer);
-    autoReadyTimer = null;
-    autoReadyFired = false;
-  }
 
   // ─── UI del box de "listo" ────────────────────────────────────────────────
 
@@ -191,15 +165,13 @@
     box.innerHTML = `
       <div class="srmb-badge">🪄 ¿Listos?</div>
       <div class="srmb-title">¿Listo para continuar?</div>
-      <p class="srmb-desc">Cuando todos confirmen, la TV avanzará automáticamente.</p>
+      <p class="srmb-desc">Esperando a que todos confirmen.</p>
       <div class="srmb-house-wait" id="srmb-house-wait" style="display:none"></div>
       <button type="button" id="srmb-btn">✅ Listo para continuar</button>
       <small class="srmb-count"></small>
-      <div class="srmb-auto-hint">Auto-listo en <span id="srmb-auto-counter">20</span>s</div>
     `;
 
     box.querySelector("#srmb-btn")?.addEventListener("click", () => {
-      cancelAutoReady();
       sendReady();
     });
 
@@ -239,7 +211,6 @@
       const total = readyData?.total_players || 0;
       small.textContent = `${total} jugador${total !== 1 ? "es" : ""} en sala`;
     }
-    if (autoHint) autoHint.style.display = "none";
   }
 
   function renderReadyBox(readyData, sent = false) {
@@ -250,7 +221,6 @@
     const title     = box.querySelector(".srmb-title");
     const desc      = box.querySelector(".srmb-desc");
     const houseWait = box.querySelector("#srmb-house-wait");
-    const autoHint  = box.querySelector(".srmb-auto-hint");
 
     const phase = readyData?.phase || "";
     const readyKey = readyData?.ready_key || lastReadyKey;
@@ -259,9 +229,7 @@
     if (badge)  badge.textContent  = getPhaseBadge(phase);
     if (title)  title.textContent  = getPhaseTitle(phase, sentForThisKey);
     if (desc) {
-      desc.textContent = phase === "lobby"
-        ? "Cuando los 4 representantes de cada casa confirmen, la TV iniciará automáticamente."
-        : "Cuando todos confirmen, la TV avanzará automáticamente.";
+      desc.textContent = "Esperando a que todos confirmen.";
     }
     if (houseWait) houseWait.style.display = "none"; // Solo visible en showWaitingForHouses
 
@@ -286,35 +254,15 @@
           : "Esperando jugadores...";
       }
     }
-
-    // Ocultar hint de auto-ready si ya envió o si es lobby
-    if (autoHint) autoHint.style.display = (sentForThisKey || phase === "lobby") ? "none" : "block";
   }
 
-  // ─── Cuenta regresiva del auto-ready ─────────────────────────────────────
 
-  function startCountdownDisplay(readyKey) {
-    let secs = Math.ceil(AUTO_READY_MS / 1000);
-    const counterEl = () => document.getElementById("srmb-auto-counter");
-
-    const interval = setInterval(() => {
-      if (lastReadySentKey === readyKey || lastReadyKey !== readyKey) {
-        clearInterval(interval);
-        return;
-      }
-      secs = Math.max(0, secs - 1);
-      const el = counterEl();
-      if (el) el.textContent = secs;
-      if (secs <= 0) clearInterval(interval);
-    }, 1_000);
-  }
 
   // ─── Show / Hide ──────────────────────────────────────────────────────────
 
   function hideReadyBox() {
     const box = document.getElementById("story-ready-mobile-box");
     if (box) box.classList.remove("visible");
-    cancelAutoReady();
   }
 
   function showReadyBox() {
@@ -415,16 +363,7 @@
         font-size: .82rem;
         line-height: 1.3;
       }
-      .srmb-auto-hint {
-        margin-top: 9px;
-        color: rgba(255,248,221,.48);
-        font-size: .78rem;
-        font-weight: 700;
-      }
-      #srmb-auto-counter {
-        font-weight: 1000;
-        color: #fde68a;
-      }
+
     `;
     document.head.appendChild(style);
   }
@@ -468,9 +407,6 @@
       showReadyBox();
       if (readyData.ready_key !== lastReadyKey) {
         lastReadyKey = readyData.ready_key;
-        cancelAutoReady();
-        autoReadyFired = false;
-        // NO programar auto-ready en lobby
         if (lastReadySentKey !== lastReadyKey) lastReadySentKey = "";
       }
       renderReadyBox({ ...readyData, phase }, false);
@@ -482,17 +418,9 @@
       return;
     }
 
-    // Detectar nueva clave → reiniciar auto-ready
+    // Detectar nueva clave
     if (readyData.ready_key !== lastReadyKey) {
       lastReadyKey = readyData.ready_key;
-      cancelAutoReady();
-      autoReadyFired = false;
-
-      if (lastReadySentKey !== lastReadyKey) {
-        scheduleAutoReady(lastReadyKey, phase);
-        startCountdownDisplay(lastReadyKey);
-      }
-
       if (lastReadySentKey !== lastReadyKey) lastReadySentKey = "";
     }
 
