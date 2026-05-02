@@ -1105,13 +1105,14 @@ function renderRoomPayload(data) {
       return;
     }
 
-    if (phase === "scene_rules") {
-      renderRulesScene(state);
-      return;
-    }
-
-    if (phase === "scene_instructions") {
-      renderInstructionsScene(state);
+    if (
+      phase === "scene_instructions" ||
+      phase === "scene_rules" ||
+      phase === "rules"
+    ) {
+      window.currentGameState = state;
+      window.lastKnownPhase = phase;
+      window.SceneRules?.render?.(data);
       return;
     }
 
@@ -1122,11 +1123,6 @@ function renderRoomPayload(data) {
 
     if (phase === "scene_transition") {
       renderTransitionScene(state);
-      return;
-    }
-
-    if (phase === "rules") {
-      renderRules(data);
       return;
     }
 
@@ -1719,33 +1715,6 @@ async function continueTvFlow() {
   } catch (error) {
     console.error("Error continuando flujo:", error);
   }
-}
-
-function renderInstructionsScene(state) {
-  showScreen("view-game");
-  const container = document.getElementById("game-container");
-  if (!container) return;
-
-  const lines = state.instruction_lines || [];
-
-  container.innerHTML = `
-    <section class="scene-card instructions-scene ${state.instruction_visual_theme || "default"}">
-      <div class="badge">“– Instrucciones</div>
-      <h1>${escapeHTML(state.instruction_title || "Siguiente Prueba")}</h1>
-      <p class="scene-subtitle">${escapeHTML(state.instruction_subtitle || "Prepárate para continuar.")}</p>
-      <div class="instruction-list">
-        ${lines.map((line, index) => `
-          <div class="instruction-item">
-            <span>${index + 1}</span>
-            <p>${escapeHTML(line)}</p>
-          </div>
-        `).join("")}
-      </div>
-      <div class="tv-controls-hint large">
-        <span class="key-hint">OK</span> ${escapeHTML(state.cta || "Iniciar")}
-      </div>
-    </section>
-  `;
 }
 
 function renderScoreboardScene(state) {

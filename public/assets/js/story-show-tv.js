@@ -367,6 +367,10 @@
     if (!room) return;
     const data = await fetchStatus(room);
     if (!data || data.game_state?.mode !== "story") return;
+    
+    const phase = getPhase(data);
+    if (["scene_instructions", "scene_rules", "rules"].includes(phase)) return;
+
     showDramaticReveal(data);
     showAbsurdAwards(data);
     checkLeaderChange(data);

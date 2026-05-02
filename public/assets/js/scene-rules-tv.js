@@ -1,98 +1,47 @@
 (() => {
   // ─── Anti-flicker: solo re-renderizar cuando el estado cambia ────────────
   let lastRulesRenderKey = "";
-  let voteUpdateInterval = null;
+  let readyPanelInterval = null;
 
   function getRulesRenderKey(state) {
     return [
-      state.phase,
-      state.current_game_id,
-      state.round_id,
-      state.instruction_title,
-      state.instruction_subtitle
+      state.phase || "",
+      state.current_game_id || "",
+      state.game_id || "",
+      state.round_id || "",
+      state.instruction_title || "",
+      state.story_selected_minigame_name || ""
     ].join("|");
   }
 
   function renderRules(data) {
     const state = data.game_state || {};
-    const rulesKey = getRulesRenderKey(state);
-    const isSameScene = rulesKey === lastRulesRenderKey;
+    const key = getRulesRenderKey(state);
 
     window.currentGameState = state;
     window.lastKnownPhase = state.phase;
 
-    window.showScreen("view-rules");
-    window.SceneTransition?.hide();
+    const rulesView = document.getElementById("view-rules");
+    if (!rulesView?.classList.contains("visible")) {
+      window.showScreen("view-rules");
+      window.SceneTransition?.hide();
+    }
 
-    if (isSameScene) {
+    if (key === lastRulesRenderKey) {
+      updateInlineReadyPanel();
       return;
     }
 
-    lastRulesRenderKey = rulesKey;
-      // Solo actualizar textos estáticos cuando la escena cambia
-      const titleEl  = document.getElementById("rules-title");
-      const reasonEl = document.getElementById("rules-reason");
+    lastRulesRenderKey = key;
 
-      if (titleEl) {
-        // Obtenemos las reglas del juego actual
-        const gameId = state.current_game_id || state.game_id || state.mode || "intro_general";
-        const gameRules = window.JACKBOX_GAME_RULES?.[gameId] || window.JACKBOX_GAME_RULES?.[state.phase];
-        
-        titleEl.textContent = gameRules?.title || state.story_selected_minigame_name || state.instruction_title || state.title || "Siguiente Prueba";
-      }
+    renderInstructionScreenOnce(state);
+    
+    updateInlineReadyPanel();
+    
+    clearInterval(readyPanelInterval);
+    readyPanelInterval = setInterval(updateInlineReadyPanel, 900);
 
-      if (reasonEl) {
-        const gameId = state.current_game_id || state.game_id || state.mode || "intro_general";
-        const gameRules = window.JACKBOX_GAME_RULES?.[gameId] || window.JACKBOX_GAME_RULES?.[state.phase];
-
-        reasonEl.textContent = gameRules?.rule || state.story_transition_reason || state.subtitle || "Prepárate para la siguiente dinámica...";
-
-        const rulesList = document.getElementById("rules-list");
-        if (rulesList) {
-          rulesList.innerHTML = "";
-          if (gameRules?.points) {
-            const items = gameRules.points.split("·").map(s => s.trim()).filter(Boolean);
-            items.forEach((item, index) => {
-              rulesList.innerHTML += `<div>${index + 1}. ${escapeHTML(item)}</div>`;
-            });
-          }
-        }
-      }
-
-      // ── Audio: instrucciones por gameId+roundId ──────────────────────────
-      const gameId =
-        state.current_game_id ||
-        state.game_id ||
-        state.mode ||
-        "intro_general";
-      const roundId = state.round_id || state.round_number || "1";
-      const instructionKey = `${gameId}_${roundId}`;
-
-      if (window.lastInstructionScreenVoiceKey !== instructionKey) {
-        window.lastInstructionScreenVoiceKey = instructionKey;
-        window.lastVoicePhase = "rules";
-        window.currentGameInstructionId   = gameId;
-        window.currentInstructionRoundId  = roundId;
-
-        setTimeout(() => {
-          if (window.VoiceLinesTv?.interruptAndPlayInstruction) {
-            window.VoiceLinesTv.interruptAndPlayInstruction(gameId, roundId, true);
-          } else {
-            window.VoiceLinesTv?.stop?.();
-            window.VoiceLinesTv?.playInstructionVoice?.(gameId, roundId, true);
-          }
-        }, 150);
-      }
-
-      // ── Montar el panel de votos (solo una vez por escena) ───────────────
-      ensureVotePanel();
-
-      // ── Iniciar el intervalo de actualización de votos ───────────────────
-      clearInterval(voteUpdateInterval);
-      voteUpdateInterval = setInterval(updateVotePanel, 900);
-      updateVotePanel(); // Actualización inicial inmediata
-
-    // ── acceptRules global para story-ready-tv.js ──────────────────────────
+    playInstructionVoiceOnce(state);
     window.acceptRules = async () => {
       window.SceneTransition?.show("¡Que comience la magia!");
       const room =
@@ -115,6 +64,59 @@
 
     if (typeof window.checkAutoAcceptRules === "function") {
       window.checkAutoAcceptRules(data);
+    }
+  }
+
+  function renderInstructionScreenOnce(state) {
+    const titleEl  = document.getElementById("rules-title");
+    const reasonEl = document.getElementById("rules-reason");
+
+    if (titleEl) {
+      const gameId = state.current_game_id || state.game_id || state.mode || "intro_general";
+      const gameRules = window.JACKBOX_GAME_RULES?.[gameId] || window.JACKBOX_GAME_RULES?.[state.phase];
+      titleEl.textContent = gameRules?.title || state.story_selected_minigame_name || state.instruction_title || state.title || "Siguiente Prueba";
+    }
+
+    if (reasonEl) {
+      const gameId = state.current_game_id || state.game_id || state.mode || "intro_general";
+      const gameRules = window.JACKBOX_GAME_RULES?.[gameId] || window.JACKBOX_GAME_RULES?.[state.phase];
+
+      reasonEl.textContent = gameRules?.rule || state.story_transition_reason || state.subtitle || "Prepárate para la siguiente dinámica...";
+
+      const rulesList = document.getElementById("rules-list");
+      if (rulesList) {
+        rulesList.innerHTML = "";
+        if (gameRules?.points) {
+          const items = gameRules.points.split("·").map(s => s.trim()).filter(Boolean);
+          items.forEach((item, index) => {
+            rulesList.innerHTML += `<div>${index + 1}. ${escapeHTML(item)}</div>`;
+          });
+        }
+      }
+    }
+    
+    ensureVotePanel();
+  }
+
+  function playInstructionVoiceOnce(state) {
+    const gameId = state.current_game_id || state.game_id || state.mode || "intro_general";
+    const roundId = state.round_id || state.round_number || "1";
+    const instructionKey = `${gameId}_${roundId}`;
+
+    if (window.lastInstructionScreenVoiceKey !== instructionKey) {
+      window.lastInstructionScreenVoiceKey = instructionKey;
+      window.lastVoicePhase = "rules";
+      window.currentGameInstructionId   = gameId;
+      window.currentInstructionRoundId  = roundId;
+
+      setTimeout(() => {
+        if (window.VoiceLinesTv?.interruptAndPlayInstruction) {
+          window.VoiceLinesTv.interruptAndPlayInstruction(gameId, roundId, true);
+        } else {
+          window.VoiceLinesTv?.stop?.();
+          window.VoiceLinesTv?.playInstructionVoice?.(gameId, roundId, true);
+        }
+      }, 150);
     }
   }
 
@@ -142,11 +144,10 @@
   // Cache del último estado del panel para evitar re-renders innecesarios
   let lastVotePanelHash = "";
 
-  async function updateVotePanel() {
+  async function updateInlineReadyPanel() {
     const panel = document.getElementById("rules-vote-panel");
     if (!panel) return;
 
-    // Solo actualizar si la pantalla de reglas está visible
     if (!document.getElementById("view-rules")?.classList.contains("visible")) return;
 
     const room =
@@ -218,8 +219,8 @@
   // Limpiar intervalo cuando la pantalla de reglas ya no esté visible
   setInterval(() => {
     if (!document.getElementById("view-rules")?.classList.contains("visible")) {
-      clearInterval(voteUpdateInterval);
-      voteUpdateInterval = null;
+      clearInterval(readyPanelInterval);
+      readyPanelInterval = null;
       lastRulesRenderKey = ""; // Forzar re-montaje en próxima visita
       lastVotePanelHash = "";
       // Remover panel para que se monte fresco en la siguiente escena
