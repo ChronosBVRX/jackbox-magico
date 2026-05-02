@@ -404,7 +404,8 @@
     "copa_final",
     "scene_instructions",
     "scene_rules",
-    "rules"
+    "rules",
+    "lobby"
   ]);
 
   function renderOverlay(data) {

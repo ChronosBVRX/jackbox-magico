@@ -498,36 +498,72 @@
     }
   }
 
-  // Panel de espera en lobby cuando todavía faltan casas
-  function showLobbyWaitPanel(ready) {
-    const panel = ensurePanel();
-    panel.classList.add("visible");
+  // ─── Ready Status en línea para Lobby ─────────────────────────────────────
+  function shouldUseInlineReadyPanel(phase) {
+    return (
+      phase === "lobby" ||
+      phase === "scene_instructions" ||
+      phase === "scene_rules" ||
+      phase === "rules"
+    );
+  }
 
-    const missing = ready.missing_houses || [];
-    const dataHash = `lobby-wait|${missing.join(",")}|${ready.total_players || 0}`;
-    if (dataHash === lastPanelHash) return;
-    lastPanelHash = dataHash;
+  function renderInlineReadyStatus(status, ready, phase) {
+    const target = document.getElementById("lobby-ready-status");
+    if (!target) return;
 
-    const iconEl   = panel.querySelector(".srtv-icon");
-    const countEl  = panel.querySelector(".srtv-count");
-    const titleEl  = panel.querySelector(".srtv-title");
-    const pendEl   = panel.querySelector(".srtv-pending");
-    const housesEl = panel.querySelector(".srtv-houses");
-    const timerEl  = panel.querySelector(".srtv-timer");
-    const barEl    = panel.querySelector(".srtv-bar span");
-
-    if (iconEl)   iconEl.textContent = "🏰";
-    if (countEl)  countEl.textContent = `${ready.total_players || 0}`;
-    if (titleEl)  titleEl.textContent = "Esperando jugadores...";
-    if (pendEl)   pendEl.textContent = `${ready.total_players || 0} en sala`;
-    if (housesEl) {
-      housesEl.textContent = missing.length
-        ? `Falta representante de: ${missing.join(", ")}`
-        : "";
-      housesEl.style.display = missing.length ? "block" : "none";
+    if (phase !== "lobby") {
+      target.innerHTML = "";
+      return;
     }
-    if (timerEl) timerEl.textContent = "Se necesita al menos 1 jugador por casa";
-    if (barEl)   barEl.style.width = "0%";
+
+    const readyCount = Number(ready.ready_count || 0);
+    const totalPlayers = Number(ready.total_players || 0);
+    const minRequired = 4;
+    const progress = Math.min(100, (readyCount / minRequired) * 100);
+
+    const missingHouses = ready.missing_houses || [];
+    const pendingPlayers = ready.pending_players || [];
+
+    let title = "Esperando jugadores...";
+    let message = "Se necesita al menos 1 jugador por casa.";
+    let detail = "";
+
+    if (!ready.has_minimum_players || !ready.has_house_coverage) {
+      title = "Esperando jugadores...";
+      detail = missingHouses.length
+        ? `Faltan casas: ${missingHouses.join(", ")}`
+        : "Esperando que entren más jugadores.";
+    } else if (!ready.minimum_ready_met) {
+      title = "¿Todos listos?";
+      message = "Los celulares ya pueden confirmar.";
+      detail = pendingPlayers.length
+        ? `Faltan: ${pendingPlayers.join(", ")}`
+        : "Esperando confirmaciones.";
+    } else {
+      title = "¡Todos listos!";
+      message = "La partida comenzará automáticamente.";
+      detail = "Preparando la siguiente escena...";
+    }
+
+    target.innerHTML = `
+      <div class="lobby-ready-card">
+        <div class="lobby-ready-top">
+          <span class="lobby-ready-icon">⚡</span>
+          <div>
+            <h3>${escapeHTML(title)}</h3>
+            <p>${escapeHTML(message)}</p>
+          </div>
+          <strong>${readyCount}/${minRequired}</strong>
+        </div>
+
+        <div class="lobby-ready-detail">${escapeHTML(detail)}</div>
+
+        <div class="lobby-ready-bar">
+          <span style="width:${progress}%"></span>
+        </div>
+      </div>
+    `;
   }
 
   function hidePanel() {
@@ -669,19 +705,23 @@
     const ready = await fetchReadyStatus(room);
     if (!ready) return;
 
-    // En lobby sin cobertura de casas → mostrar panel de espera, no ready-check
+    // En lobby sin cobertura de casas → mostrar inline ready status (ahora se encarga renderInlineReadyStatus)
     if (phase === "lobby" && !ready.has_house_coverage) {
       // Resetear timers si venimos de otra fase
       readyWindowStartedAt = 0;
       sceneEnteredAt = 0;
       advancingKey = "";
       lastReadyKey = "";
-      showLobbyWaitPanel(ready);
+      hidePanel();
+      renderInlineReadyStatus(status, ready, phase);
       return;
     }
 
     if (!shouldWaitForReady(status, ready)) {
       hidePanel();
+      if (phase !== "lobby") {
+        renderInlineReadyStatus(status, ready, "none"); // Limpiar si es necesario
+      }
       readyWindowStartedAt = 0;
       sceneEnteredAt = 0;
       return;
@@ -698,10 +738,12 @@
       sceneEnteredAt = Date.now();
     }
 
-    if (["scene_instructions", "scene_rules", "rules"].includes(phase)) {
+    if (shouldUseInlineReadyPanel(phase)) {
       hidePanel();
+      renderInlineReadyStatus(status, ready, phase);
     } else {
       showPanel(ready, phase);
+      renderInlineReadyStatus(status, ready, "none"); // Clear it just in case
     }
 
     await advanceAfterReady(room, status, ready);
