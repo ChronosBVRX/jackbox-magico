@@ -1582,6 +1582,8 @@ async def finish_trivia_endpoint(request: Request, room_code: str):
         payload = {}
 
     tv_token = payload.get("tv_token")
+    force = payload.get("force", False)
+
     if not tv_token:
         raise HTTPException(status_code=403, detail="Falta tv_token. Solo la TV puede cerrar la pregunta.")
 
@@ -1606,9 +1608,17 @@ async def finish_trivia_endpoint(request: Request, room_code: str):
     if state.get("scored") or state.get("results_applied"):
         return {"phase": state.get("phase")}
 
-    # Validar si el tiempo realmente terminó o si podemos forzarlo
-    # Para forzar el cierre sin validación de tiempo exacta (a solicitud de la TV que lo cuenta) 
-    # procedemos a cerrarlo
+    duration = float(state.get("duration_seconds") or 20)
+    started_at = float(state.get("started_at") or 0)
+    
+    import time
+    now = time.time()
+    
+    if not force and started_at > 0:
+        elapsed = now - started_at
+        if elapsed < duration:
+            # Aún hay tiempo, no forzar cierre a menos que force == True
+            return {"phase": state.get("phase")}
 
     players = (
         supabase.table("players")

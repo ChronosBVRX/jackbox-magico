@@ -1088,8 +1088,16 @@ function renderRoomPayload(data) {
 
   if (data.status === "playing") {
     const state = data.game_state || {};
-    window.currentGameState = state;
     const phase = state.phase || "lobby";
+    
+    window.currentGameState = state;
+    window.lastKnownPhase = phase;
+
+    const tvSceneAudioKey = `${phase}:${state.current_game_id || ""}:${state.round_id || ""}:${state.question || ""}`;
+    if (typeof window.lastTvSceneAudioKey === "undefined" || window.lastTvSceneAudioKey !== tvSceneAudioKey) {
+      window.lastTvSceneAudioKey = tvSceneAudioKey;
+      window.VoiceLinesTv?.stop?.();
+    }
     
     // Fases de Escenas Especiales (Jackbox Style)
     if (phase === "scene_intro") {

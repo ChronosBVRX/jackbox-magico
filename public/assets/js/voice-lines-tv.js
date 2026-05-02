@@ -599,11 +599,30 @@
   window.playVoiceLine = playVoiceLine;
   window.playInstructionVoice = playInstructionVoice;
 
+  function interruptAndPlayInstruction(gameId, roundId = "1", forceRepeat = false) {
+    clearQueue();
+    stopCurrentAudio();
+    lastInstructionPlayed = "";
+    return playInstructionVoice(gameId, roundId, forceRepeat);
+  }
+
+  function interruptAndPlay(eventName, options = {}) {
+    clearQueue();
+    stopCurrentAudio();
+    return playVoiceLine(eventName, {
+      ...options,
+      force: true,
+      clearQueue: true
+    });
+  }
+
   window.VoiceLinesTv = {
     play: playVoiceLine,
     playVoiceLine,
     playInstruction: playInstructionVoice,
     playInstructionVoice,
+    interruptAndPlayInstruction,
+    interruptAndPlay,
     toggleMute,
     isMuted: () => !isVoiceEnabled(),
     isVoiceEnabled,

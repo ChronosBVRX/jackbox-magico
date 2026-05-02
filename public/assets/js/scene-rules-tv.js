@@ -1,20 +1,34 @@
 (() => {
   // ─── Anti-flicker: solo re-renderizar cuando el estado cambia ────────────
-  let lastRulesKey = "";
+  let lastRulesRenderKey = "";
   let voteUpdateInterval = null;
+
+  function getRulesRenderKey(state) {
+    return [
+      state.phase,
+      state.current_game_id,
+      state.round_id,
+      state.instruction_title,
+      state.instruction_subtitle
+    ].join("|");
+  }
 
   function renderRules(data) {
     const state = data.game_state || {};
+    const rulesKey = getRulesRenderKey(state);
+    const isSameScene = rulesKey === lastRulesRenderKey;
 
-    // Clave única para la escena actual — si no cambió, no re-renderizar el card
-    const rulesKey = `${state.phase}_${state.current_game_id || ""}_${state.round_id || ""}`;
-    const isNewScene = rulesKey !== lastRulesKey;
-    lastRulesKey = rulesKey;
+    window.currentGameState = state;
+    window.lastKnownPhase = state.phase;
 
     window.showScreen("view-rules");
     window.SceneTransition?.hide();
 
-    if (isNewScene) {
+    if (isSameScene) {
+      return;
+    }
+
+    lastRulesRenderKey = rulesKey;
       // Solo actualizar textos estáticos cuando la escena cambia
       const titleEl  = document.getElementById("rules-title");
       const reasonEl = document.getElementById("rules-reason");
@@ -60,10 +74,14 @@
         window.currentGameInstructionId   = gameId;
         window.currentInstructionRoundId  = roundId;
 
-        const played = window.VoiceLinesTv?.playInstructionVoice?.(gameId, roundId);
-        if (!played) {
-          window.VoiceLinesTv?.playVoiceLine?.("rules", { volume: 0.95 });
-        }
+        setTimeout(() => {
+          if (window.VoiceLinesTv?.interruptAndPlayInstruction) {
+            window.VoiceLinesTv.interruptAndPlayInstruction(gameId, roundId, true);
+          } else {
+            window.VoiceLinesTv?.stop?.();
+            window.VoiceLinesTv?.playInstructionVoice?.(gameId, roundId, true);
+          }
+        }, 150);
       }
 
       // ── Montar el panel de votos (solo una vez por escena) ───────────────
@@ -71,9 +89,8 @@
 
       // ── Iniciar el intervalo de actualización de votos ───────────────────
       clearInterval(voteUpdateInterval);
-      voteUpdateInterval = setInterval(updateVotePanel, 1200);
+      voteUpdateInterval = setInterval(updateVotePanel, 900);
       updateVotePanel(); // Actualización inicial inmediata
-    }
 
     // ── acceptRules global para story-ready-tv.js ──────────────────────────
     window.acceptRules = async () => {
@@ -107,24 +124,11 @@
   // ────────────────────────────────────────────────────────────────────────
 
   function ensureVotePanel() {
-    if (document.getElementById("rules-vote-panel")) return; // Ya existe
+    if (document.getElementById("rules-vote-panel")) return;
 
     const panel = document.createElement("div");
     panel.id = "rules-vote-panel";
-    panel.className = "rules-vote-panel";
-    panel.innerHTML = `
-      <div class="rvp-status-row">
-        <div class="rvp-count-badge">
-          <span class="rvp-icon">⚡</span>
-          <span id="rvp-count">0/0</span> listos
-        </div>
-        <div class="rvp-missing" id="rvp-names">Esperando a todos...</div>
-      </div>
-      <div class="rvp-bar-wrap">
-        <div class="rvp-bar"><div class="rvp-bar-fill" id="rvp-bar-fill"></div></div>
-      </div>
-      <div class="rvp-hint">Esperando a todos los jugadores</div>
-    `;
+    panel.className = "rules-inline-ready";
 
     const container = document.getElementById("rules-vote-panel-container");
     if (container) {
@@ -133,8 +137,6 @@
       const card = document.querySelector(".rules-clean-card") || document.querySelector(".rules-card");
       if (card) card.appendChild(panel);
     }
-
-    injectVotePanelStyles();
   }
 
   // Cache del último estado del panel para evitar re-renders innecesarios
@@ -166,29 +168,39 @@
       const totalPlayers = Number(ready.total_players || 0);
       const pct          = totalPlayers > 0 ? (readyCount / totalPlayers) * 100 : 0;
 
+      const readyPlayers = ready.ready_players || [];
+      const pendingNames = ready.pending_players || [];
+
       // Hash para evitar actualizaciones sin cambio de datos (anti-flicker)
-      const hash = `${readyCount}/${totalPlayers}|${(ready.ready_players || []).join(",")}`;
+      const hash = `${readyCount}/${totalPlayers}|${readyPlayers.join(",")}`;
       if (hash === lastVotePanelHash) return;
       lastVotePanelHash = hash;
 
-      const countEl   = document.getElementById("rvp-count");
-      const namesEl   = document.getElementById("rvp-names");
-      const barFillEl = document.getElementById("rvp-bar-fill");
+      panel.innerHTML = `
+        <div class="rules-ready-card">
+          <div class="rules-ready-header">
+            <span>⚡ Jugadores listos</span>
+            <strong>${readyCount}/${totalPlayers}</strong>
+          </div>
 
-      if (countEl) countEl.textContent = `${readyCount}/${totalPlayers}`;
+          <div class="rules-ready-names">
+            ${readyPlayers.map(name => \`<span class="ready">✓ \${escapeHTML(name)}</span>\`).join("")}
+            ${pendingNames.map(name => \`<span class="pending">\${escapeHTML(name)}</span>\`).join("")}
+          </div>
 
-      if (namesEl) {
-        const pendingNames = ready.pending_players || [];
-        if (pendingNames.length === 0) {
-          namesEl.textContent = "¡Todos listos!";
-          namesEl.className = "rvp-missing all-ready";
-        } else {
-          namesEl.textContent = `Faltan: ${pendingNames.map(escapeHTML).join(", ")}`;
-          namesEl.className = "rvp-missing";
-        }
-      }
+          <div class="rules-ready-bar">
+            <span style="width:${pct}%"></span>
+          </div>
 
-      if (barFillEl) barFillEl.style.width = `${pct}%`;
+          <p class="rules-ready-help">
+            ${ready.can_advance || ready.all_ready
+              ? "Todos listos. Comenzando..."
+              : pendingNames.length
+                ? \`Faltan: \${escapeHTML(pendingNames.join(", "))}\`
+                : "Esperando confirmaciones..."}
+          </p>
+        </div>
+      `;
     } catch (_) {}
   }
 
@@ -201,87 +213,14 @@
       .replaceAll("'", "&#039;");
   }
 
-  function injectVotePanelStyles() {
-    if (document.getElementById("rules-vote-panel-style")) return;
-    const style = document.createElement("style");
-    style.id = "rules-vote-panel-style";
-    style.textContent = `
-      .rules-vote-panel {
-        margin-top: 32px;
-        padding-top: 24px;
-        border-top: 1px solid rgba(255,216,121,.15);
-        color: #fff7dc;
-        animation: rvp-in .5s ease both;
-      }
-      @keyframes rvp-in {
-        from { opacity: 0; transform: translateY(10px); }
-        to   { opacity: 1; transform: translateY(0); }
-      }
-      .rvp-status-row {
-        display: flex;
-        align-items: center;
-        gap: 16px;
-        margin-bottom: 12px;
-      }
-      .rvp-count-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        padding: 6px 14px;
-        border-radius: 999px;
-        background: rgba(250,204,21,.15);
-        border: 1px solid rgba(250,204,21,.3);
-        color: #fde047;
-        font-weight: 900;
-        font-size: .85rem;
-        text-transform: uppercase;
-        letter-spacing: .05em;
-      }
-      .rvp-icon { font-size: 1.1rem; }
-      #rvp-count {
-        font-size: 1.1rem;
-        color: #fff;
-      }
-      .rvp-missing {
-        font-size: .95rem;
-        font-weight: 700;
-        color: rgba(255,248,221,.65);
-      }
-      .rvp-missing.all-ready {
-        color: #86efac;
-      }
-      .rvp-bar-wrap {
-        margin-bottom: 10px;
-      }
-      .rvp-bar { 
-        height: 6px; 
-        border-radius: 999px; 
-        background: rgba(255,255,255,.08); 
-        overflow: hidden; 
-      }
-      .rvp-bar-fill {
-        height: 100%;
-        border-radius: inherit;
-        background: linear-gradient(90deg, #86efac, #facc15, #f97316);
-        transition: width .5s cubic-bezier(0.4,0,0.2,1);
-        width: 0%;
-      }
-      .rvp-hint {
-        font-size: .8rem;
-        color: rgba(255,248,221,.5);
-        font-weight: 700;
-        text-align: center;
-      }
-    `;
-    document.head.appendChild(style);
-  }
+
 
   // Limpiar intervalo cuando la pantalla de reglas ya no esté visible
   setInterval(() => {
     if (!document.getElementById("view-rules")?.classList.contains("visible")) {
       clearInterval(voteUpdateInterval);
       voteUpdateInterval = null;
-      lastRulesKey = ""; // Forzar re-montaje en próxima visita
+      lastRulesRenderKey = ""; // Forzar re-montaje en próxima visita
       lastVotePanelHash = "";
       // Remover panel para que se monte fresco en la siguiente escena
       document.getElementById("rules-vote-panel")?.remove();

@@ -36,7 +36,7 @@
     const room = window.getRoomCodeFromTv ? window.getRoomCodeFromTv() : (localStorage.getItem("jackbox_magico_room") || "");
     const token = window.getTvTokenFromTv ? window.getTvTokenFromTv() : (localStorage.getItem("jackbox_tv_token") || "");
 
-    const key = `${room}:${state.round_id || state.question}`;
+    const key = `${room}:${state.round_id || state.question || "trivia"}`;
 
     if (finishingTriviaKey === key) return;
     finishingTriviaKey = key;
@@ -45,20 +45,26 @@
       await fetch(`/api/trivia/${room}/finish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tv_token: token })
+        body: JSON.stringify({ tv_token: token, force: false })
       });
     } catch (e) {
-      console.error("Failed to finish trivia", e);
+      console.error("Error cerrando trivia", e);
       finishingTriviaKey = ""; // Reset on error so we can retry
     }
   }
 
-  function maybeAutoClose(state) {
-    if (state.phase !== "trivia") return;
+  function maybeFinishTrivia(state) {
+    if (!state || state.phase !== "trivia") return;
 
-    const left = updateTimer(state);
+    const duration = Number(state.duration_seconds || 20);
+    const startedAt = Number(state.started_at || 0) * 1000;
 
-    if (left <= 0 && state.started_at) {
+    if (!startedAt || !duration) return;
+
+    const elapsed = Math.max(0, Date.now() - startedAt) / 1000;
+    const left = Math.max(0, duration - elapsed);
+
+    if (left <= 0) {
       finishTriviaFromTv(state);
     }
   }
@@ -84,7 +90,7 @@
     if (key === lastTriviaRenderKey) {
       updateTimer(state);
       updateAnsweredCount(state, players);
-      maybeAutoClose(state);
+      maybeFinishTrivia(state);
       return;
     }
 
@@ -151,5 +157,5 @@
     updateTimer(state);
   }
 
-  window.SceneTrivia = { render, updateTimer, maybeAutoClose };
+  window.SceneTrivia = { render, updateTimer, updateAnsweredCount, maybeFinishTrivia };
 })();
