@@ -384,9 +384,10 @@
   }
 
   function showPanel(ready, phase) {
-    const noExtraOverlayPhases = new Set(["scene_instructions", "scene_rules", "rules"]);
+    const noExtraOverlayPhases = new Set(["scene_instructions", "scene_rules", "rules", "lobby"]);
     if (noExtraOverlayPhases.has(phase)) {
       hidePanel();
+      if (phase === "lobby") showLobbyInlineReady(ready);
       return;
     }
 
@@ -487,51 +488,46 @@
       target.innerHTML = "";
       return;
     }
+  }
+
+
+  function showLobbyInlineReady(ready) {
+    const target = document.getElementById("lobby-ready-status");
+    if (!target) return;
 
     const readyCount = Number(ready.ready_count || 0);
     const totalPlayers = Number(ready.total_players || 0);
-    const minRequired = 4;
-    const progress = Math.min(100, (readyCount / minRequired) * 100);
-
-    const missingHouses = ready.missing_houses || [];
+    const progress = totalPlayers ? Math.min(100, (readyCount / totalPlayers) * 100) : 0;
+    
+    let title = "Estado";
+    let detail = "";
     const pendingPlayers = ready.pending_players || [];
 
-    let title = "Esperando jugadores...";
-    let message = "Se necesita al menos 1 jugador por casa.";
-    let detail = "";
-
-    if (!ready.has_minimum_players || !ready.has_house_coverage) {
-      title = "Esperando jugadores...";
+    if (!ready.has_house_coverage) {
+      const missingHouses = ready.missing_houses || [];
+      title = "Faltan Casas";
       detail = missingHouses.length
-        ? `Faltan casas: ${missingHouses.join(", ")}`
+        ? `Se necesitan representantes de: ${missingHouses.join(", ")}`
         : "Esperando que entren más jugadores.";
-    } else if (!ready.minimum_ready_met) {
-      title = "¿Todos listos?";
-      message = "Los celulares ya pueden confirmar.";
+    } else if (!ready.can_advance) {
+      title = "¿Están listos?";
       detail = pendingPlayers.length
         ? `Faltan: ${pendingPlayers.join(", ")}`
         : "Esperando confirmaciones.";
     } else {
       title = "¡Todos listos!";
-      message = "La partida comenzará automáticamente.";
-      detail = "Preparando la siguiente escena...";
+      detail = "La partida comenzará automáticamente.";
     }
 
     target.innerHTML = `
-      <div class="lobby-ready-card">
-        <div class="lobby-ready-top">
-          <span class="lobby-ready-icon">⚡</span>
-          <div>
-            <h3>${escapeHTML(title)}</h3>
-            <p>${escapeHTML(message)}</p>
-          </div>
-          <strong>${readyCount}/${minRequired}</strong>
+      <div class="lobby-inline-ready-card" style="margin-top: 16px; padding: 16px; background: rgba(5, 10, 24, 0.8); border: 1px solid rgba(255,216,121,0.3); border-radius: 12px; color: #fff;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+          <h3 style="margin: 0; color: #facc15; font-size: 1.1rem;">⚡ ${escapeHTML(title)}</h3>
+          <strong style="font-size: 1.2rem; color: #86efac;">${readyCount}/${Math.max(4, totalPlayers)}</strong>
         </div>
-
-        <div class="lobby-ready-detail">${escapeHTML(detail)}</div>
-
-        <div class="lobby-ready-bar">
-          <span style="width:${progress}%"></span>
+        <div style="font-size: 0.9rem; color: #ffe7a3; margin-bottom: 12px;">${escapeHTML(detail)}</div>
+        <div style="height: 6px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+          <div style="height: 100%; background: linear-gradient(90deg, #86efac, #facc15); width: ${progress}%; transition: width 0.3s ease;"></div>
         </div>
       </div>
     `;
