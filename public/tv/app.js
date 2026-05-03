@@ -1242,6 +1242,42 @@ function renderPlaying(data) {
     }
   }
 
+  if (state.phase === "artes_ridiculas") {
+    if (window.ArtesRidiculasTv?.renderPlaying) {
+      const container = document.getElementById("game-container");
+      window.ArtesRidiculasTv.renderPlaying(state, container);
+
+      // Auto-advance logic
+      const totalPlayers = (players || []).filter(p => p.house).length;
+      const answeredCount = Object.keys(state.answered || {}).length;
+      const now = Date.now() / 1000;
+      const startedAt = state.started_at || now;
+      const duration = state.duration_seconds || 6;
+      const timeUp = (now > startedAt + duration);
+
+      if (state.round_reveal) {
+        // Handle partial reveal timeout -> move to next round
+        if (!window._artesTransitionLock) {
+          const revealStart = state.round_reveal_started_at || now;
+          const revealDuration = state.round_reveal_seconds || 4;
+          if (now > revealStart + revealDuration) {
+            window._artesTransitionLock = true;
+            revelarResultados();
+            setTimeout(() => { window._artesTransitionLock = false; }, 2000);
+          }
+        }
+      } else {
+        // Handle threat phase end -> move to partial reveal
+        if ((answeredCount >= totalPlayers || timeUp) && totalPlayers > 0 && !window._artesTransitionLock) {
+          window._artesTransitionLock = true;
+          revelarResultados();
+          setTimeout(() => { window._artesTransitionLock = false; }, 2000);
+        }
+      }
+      return;
+    }
+  }
+
   if (state.phase === "atrapa_snitch") {
     if (typeof window.renderSnitchTv === "function") {
       window.renderSnitchTv(state, players, {
@@ -1553,6 +1589,21 @@ function renderResults(data) {
     if (title) title.innerText = "Clase de Pociones: Resultados";
     if (extra && window.PocionesTv?.renderResults) {
       window.PocionesTv.renderResults(state, extra);
+    } else {
+      renderGenericResults(state, players);
+    }
+    if (scores) scores.innerHTML = renderScoreGrid(players);
+    return;
+  }
+
+  if (phase === "results_artes_ridiculas") {
+    const title = document.getElementById("titulo-resultados");
+    const extra = document.getElementById("tv-extra-results");
+    const scores = document.getElementById("tv-marcadores");
+
+    if (title) title.innerText = "Artes Ridículas: Resultados";
+    if (extra && window.ArtesRidiculasTv?.renderResults) {
+      window.ArtesRidiculasTv.renderResults(state, extra);
     } else {
       renderGenericResults(state, players);
     }

@@ -580,6 +580,17 @@ function iniciarRadarMovil() {
           return;
         }
 
+        if (phase === "artes_ridiculas") {
+          if (window.ArtesRidiculasMobile?.renderPlaying) {
+            const container = document.getElementById("mobile-app");
+            window.ArtesRidiculasMobile.renderPlaying(state, container, myName);
+          } else {
+            renderArtesRidiculasMobile(state);
+            updateMobileTimer(state);
+          }
+          return;
+        }
+
         const answered = state.answered || {};
         const iAlreadyAnswered = Boolean(answered[myName]);
 

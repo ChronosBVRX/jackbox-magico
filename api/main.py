@@ -1278,7 +1278,7 @@ async def submit_answer(request: Request):
             client_elapsed_ms=client_elapsed_ms,
         )
 
-        add_points(room_id, player_name, result.get("points", 0))
+        # Immediate points removed to avoid duplication; points now applied in reveal_results at the end.
 
         supabase.table("rooms").update({
             "game_state": result["state"],
@@ -1508,6 +1508,26 @@ async def reveal_results(room_code: str):
 
         return {
             "message": "Hechizo Incompleto revelado",
+            "is_final": is_final,
+        }
+
+    if state.get("phase") == "artes_ridiculas":
+        state, point_events, is_final = artes_ridiculas.resolve_for_reveal(
+            state=state,
+            players=players,
+        )
+
+        if is_final:
+            apply_point_events(room_id, point_events)
+
+        state = force_tv_authority(state)
+
+        supabase.table("rooms").update({
+            "game_state": state,
+        }).eq("room_code", room_code.upper()).execute()
+
+        return {
+            "message": "Defensa Contra las Artes Ridículas revelada",
             "is_final": is_final,
         }
 

@@ -49,11 +49,27 @@ GAME_CATALOG = {
         "points": {"perfect": 150, "one_error": 80, "two_errors": 40, "fastest_bonus": 50, "house_shared_bonus": 50},
     },
     "artes_ridiculas": {
-        "name": "Defensa Contra las Artes Ridículas", "short_name": "Artes Ridículas", "status": "implemented", "featured": True, "mode": "quiz_humor",
+        "name": "Defensa Contra las Artes Ridículas",
+        "short_name": "Artes Ridículas",
+        "status": "implemented",
+        "featured": True,
+        "mode": "quiz_humor",
         "players": {"max_total": 8, "max_per_house": 2},
-        "description": "Parodia de clase de defensa mágica con amenazas absurdas y respuestas graciosas. Ideal para hacer reír al bar.",
-        "rules": ["La TV muestra una amenaza ridícula.", "Cada jugador elige una respuesta.", "Una respuesta es correcta y otras son distractores humorísticos.", "Puede haber bonus por respuesta falsa graciosa."],
-        "points": {"correct": 100, "fast_bonus": 30, "streak3": 80, "wrong": -20, "funny_false": 20},
+        "description": "Mini clase de 3 amenazas absurdas. Elige la defensa más sensata (o ridícula) contra los problemas de la vida mágica moderna.",
+        "rules": [
+            "La clase consta de 3 rondas (amenazas).",
+            "Cada amenaza dura 6 segundos.",
+            "Solo una defensa es correcta.",
+            "Gana bonus por rapidez y racha de 3 correctas.",
+            "Elegir la respuesta más graciosa otorga puntos extra de humor."
+        ],
+        "points": {
+            "correct": 100,
+            "fast_bonus": 30,
+            "streak_bonus": 80,
+            "funny_bonus": 20,
+            "wrong": -20
+        }
     },
     "mapa_travieso": {
         "name": "El Mapa Travieso",
