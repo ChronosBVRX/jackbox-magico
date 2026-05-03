@@ -61,6 +61,8 @@
     return localStorage.getItem("jackbox_magico_tv_token") || "";
   }
 
+  let triviaFinishAttempts = {};
+
   async function finishTriviaFromTv(state) {
     const room = getRoomCodeFromTv();
     const token = getTvTokenFromTv();
@@ -73,7 +75,15 @@
     const key = `${room}:${state.round_id || state.question || "trivia"}`;
 
     if (finishingTriviaKey === key) return;
+    
+    const attempts = triviaFinishAttempts[key] || 0;
+    if (attempts >= 3) {
+      console.error("Trivia finish detenido después de 3 intentos fallidos:", key);
+      return;
+    }
+
     finishingTriviaKey = key;
+    triviaFinishAttempts[key] = attempts + 1;
 
     try {
       const res = await fetch(`/api/trivia/${room}/finish`, {
@@ -84,10 +94,11 @@
       });
 
       let data = null;
+      const text = await res.text();
       try {
-        data = await res.json();
+        data = text ? JSON.parse(text) : null;
       } catch (_) {
-        data = null;
+        data = { raw: text };
       }
 
       if (!res.ok) {
@@ -99,12 +110,13 @@
           if (state && state.phase === "trivia") {
             finishTriviaFromTv(state);
           }
-        }, 1200);
+        }, 1500);
 
         return;
       }
 
       console.log("Trivia cerrada correctamente:", data);
+      triviaFinishAttempts[key] = 0;
     } catch (e) {
       console.error("Error cerrando trivia", e);
       finishingTriviaKey = "";
@@ -113,7 +125,7 @@
         if (state && state.phase === "trivia") {
           finishTriviaFromTv(state);
         }
-      }, 1200);
+      }, 1500);
     }
   }
 
