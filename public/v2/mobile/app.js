@@ -2,8 +2,10 @@ const socket = io();
 
 const joinForm = document.getElementById('join-form');
 const waitScreen = document.getElementById('wait-screen');
-const btnJoin = document.getElementById('btn-join');
+const triviaInput = document.getElementById('trivia-input');
+const answerSent = document.getElementById('answer-sent');
 
+const btnJoin = document.getElementById('btn-join');
 const inCode = document.getElementById('in-code');
 const inName = document.getElementById('in-name');
 const inHouse = document.getElementById('in-house');
@@ -12,6 +14,17 @@ const inGender = document.getElementById('in-gender');
 const playerNameDisplay = document.getElementById('player-name-display');
 const houseBanner = document.getElementById('house-banner');
 const wandIcon = document.getElementById('wand-icon');
+
+// Helper to switch views
+function showMobileView(viewId) {
+  [joinForm, waitScreen, triviaInput, answerSent].forEach(v => {
+    if (v) v.style.display = 'none';
+  });
+  const target = document.getElementById(viewId);
+  if (target) {
+    target.style.display = (viewId === 'trivia-input' || viewId === 'join-form') ? 'block' : 'flex';
+  }
+}
 
 // Session management
 let clientId = localStorage.getItem('v2_clientId');
@@ -63,6 +76,18 @@ btnJoin.addEventListener('click', () => {
   });
 });
 
+// Trivia Answer Buttons
+document.querySelectorAll('.btn-trivia').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const answer = btn.getAttribute('data-answer');
+    socket.emit('answer_submit', { answer });
+    // Haptic feedback
+    if (window.navigator && window.navigator.vibrate) {
+      window.navigator.vibrate(50);
+    }
+  });
+});
+
 socket.on('room_state', (state) => {
   const myPlayer = state.players.find(p => p.clientId === clientId);
   if (myPlayer) {
@@ -72,15 +97,29 @@ socket.on('room_state', (state) => {
     localStorage.setItem('v2_playerHouse', myPlayer.house);
     localStorage.setItem('v2_playerGender', myPlayer.gender);
 
-    // Update UI
-    joinForm.style.display = 'none';
-    waitScreen.style.display = 'flex';
-    waitScreen.className = `wait-screen glass-panel theme-${myPlayer.house.toLowerCase()}`;
-    
-    playerNameDisplay.textContent = myPlayer.name;
-    houseBanner.textContent = myPlayer.house;
-    wandIcon.textContent = myPlayer.gender === 'wizard' ? '🧙‍♂️' : '🧙‍♀️';
+    // Update UI if in lobby
+    if (state.status === 'lobby') {
+      showMobileView('wait-screen');
+      waitScreen.className = `wait-screen glass-panel theme-${myPlayer.house.toLowerCase()}`;
+      playerNameDisplay.textContent = myPlayer.name;
+      houseBanner.textContent = myPlayer.house;
+      wandIcon.textContent = myPlayer.gender === 'wizard' ? '🧙‍♂️' : '🧙‍♀️';
+    }
   }
+});
+
+socket.on('trivia_question', (data) => {
+  showMobileView('trivia-input');
+});
+
+socket.on('answer_ack', (data) => {
+  if (data.success) {
+    showMobileView('answer-sent');
+  }
+});
+
+socket.on('round_results', (data) => {
+  showMobileView('wait-screen');
 });
 
 socket.on('error_message', (msg) => {

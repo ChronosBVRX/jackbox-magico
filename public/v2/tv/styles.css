@@ -290,3 +290,111 @@ body {
   background: rgba(255, 255, 255, 0.1);
   border-color: var(--color-accent);
 }
+
+/* Trivia Specifics */
+.timer-container {
+  width: 300px;
+  height: 20px;
+  overflow: hidden;
+  border-radius: 10px;
+}
+
+.timer-bar {
+  height: 100%;
+  width: 100%;
+  background: var(--color-accent);
+  box-shadow: 0 0 15px var(--color-accent);
+  transition: width 1s linear;
+}
+
+.trivia-panel {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 4rem;
+  gap: 3rem;
+  text-align: center;
+}
+
+.trivia-question {
+  font-family: var(--font-title);
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin: 0;
+  max-width: 1000px;
+}
+
+.trivia-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 2rem;
+  width: 100%;
+  max-width: 1200px;
+}
+
+.option-card {
+  padding: 2rem;
+  font-size: 2rem;
+  font-weight: 600;
+  border-radius: 1rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.option-label {
+  background: var(--color-accent);
+  color: #000;
+  width: 50px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-weight: 800;
+  font-size: 1.5rem;
+}
+
+/* Results Screen */
+.results-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1.5rem;
+}
+
+.result-player-card {
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 1rem;
+}
+
+.result-status {
+  padding: 0.4rem 1rem;
+  border-radius: 2rem;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.status-correct { background: rgba(16, 185, 129, 0.2); color: #10b981; border: 1px solid #10b981; }
+.status-wrong { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid #f87171; }
+
+.results-footer {
+  padding: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+#narrator-comment {
+  font-style: italic;
+  font-size: 1.4rem;
+  color: var(--color-accent);
+  margin: 0;
+}

@@ -59,6 +59,25 @@
       </div>
     </div>
 
+    <!-- Trivia Inputs -->
+    <div class="game-view glass-panel" id="trivia-input" style="display: none;">
+      <div class="trivia-grid">
+        <button class="btn-trivia btn-a" data-answer="A">A</button>
+        <button class="btn-trivia btn-b" data-answer="B">B</button>
+        <button class="btn-trivia btn-c" data-answer="C">C</button>
+        <button class="btn-trivia btn-d" data-answer="D">D</button>
+      </div>
+    </main>
+
+    <!-- Answer Sent Feedback -->
+    <div class="wait-screen glass-panel" id="answer-sent" style="display: none;">
+      <div class="wand-icon">✅</div>
+      <p class="status-text">
+        <strong>Respuesta Enviada</strong><br>
+        Mira la TV para ver los resultados.
+      </p>
+    </div>
+
   </div>
 
   <script src="/socket.io/socket.io.js"></script>

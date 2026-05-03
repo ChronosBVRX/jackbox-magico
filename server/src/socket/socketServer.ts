@@ -21,6 +21,8 @@ export function setupSocketServer(httpServer: HttpServer) {
     }
   });
 
+  const activeGames: Map<string, any> = new Map();
+
   io.on('connection', (socket) => {
     console.log('Nuevo cliente conectado:', socket.id);
 
@@ -56,6 +58,54 @@ export function setupSocketServer(httpServer: HttpServer) {
         console.log(`Jugador ${name} se unió a ${roomCode}`);
       } else {
         socket.emit('error_message', result.error || 'Error desconocido al unirse');
+      }
+    });
+
+    socket.on('tv_start_game', (gameId) => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+
+      if (gameId === 'trivia_magica') {
+        const { TriviaMagica } = require('../games/triviaMagica');
+        const game = new TriviaMagica(roomCode, io, roomEngine);
+        activeGames.set(roomCode, game);
+        
+        roomEngine.setRoomStatus(roomCode, 'playing');
+        roomEngine.setCurrentGameId(roomCode, gameId);
+        
+        game.start();
+        io.to(roomCode).emit('game_started', gameId);
+      }
+    });
+
+    socket.on('answer_submit', (data) => {
+      const { roomCode, clientId } = socket.data;
+      if (!roomCode || !clientId) return;
+
+      const game = activeGames.get(roomCode);
+      if (game) {
+        game.handleEvent('answer_submit', data, clientId);
+      }
+    });
+
+    socket.on('tv_next_round', () => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+
+      const game = activeGames.get(roomCode);
+      if (game) {
+        game.handleEvent('tv_next_round', {}, 'HOST');
+      }
+    });
+
+    socket.on('tv_back_to_lobby', () => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+
+      const game = activeGames.get(roomCode);
+      if (game) {
+        game.handleEvent('tv_back_to_lobby', {}, 'HOST');
+        activeGames.delete(roomCode);
       }
     });
 

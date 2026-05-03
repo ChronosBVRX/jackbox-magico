@@ -27,7 +27,7 @@ export class RoomEngine {
     return state;
   }
 
-  addPlayer(roomCode: string, playerData: Omit<Player, 'score' | 'isConnected'>): { success: boolean; error?: string } {
+  addPlayer(roomCode: string, playerData: Omit<Player, 'points' | 'streak' | 'isConnected'>): { success: boolean; error?: string } {
     const room = this.getRoom(roomCode);
     if (!room) return { success: false, error: 'Sala no encontrada' };
 
@@ -45,7 +45,7 @@ export class RoomEngine {
     const existingPlayer = room.players.find(p => p.clientId === playerData.clientId);
     if (existingPlayer) {
       existingPlayer.isConnected = true;
-      existingPlayer.name = playerData.name; // Actualizar por si cambió
+      existingPlayer.name = playerData.name; 
       return { success: true };
     }
 
@@ -56,11 +56,27 @@ export class RoomEngine {
 
     room.players.push({
       ...playerData,
-      score: 0,
+      points: 0,
+      streak: 0,
       isConnected: true,
     });
 
     return { success: true };
+  }
+
+  setRoomStatus(roomCode: string, status: RoomState['status']) {
+    const room = this.getRoom(roomCode);
+    if (room) room.status = status;
+  }
+
+  setRoomPhase(roomCode: string, phase: string) {
+    const room = this.getRoom(roomCode);
+    if (room) room.phase = phase;
+  }
+
+  setCurrentGameId(roomCode: string, gameId: string | null) {
+    const room = this.getRoom(roomCode);
+    if (room) room.currentGameId = gameId;
   }
 
   setPlayerConnection(roomCode: string, clientId: string, isConnected: boolean) {

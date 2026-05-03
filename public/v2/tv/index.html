@@ -54,7 +54,52 @@
 
     <!-- Footer -->
     <footer class="footer">
-      <button class="btn-start-premium" id="btn-start" style="display: none;">Iniciar Partida</button>
+      <button class="btn-start-premium" id="btn-start" style="display: none;">Iniciar Trivia Mágica</button>
+    </footer>
+  </div>
+
+  <!-- Trivia Active Screen -->
+  <div class="tv-layout" id="view-trivia" style="display: none;">
+    <header class="header">
+      <div class="title-group">
+        <h1 class="text-gradient-gold" id="trivia-category">Categoría</h1>
+        <p id="trivia-round">Ronda 1/10</p>
+      </div>
+      <div class="timer-container glass-panel">
+        <div class="timer-bar" id="timer-bar"></div>
+      </div>
+    </header>
+
+    <main class="trivia-panel glass-panel">
+      <h2 class="trivia-question" id="trivia-question">¿Cargando pregunta mágica?</h2>
+      <div class="trivia-options" id="trivia-options">
+        <!-- A, B, C, D cards -->
+      </div>
+    </main>
+
+    <footer class="trivia-footer">
+      <div class="answer-progress glass-panel">
+        <span id="trivia-answer-count">0 / 0</span> jugadores han respondido
+      </div>
+    </footer>
+  </div>
+
+  <!-- Results Screen -->
+  <div class="tv-layout" id="view-results" style="display: none;">
+    <header class="header">
+      <div class="title-group">
+        <h1 class="text-gradient-gold">Resultados</h1>
+        <p>La respuesta era: <span id="correct-answer" style="color: var(--color-accent);">---</span></p>
+      </div>
+    </header>
+
+    <main class="results-grid" id="results-list">
+      <!-- Player results cards -->
+    </main>
+
+    <footer class="results-footer glass-panel">
+      <p id="narrator-comment">"Comentario del narrador..."</p>
+      <button class="btn-start-premium" id="btn-next-round">Siguiente Pregunta</button>
     </footer>
   </div>
 
