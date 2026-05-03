@@ -218,6 +218,11 @@ window.VoiceManagerV2 = (function() {
             return;
         }
 
+        // Ensure absolute path from root
+        if (item.path && !item.path.startsWith('/') && !item.path.startsWith('http')) {
+            item.path = '/' + item.path;
+        }
+
         // Avoid repeating the exact same key immediately (e.g. instruction renders)
         if (item.key && lastPlayedClip === item.key && !item.force) return;
 
