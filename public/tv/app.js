@@ -13,6 +13,16 @@ let roomSocketRetryTimer = null;
 let lastVoicePhase = "";
 let threatVoiceTimer = null;
 let lastPlayersHash = "";
+
+function escapeHTML(str) {
+  if (!str) return "";
+  return String(str)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
 let lastHouseScoresHash = "";
 let lastTriviaPlayersHash = "";
 
@@ -880,74 +890,161 @@ async function loadTvStories() {
   }
 }
 
+function getStoryValue(story, keys, fallback = "") {
+  for (const key of keys) {
+    if (story && story[key] !== undefined && story[key] !== null && story[key] !== "") {
+      return story[key];
+    }
+  }
+  return fallback;
+}
+
+function getStoryNumber(story, keys, fallback = 0) {
+  const value = getStoryValue(story, keys, fallback);
+  const number = Number(value);
+  return Number.isFinite(number) ? number : fallback;
+}
+
+function getStoryMinigameNames(story) {
+  const names = Array.isArray(story.available_minigame_names)
+    ? story.available_minigame_names
+    : [];
+
+  if (names.length) return names;
+
+  const ids = Array.isArray(story.available_minigames)
+    ? story.available_minigames
+    : [];
+
+  return ids.map((id) =>
+    String(id || "")
+      .replaceAll("_", " ")
+      .replace(/\b\w/g, (letter) => letter.toUpperCase())
+  );
+}
+
 function renderCarousel() {
   const container = document.getElementById("tv-story-carousel");
   if (!container) return;
+
   container.innerHTML = "";
+
   if (!stories.length) {
-    container.innerHTML = "<div class='story-error-card'>No hay historias disponibles en este momento.</div>";
+    container.innerHTML = `
+      <div class="story-error-card">
+        <div class="badge">📖 Sin historias</div>
+        <h3>No hay historias disponibles</h3>
+        <p>Revisa que /api/story/catalog esté devolviendo historias reales.</p>
+      </div>
+    `;
     return;
   }
 
   stories.forEach((story, idx) => {
-    const isSelected = (idx === currentStoryIndex);
+    const isSelected = idx === currentStoryIndex;
+
+    const title = getStoryValue(story, ["title"], "Historia mágica");
+    const tone = getStoryValue(story, ["tone"], "aventura mágica");
+    const description = getStoryValue(
+      story,
+      ["description"],
+      "Una aventura interactiva para competir por la Copa de las Casas."
+    );
+
+    const estimatedMinutes = getStoryValue(
+      story,
+      ["estimated_minutes", "duration"],
+      "18–28 min"
+    );
+
+    const triviaQuestions = getStoryNumber(
+      story,
+      ["trivia_questions", "trivia_questions_count"],
+      8
+    );
+
+    const randomMinigames = getStoryNumber(
+      story,
+      ["random_minigame_slots", "minigame_slots"],
+      2
+    );
+
+    const steps = getStoryNumber(
+      story,
+      ["steps", "steps_count"],
+      7
+    );
+
+    const includesFinal = Boolean(
+      story.includes_final ?? story.has_final ?? true
+    );
+
+    const minigameNames = getStoryMinigameNames(story);
+    const visibleMinigames = minigameNames.slice(0, 4);
+    const hiddenCount = Math.max(minigameNames.length - visibleMinigames.length, 0);
+
     const card = document.createElement("div");
     card.className = "story-card" + (isSelected ? " selected" : "");
     card.id = `story-card-${idx}`;
-    
-    // Construir lista de minijuegos para el footer
-    const minigamesText = (story.available_minigame_names || []).join(", ");
 
     card.innerHTML = `
       <div class="story-card-inner">
         <div class="story-card-top">
-          <div class="story-mode-pill">${story.format || "Copa de las Casas"}</div>
-          <div class="story-number">#${idx + 1}</div>
+          <span class="story-mode-pill">⚡ Historia</span>
+          <span class="story-number">#${idx + 1}</span>
         </div>
-        
-        <h3 class="story-title">${escapeHTML(story.title)}</h3>
-        <p class="story-tone">✨ Estilo: ${escapeHTML(story.tone)}</p>
-        <p class="story-description">${escapeHTML(story.description)}</p>
-        
+
+        <h3 class="story-title">${escapeHTML(title)}</h3>
+
+        <div class="story-tone">
+          ✨ ${escapeHTML(tone)}
+        </div>
+
+        <p class="story-description">
+          ${escapeHTML(description)}
+        </p>
+
         <div class="story-info-grid">
           <div class="story-info-item">
-            <span class="label">Duración</span>
-            <span class="value">${story.estimated_minutes} min</span>
+            <span>Duración</span>
+            <strong>${escapeHTML(estimatedMinutes)}</strong>
           </div>
+
           <div class="story-info-item">
-            <span class="label">Actos</span>
-            <span class="value">${story.steps_count} etapas</span>
+            <span>Trivia</span>
+            <strong>${triviaQuestions} preguntas</strong>
           </div>
+
           <div class="story-info-item">
-            <span class="label">Trivia</span>
-            <span class="value">${story.trivia_questions_count} preguntas</span>
+            <span>Retos</span>
+            <strong>${randomMinigames} sorpresa</strong>
           </div>
+
           <div class="story-info-item">
-            <span class="label">Retos</span>
-            <span class="value">${story.random_minigame_slots} sorpresa</span>
+            <span>Actos</span>
+            <strong>${steps} etapas</strong>
           </div>
         </div>
 
-        <div class="story-section-title">Incluye:</div>
+        <div class="story-section-title">Puede incluir</div>
+
         <div class="story-minigames">
-          ${minigamesText} ${story.includes_final ? " + <strong>Copa Final</strong>" : ""}
+          ${visibleMinigames.map((name) => `
+            <span>${escapeHTML(name)}</span>
+          `).join("")}
+          ${hiddenCount > 0 ? `<span>+${hiddenCount} más</span>` : ""}
         </div>
 
         <div class="story-footer">
-          ${story.minigame_policy}
+          <span>${includesFinal ? "🏆 Incluye Copa Final" : "✨ Modo especial"}</span>
+          <span>OK para elegir</span>
         </div>
-        
-        ${isSelected ? '<div class="story-select-prompt">Presiona OK para elegir</div>' : ''}
       </div>
     `;
-    
-    card.onclick = () => {
-      currentStoryIndex = idx;
-      updateCarouselScroll();
-    };
 
     container.appendChild(card);
   });
+
   updateCarouselScroll();
 }
 

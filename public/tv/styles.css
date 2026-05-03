@@ -2090,3 +2090,315 @@ p {
   margin: 0 auto;
 }
 
+
+/* =========================================================
+   HISTORIAS TV — CARTAS COMPACTAS PREMIUM
+   ========================================================= */
+
+#view-inicio {
+  overflow: hidden;
+  justify-content: flex-start;
+  padding: 22px 28px 110px;
+}
+
+#view-inicio .jackbox-header {
+  margin-bottom: 10px;
+  flex-shrink: 0;
+}
+
+#view-inicio .jackbox-header h1 {
+  margin: 10px 0 0;
+  font-size: clamp(4.4rem, 7vw, 7.1rem);
+  line-height: .82;
+  letter-spacing: -.08em;
+}
+
+.story-carousel {
+  width: min(1720px, 96vw);
+  height: min(590px, calc(100vh - 265px));
+  display: flex;
+  align-items: center;
+  gap: 26px;
+  margin: 0 auto;
+  padding: 22px 44px;
+  overflow-x: hidden;
+  overflow-y: hidden;
+  scroll-behavior: smooth;
+  perspective: 1200px;
+}
+
+.story-card {
+  flex: 0 0 335px;
+  height: 470px;
+  padding: 0;
+  border-radius: 30px;
+  overflow: hidden;
+  position: relative;
+  text-align: left;
+  border: 1px solid rgba(255, 216, 121, .18);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(255, 216, 121, .16), transparent 36%),
+    linear-gradient(145deg, rgba(30, 24, 40, .76), rgba(7, 8, 18, .94));
+  box-shadow: 0 22px 60px rgba(0, 0, 0, .42);
+  backdrop-filter: blur(20px);
+  opacity: .50;
+  transform: scale(.88) translateY(10px);
+  transition:
+    transform .34s cubic-bezier(.2,.8,.2,1),
+    opacity .34s ease,
+    border-color .34s ease,
+    box-shadow .34s ease;
+}
+
+.story-card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,.08), transparent 38%),
+    radial-gradient(circle at 80% 12%, rgba(124,58,237,.20), transparent 40%);
+  pointer-events: none;
+}
+
+.story-card.selected {
+  flex-basis: 420px;
+  height: 530px;
+  opacity: 1;
+  transform: scale(1) translateY(0);
+  border-color: rgba(255, 216, 121, .78);
+  box-shadow:
+    0 34px 100px rgba(255, 216, 121, .22),
+    0 26px 80px rgba(0,0,0,.60),
+    inset 0 0 0 1px rgba(255,255,255,.06);
+  z-index: 5;
+}
+
+.story-card-inner {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  padding: 24px;
+}
+
+.story-card.selected .story-card-inner {
+  padding: 28px;
+}
+
+.story-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+
+.story-mode-pill,
+.story-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 30px;
+  padding: 7px 11px;
+  border-radius: 999px;
+  color: #ffe7a3;
+  background: rgba(255, 216, 121, .11);
+  border: 1px solid rgba(255, 216, 121, .22);
+  font-size: .68rem;
+  font-weight: 1000;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.story-number {
+  color: rgba(255, 248, 221, .82);
+  background: rgba(255,255,255,.07);
+  border-color: rgba(255,255,255,.12);
+}
+
+.story-title {
+  margin: 0 0 10px;
+  color: #fff;
+  font-size: 2rem;
+  line-height: .96;
+  letter-spacing: -.055em;
+  text-align: left;
+  text-wrap: balance;
+  text-shadow: 0 0 24px rgba(255,216,121,.16);
+}
+
+.story-card.selected .story-title {
+  font-size: 2.65rem;
+}
+
+.story-tone {
+  margin: 0 0 12px;
+  color: rgba(255, 216, 121, .88);
+  font-size: .95rem;
+  line-height: 1.24;
+  font-weight: 900;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-description {
+  margin: 0 0 16px;
+  color: rgba(255, 248, 221, .74);
+  font-size: .94rem;
+  line-height: 1.32;
+  font-weight: 650;
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.story-card.selected .story-description {
+  font-size: 1.02rem;
+  -webkit-line-clamp: 4;
+}
+
+.story-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 9px;
+  margin: 0 0 14px;
+}
+
+.story-info-item {
+  min-width: 0;
+  padding: 10px 11px;
+  border-radius: 16px;
+  background: rgba(255,255,255,.065);
+  border: 1px solid rgba(255,255,255,.095);
+}
+
+.story-info-item span {
+  display: block;
+  margin-bottom: 3px;
+  color: rgba(255, 248, 221, .48);
+  font-size: .62rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.story-info-item strong {
+  display: block;
+  color: #ffe08a;
+  font-size: .87rem;
+  line-height: 1.08;
+  font-weight: 1000;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.story-section-title {
+  margin: 0 0 8px;
+  color: rgba(255, 248, 221, .54);
+  font-size: .67rem;
+  font-weight: 1000;
+  text-transform: uppercase;
+  letter-spacing: .10em;
+}
+
+.story-minigames {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  max-height: 72px;
+  overflow: hidden;
+}
+
+.story-minigames span {
+  max-width: 100%;
+  padding: 7px 9px;
+  border-radius: 999px;
+  color: rgba(255, 248, 221, .86);
+  background: rgba(124, 58, 237, .16);
+  border: 1px solid rgba(196, 181, 253, .18);
+  font-size: .71rem;
+  line-height: 1;
+  font-weight: 900;
+  white-space: nowrap;
+}
+
+.story-footer {
+  margin-top: auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 13px;
+  border-top: 1px solid rgba(255,255,255,.10);
+  color: rgba(255, 248, 221, .70);
+  font-size: .76rem;
+  font-weight: 1000;
+}
+
+.story-footer span:last-child {
+  color: #ffd879;
+}
+
+.tv-controls-hint {
+  position: fixed;
+  left: 50%;
+  bottom: 24px;
+  transform: translateX(-50%);
+  z-index: 20;
+  margin-top: 0;
+  padding: 14px 24px;
+  border-radius: 999px;
+  background: rgba(5, 5, 12, .72);
+  border: 1px solid rgba(255,255,255,.09);
+  backdrop-filter: blur(18px);
+  box-shadow: 0 18px 60px rgba(0,0,0,.38);
+}
+
+.story-error-card {
+  width: min(680px, 90vw);
+  margin: 0 auto;
+  padding: 30px;
+  border-radius: 28px;
+  color: #fff8dd;
+  background: rgba(20, 16, 28, .88);
+  border: 1px solid rgba(255,216,121,.24);
+  box-shadow: 0 30px 80px rgba(0,0,0,.45);
+  text-align: center;
+}
+
+.story-error-card h3 {
+  margin: 16px 0 8px;
+  color: #fff;
+  font-size: 2rem;
+}
+
+.story-error-card p {
+  margin: 0;
+  color: rgba(255,248,221,.72);
+}
+
+/* Evita scrollbar visible en TV */
+body {
+  overflow: hidden;
+}
+
+@media (max-width: 1200px) {
+  .story-card {
+    flex-basis: 300px;
+  }
+
+  .story-card.selected {
+    flex-basis: 370px;
+  }
+
+  .story-card.selected .story-title {
+    font-size: 2.25rem;
+  }
+}
+
