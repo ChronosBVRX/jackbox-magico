@@ -72,9 +72,12 @@ window.VoiceManagerV2 = (function() {
                 const data = await res.json();
                 
                 if (cat.key === 'instr') {
-                    instructionMap = data;
+                    instructionMap = data.instructions || data;
                 } else {
-                    voiceCatalog = [...voiceCatalog, ...data];
+                    const lines = data.voice_lines || data;
+                    if (Array.isArray(lines)) {
+                        voiceCatalog = [...voiceCatalog, ...lines];
+                    }
                 }
                 console.log(`VoiceManagerV2: Cargado ${cat.url}`);
             } catch (err) {
