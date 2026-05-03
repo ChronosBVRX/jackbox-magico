@@ -1,19 +1,39 @@
-# jackbox-magico
+# Jackbox Mágico V2 - Realtime Engine
 
-## Evitar errores de merge (guía simple)
-Si GitHub te muestra bloques como `<<<<<<<`, `=======`, `>>>>>>>`, significa que hay conflicto entre ramas.
+Este es el núcleo de la versión 2.0 del proyecto, migrado a una arquitectura autoritativa en tiempo real con WebSockets.
 
-### Flujo recomendado (sin programar mucho)
-1. Trabaja siempre en **una sola rama** por cambio.
-2. Antes de abrir PR, actualiza tu rama con `main`.
-3. Ejecuta este chequeo local:
+## Stack Tecnológico
+- **Backend**: Node.js + TypeScript + Express + Socket.IO
+- **Frontend**: Vanilla HTML/JS/CSS
+- **Despliegue**: Render
 
-```bash
-./tools/check_conflicts.sh
-```
+## Estructura
+- `/server`: Lógica del servidor y motor de juegos.
+- `/public/v2`: Cliente de TV y Móvil.
 
-4. Si falla, no hagas merge todavía: abre los archivos marcados y elimina los bloques de conflicto.
+## Instalación Local
 
-### Regla práctica
-- Si la misma función fue editada en dos ramas, quédate con una sola versión final y elimina duplicados.
-- Nunca dejes texto `<<<<<<<`, `=======`, `>>>>>>>` en el archivo final.
+1. Instalar dependencias:
+   ```bash
+   npm install
+   ```
+
+2. Configurar entorno:
+   ```bash
+   cp .env.example .env
+   ```
+
+3. Correr en modo desarrollo:
+   ```bash
+   npm run dev
+   ```
+
+4. Abrir en el navegador:
+   - TV: `http://localhost:3000/v2/tv/`
+   - Móvil: `http://localhost:3000/v2/mobile/`
+
+## Despliegue en Render
+El archivo `render.yaml` está preconfigurado. Solo conecta este repositorio a un nuevo Blueprint en Render.
+
+## Reglas de Desarrollo (AGENTS.md)
+Consultar `AGENTS.md` para las reglas de arquitectura y contrato de minijuegos.

@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Jackbox Mágico V2 - Móvil</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #38bdf8;
+      --text: #f1f5f9;
+    }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 1rem;
+    }
+    .card {
+      background: var(--card);
+      padding: 2rem;
+      border-radius: 1.5rem;
+      width: 100%;
+      max-width: 400px;
+      box-shadow: 0 10px 25px -5px rgba(0,0,0,0.3);
+    }
+    h1 { margin-top: 0; text-align: center; }
+    input, select {
+      width: 100%;
+      padding: 1rem;
+      margin: 0.5rem 0 1rem 0;
+      border-radius: 0.5rem;
+      border: 1px solid #334155;
+      background: #0f172a;
+      color: white;
+      font-size: 1rem;
+      box-sizing: border-box;
+    }
+    button {
+      width: 100%;
+      padding: 1.2rem;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 0.5rem;
+      font-weight: bold;
+      font-size: 1.1rem;
+      cursor: pointer;
+    }
+    .wait-screen { text-align: center; display: none; }
+    .spinner { font-size: 3rem; animation: spin 2s linear infinite; margin: 2rem 0; display: inline-block; }
+    @keyframes spin { 100% { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="card" id="join-form">
+    <h1>Únete a la Clase</h1>
+    <label>Código de Sala</label>
+    <input type="text" id="in-code" placeholder="ABCD" maxlength="4" style="text-transform: uppercase;">
+    
+    <label>Tu Nombre</label>
+    <input type="text" id="in-name" placeholder="Nombre de mago" maxlength="15">
+    
+    <label>Tu Casa</label>
+    <select id="in-house">
+      <option value="Gryffindor">Gryffindor</option>
+      <option value="Slytherin">Slytherin</option>
+      <option value="Ravenclaw">Ravenclaw</option>
+      <option value="Hufflepuff">Hufflepuff</option>
+    </select>
+
+    <label>Género</label>
+    <select id="in-gender">
+      <option value="wizard">Mago 🧙‍♂️</option>
+      <option value="witch">Maga 🧙‍♀️</option>
+    </select>
+
+    <button id="btn-join">Entrar a la Sala</button>
+  </div>
+
+  <div class="wait-screen" id="wait-screen">
+    <div class="spinner">🪄</div>
+    <h2 id="wait-msg">¡Estás dentro!</h2>
+    <p>Mira la TV para comenzar la historia.</p>
+    <p id="player-summary" style="opacity: 0.7;"></p>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
