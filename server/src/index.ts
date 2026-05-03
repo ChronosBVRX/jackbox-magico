@@ -15,15 +15,20 @@ app.use(cors());
 app.use(express.json());
 
 // Servir archivos estáticos de la V2
-app.use(express.static(path.join(__dirname, '../../public')));
+const publicPath = path.join(process.cwd(), 'public');
+app.use(express.static(publicPath));
+
+// Redirecciones automáticas a la V2
+app.get('/', (req, res) => res.redirect('/v2/tv/'));
+app.get('/tv', (req, res) => res.redirect('/v2/tv/'));
+app.get('/tv/', (req, res) => res.redirect('/v2/tv/'));
+app.get('/mobile', (req, res) => res.redirect('/v2/mobile/'));
+app.get('/mobile/', (req, res) => res.redirect('/v2/mobile/'));
 
 // Ruta de salud
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', version: '2.0.0-realtime' });
 });
-
-// En el futuro podemos montar aquí rutas de la V1 si es necesario para coexistencia
-// app.use('/v1', ...);
 
 setupSocketServer(httpServer);
 
