@@ -55,8 +55,11 @@ export class ArtesRidiculas implements GameModule {
     
     return {
       phase: 'threat',
+      question: state.currentThreat?.question,
+      options: state.currentThreat?.options || [],
       alreadyAnswered: state.answeredClients.has(player.clientId),
-      options: ['A', 'B', 'C', 'D']
+      durationMs: state.durationMs,
+      startedAt: state.startedAt
     };
   }
 

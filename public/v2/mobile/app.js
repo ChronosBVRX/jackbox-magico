@@ -153,7 +153,7 @@ document.getElementById('btn-pociones-clear').addEventListener('click', () => {
 socket.on('game_player_state', (data) => {
   if (data.phase === 'question' || data.phase === 'threat') {
     if (data.alreadyAnswered) showMobileView('answer-sent');
-    else showMobileView('trivia-input');
+    else renderTriviaInput(data);
   } else if (data.phase === 'playing') {
     showMobileView('snitch-input');
     document.getElementById('snitch-feedback').textContent = `Intentos: ${data.attemptsRemaining}`;
@@ -191,8 +191,57 @@ socket.on('game_player_state', (data) => {
     renderMapaInput(data);
   } else if (currentGameId === 'caldero_mentiroso') {
     renderCalderoInput(data);
+  } else if (currentGameId === 'atrapa_snitch') {
+    showMobileView('snitch-input');
+  } else if (currentGameId === 'duelo_hechizos') {
+    if (data.phase === 'selection') {
+        if (data.alreadyChosen) showMobileView('answer-sent');
+        else showMobileView('duelo-input');
+    } else if (data.phase === 'clash') {
+        showMobileView('clash-input');
+    }
   }
 });
+
+function renderTriviaInput(data) {
+    showMobileView('trivia-input');
+    safeText('trivia-question-mobile', data.question || '...');
+    
+    const container = document.getElementById('trivia-mobile-options');
+    if (!container) return;
+    container.innerHTML = '';
+
+    const labels = ['A', 'B', 'C', 'D'];
+    if (data.options) {
+        data.options.forEach((opt, idx) => {
+            const btn = document.createElement('button');
+            btn.className = `btn-trivia btn-${labels[idx].toLowerCase()}`;
+            btn.textContent = opt;
+            btn.onclick = () => {
+                socket.emit('player_action', { answer: opt });
+                if (window.navigator?.vibrate) window.navigator.vibrate(50);
+                showMobileView('answer-sent');
+            };
+            container.appendChild(btn);
+        });
+    }
+
+    // Timer Sync
+    const bar = document.getElementById('trivia-timer-mobile');
+    if (bar && data.startedAt && data.durationMs) {
+        const elapsed = Date.now() - data.startedAt;
+        const remaining = Math.max(0, data.durationMs - elapsed);
+        const percent = (remaining / data.durationMs) * 100;
+        
+        bar.style.transition = 'none';
+        bar.style.width = `${percent}%`;
+        
+        setTimeout(() => {
+            bar.style.transition = `width ${remaining}ms linear`;
+            bar.style.width = '0%';
+        }, 50);
+    }
+}
 
 function renderPatronusInput(data) {
   if (data.phase === 'submit') {

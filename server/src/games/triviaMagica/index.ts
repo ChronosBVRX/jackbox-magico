@@ -56,8 +56,11 @@ export class TriviaMagica implements GameModule {
     
     return {
       phase: 'question',
+      question: state.currentQuestion?.question,
+      options: state.currentQuestion?.options || [],
       alreadyAnswered: state.answeredClients.has(player.clientId),
-      options: ['A', 'B', 'C', 'D']
+      durationMs: state.durationMs,
+      startedAt: state.startedAt
     };
   }
 
