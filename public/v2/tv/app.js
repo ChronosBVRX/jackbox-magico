@@ -107,8 +107,90 @@ socket.on('game_state', (data) => {
     else if (data.phase === 'results') renderSnitchResults(data);
   } else if (currentGameId === 'duelo_hechizos') {
     renderDueloView(data);
+  } else if (currentGameId === 'sombrero_burlon') {
+    renderSombreroView(data);
+  } else if (currentGameId === 'clase_pociones') {
+    renderPocionesView(data);
   }
 });
+
+function renderSombreroView(data) {
+  if (data.phase === 'results') {
+    renderSombreroResults(data);
+    return;
+  }
+  showView('view-sombrero');
+  document.getElementById('hat-phrase').textContent = data.currentPhrase || "Seleccionando víctima...";
+  document.getElementById('vote-count').textContent = data.voteCount;
+  document.getElementById('total-voters').textContent = data.totalPlayers;
+}
+
+function renderPocionesView(data) {
+  if (data.phase === 'results') {
+    renderPocionesResults(data);
+    return;
+  }
+  showView('view-pociones');
+  const display = document.getElementById('sequence-display');
+  const status = document.getElementById('pociones-status');
+
+  if (data.phase === 'sequence') {
+    status.textContent = '¡Memoriza la receta!';
+    display.innerHTML = '';
+    data.sequence.forEach((ing, i) => {
+      setTimeout(() => {
+        const card = document.createElement('div');
+        card.className = 'ing-card';
+        card.textContent = ing.icon;
+        display.appendChild(card);
+      }, i * 1000);
+    });
+  } else {
+    status.textContent = '¡Prepara la poción en tu móvil!';
+    display.innerHTML = '<div style="font-size:3rem; opacity:0.5">Mezclando...</div>';
+  }
+}
+
+function renderSombreroResults(data) {
+  showView('view-results');
+  document.getElementById('correct-answer').textContent = data.results.winner ? data.results.winner.name : 'Nadie';
+  document.getElementById('narrator-comment').textContent = "El sombrero ha hablado.";
+  
+  const resultsContainer = document.getElementById('results-list');
+  resultsContainer.innerHTML = '';
+  data.results.ranking.forEach(res => {
+    const card = document.createElement('div');
+    card.className = 'result-player-card glass-panel';
+    card.innerHTML = `
+      <div class="player-name">${res.name}</div>
+      <div class="result-status status-correct">${res.votes} Votos</div>
+      <div class="points-gain">+${res.points}</div>
+    `;
+    resultsContainer.appendChild(card);
+  });
+}
+
+function renderPocionesResults(data) {
+  showView('view-results');
+  document.getElementById('correct-answer').textContent = data.results.correctSequence.map(i => i.icon).join(' ');
+  document.getElementById('narrator-comment').textContent = "¡Vaya brebaje!";
+  
+  const resultsContainer = document.getElementById('results-list');
+  resultsContainer.innerHTML = '';
+  data.results.ranking.forEach(res => {
+    // We'd need to find player name here... assume available or placeholder
+    const card = document.createElement('div');
+    card.className = 'result-player-card glass-panel';
+    card.innerHTML = `
+      <div class="player-name">Mago</div>
+      <div class="result-status ${res.isPerfect ? 'status-correct' : 'status-wrong'}">
+        ${res.matches}/${res.total}
+      </div>
+      <div class="points-gain">+${res.points}</div>
+    `;
+    resultsContainer.appendChild(card);
+  });
+}
 
 let snitchAnimFrame = null;
 function renderSnitchView(data) {

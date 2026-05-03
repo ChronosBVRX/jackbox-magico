@@ -487,3 +487,73 @@ body {
 }
 #clash-bar-1 { background: var(--color-accent); }
 #clash-bar-2 { background: #ff4d4d; }
+
+/* --- Sombrero Game --- */
+.sombrero-container {
+  text-align: center;
+  padding: 4rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+.sombrero-avatar {
+  font-size: 8rem;
+  margin-bottom: 2rem;
+  animation: sway 4s ease-in-out infinite;
+}
+.hat-line {
+  font-family: var(--font-title);
+  font-size: 3.5rem;
+  color: var(--color-accent);
+  text-shadow: 0 0 20px rgba(212, 175, 55, 0.3);
+  max-width: 900px;
+  line-height: 1.2;
+}
+.vote-meter {
+  margin-top: 3rem;
+  padding: 1rem 2rem;
+  font-size: 1.5rem;
+  border-radius: 50px;
+}
+
+/* --- Pociones Game --- */
+.pociones-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 4rem;
+}
+.cauldron {
+  font-size: 10rem;
+  margin-bottom: 3rem;
+  filter: drop-shadow(0 0 30px #4ade80);
+}
+.sequence-display {
+  display: flex;
+  gap: 2rem;
+  height: 150px;
+  align-items: center;
+}
+.ing-card {
+  font-size: 4rem;
+  background: rgba(255,255,255,0.1);
+  padding: 1.5rem;
+  border-radius: 20px;
+  animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+.pociones-status {
+  margin-top: 3rem;
+  font-size: 2rem;
+  color: var(--color-accent);
+}
+
+@keyframes sway {
+  0%, 100% { transform: rotate(-5deg) translateY(0); }
+  50% { transform: rotate(5deg) translateY(-10px); }
+}
+@keyframes popIn {
+  from { transform: scale(0); opacity: 0; }
+  to { transform: scale(1); opacity: 1; }
+}

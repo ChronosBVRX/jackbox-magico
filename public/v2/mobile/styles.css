@@ -236,3 +236,40 @@ input:focus, select:focus {
   50% { transform: scale(1.02); }
   100% { transform: scale(1); }
 }
+
+.sombrero-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 0.8rem;
+}
+.btn-target {
+  padding: 1.2rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid var(--glass-border);
+  color: white;
+  text-align: left;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.pociones-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.8rem;
+}
+.btn-ing {
+  aspect-ratio: 1;
+  font-size: 2rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid var(--glass-border);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.btn-ing:active {
+  transform: scale(0.9);
+  background: var(--color-accent);
+}

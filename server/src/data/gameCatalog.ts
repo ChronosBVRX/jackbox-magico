@@ -94,39 +94,39 @@ export const GAME_CATALOG: GameInfo[] = [
   },
   {
     id: 'sombrero_burlon',
-    name: 'Sombrero Burlón',
+    name: 'El Sombrero Burlón',
     shortName: 'Sombrero',
-    status: 'dev',
+    status: 'beta',
     mode: 'social',
-    description: 'El Sombrero saca a la luz verdades incómodas. Vota por tus amigos.',
+    description: 'Votación social. ¿Quién encaja mejor con la descripción del sombrero?',
     rules: [
-      'Lee la pregunta y elige al jugador que más encaje con la descripción.',
-      'No puedes votar por ti mismo.',
-      'Gana puntos por recibir votos y por ser el más votado.'
+      'El sombrero dirá una frase sobre alguien del grupo.',
+      'Vota por el compañero que mejor encaje.',
+      'Ganas puntos por cada voto que recibas.'
     ],
-    points: { min: 0, max: 200, description: 'Puntos por voto recibido + bonus al más votado' },
-    durationSeconds: 25,
+    points: { min: 0, max: 400, description: '50 puntos por voto recibido + bonus al más votado' },
+    durationSeconds: 15,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   },
   {
     id: 'clase_pociones',
     name: 'Clase de Pociones',
     shortName: 'Pociones',
-    status: 'dev',
-    mode: 'action',
-    description: 'Memoriza y prepara recetas complejas antes de que el caldero explote.',
+    status: 'beta',
+    mode: 'memory',
+    description: 'Memoria colectiva. Repite la secuencia de ingredientes en tu caldero.',
     rules: [
-      'Memoriza el orden de los ingredientes en la TV.',
-      'Selecciona los ingredientes en el orden correcto en tu móvil.',
-      'Cuidado con los modos especiales como Humo o Receta Inversa.'
+      'Mira la TV y memoriza el orden de los ingredientes.',
+      'Repite la secuencia en tu móvil.',
+      '¡Cuidado con el modo Inverso!'
     ],
-    points: { min: 0, max: 200, description: 'Receta perfecta + rapidez + bonus de casa' },
-    durationSeconds: 25,
+    points: { min: 0, max: 250, description: 'Puntos por ingrediente correcto + bonus por poción perfecta' },
+    durationSeconds: 20,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   },
   {
     id: 'mapa_travieso',

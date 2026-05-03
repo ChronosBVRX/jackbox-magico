@@ -94,6 +94,27 @@
       <button class="btn-clash" id="btn-clash">¡TOCAR RÁPIDO!</button>
     </div>
 
+    <!-- Sombrero Input -->
+    <div class="game-view glass-panel" id="sombrero-input" style="display: none; padding: 1rem;">
+      <h2 style="text-align: center; margin-bottom: 1rem;">Vota por alguien</h2>
+      <div class="sombrero-grid" id="sombrero-targets">
+        <!-- Target buttons -->
+      </div>
+    </div>
+
+    <!-- Pociones Input -->
+    <div class="game-view glass-panel" id="pociones-input" style="display: none; padding: 1rem;">
+      <h2 style="text-align: center; margin-bottom: 1rem;" id="pociones-mode-label">Prepara la Poción</h2>
+      <div class="pociones-sequence-bar" id="pociones-sequence-preview" style="height: 50px; background: rgba(0,0,0,0.2); margin-bottom: 1rem; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem;"></div>
+      <div class="pociones-grid" id="pociones-ingredients">
+        <!-- Ingredient buttons -->
+      </div>
+      <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+        <button id="btn-pociones-clear" style="flex: 1; padding: 1rem; background: #4b5563; border: none; border-radius: 10px; color: white;">Limpiar</button>
+        <button id="btn-pociones-submit" style="flex: 2; padding: 1rem; background: var(--color-accent); border: none; border-radius: 10px; color: black; font-weight: bold;">Enviar Poción</button>
+      </div>
+    </div>
+
     <!-- Answer Sent Feedback -->
     <div class="wait-screen glass-panel" id="answer-sent" style="display: none;">
       <div class="wand-icon">✅</div>

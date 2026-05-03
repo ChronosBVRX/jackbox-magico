@@ -135,6 +135,28 @@
     </div>
   </div>
 
+  <!-- Sombrero Screen -->
+  <div class="tv-layout" id="view-sombrero" style="display: none;">
+    <div class="sombrero-container">
+      <div class="sombrero-avatar">🎩</div>
+      <h2 class="hat-line" id="hat-phrase">"..."</h2>
+      <div class="vote-meter glass-panel">
+        <span id="vote-count">0</span> / <span id="total-voters">0</span> magos han votado
+      </div>
+    </div>
+  </div>
+
+  <!-- Pociones Screen -->
+  <div class="tv-layout" id="view-pociones" style="display: none;">
+    <div class="pociones-container">
+      <div class="cauldron">🧪</div>
+      <div class="sequence-display" id="sequence-display">
+        <!-- Ingredients icons -->
+      </div>
+      <div class="pociones-status" id="pociones-status">¡Memoriza la receta!</div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="app.js"></script>
   <script>
