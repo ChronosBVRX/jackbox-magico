@@ -30,11 +30,13 @@ class CalderoActionInfo(BaseModel):
     player_name: str
     action: str
     target_name: Optional[str] = None
+    claim: Optional[str] = None
 
 
 class CalderoRevealInfo(BaseModel):
-    player_name: str
-    host_token: str
+    player_name: Optional[str] = None
+    host_token: Optional[str] = None
+    tv_token: Optional[str] = None
 
 
 def clean_room_code(room_code: str) -> str:
@@ -203,6 +205,7 @@ async def caldero_submit_action(info: CalderoActionInfo):
         player_house=player.get("house"),
         action=info.action,
         target_name=info.target_name,
+        claim=info.claim,
         players=players,
     )
 
@@ -236,6 +239,52 @@ async def caldero_reveal_results(room_code: str, info: CalderoRevealInfo):
     # Importante: la bóveda privada de ingredientes vive en `correct` durante la ronda.
     # En resultados ya existe `caldero_result` con lo que debe mostrarse, así que no
     # guardamos `correct` para evitar filtrarlo por el endpoint público de status.
+    new_state.pop("correct", None)
+
+    new_state = apply_point_events_once(
+        room_id=room["id"],
+        state=new_state,
+        point_events=new_state.get("point_events", []),
+    )
+
+    update_room_state(room_code, new_state)
+
+    return {
+        "accepted": True,
+        "already_revealed": result.get("already_revealed", False),
+        "result": result.get("result"),
+    }
+
+
+@app.post("/api/caldero/reveal_results_tv/{room_code}")
+async def caldero_reveal_results_tv(room_code: str, info: CalderoRevealInfo):
+    room_code = clean_room_code(room_code)
+    room = get_room(room_code)
+    state = deepcopy(room.get("game_state") or {})
+
+    # Validar TV Token
+    lifecycle = state.get("lifecycle") or {}
+    saved_tv_token = lifecycle.get("tv_token")
+    
+    # Si la sala está bajo autoridad de TV, permitimos si el token coincide
+    # Si no hay token guardado pero el request trae uno, lo aceptamos (la TV se está registrando)
+    if saved_tv_token and info.tv_token and saved_tv_token != info.tv_token:
+        raise HTTPException(status_code=403, detail="Token de TV inválido")
+    
+    if not saved_tv_token and not info.tv_token:
+        raise HTTPException(status_code=403, detail="Se requiere tv_token para revelar desde la TV")
+
+    if state.get("phase") not in {
+        caldero_mentiroso.PHASE,
+        caldero_mentiroso.RESULTS_PHASE,
+    }:
+        raise HTTPException(status_code=409, detail="El Caldero Mentiroso no está activo")
+
+    players = get_players(room["id"])
+    result = caldero_mentiroso.reveal_results(state, players)
+    new_state = result["state"]
+
+    # Limpieza de seguridad
     new_state.pop("correct", None)
 
     new_state = apply_point_events_once(

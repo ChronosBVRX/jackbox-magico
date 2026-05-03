@@ -143,6 +143,7 @@ def build_state():
         },
         # sanitize_game_state convierte answers en {jugador: True}; así no se filtra la acción.
         "answers": {},
+        "caldero_claims": {},  # {player_name: {claim: str, submitted_at: int}}
         "caldero_public_log": [],
         "point_events": [],
     }
@@ -277,6 +278,7 @@ def submit_action(
     player_house: Optional[str],
     action: str,
     target_name: Optional[str] = None,
+    claim: Optional[str] = None,
     players: Optional[List[dict]] = None,
 ) -> dict:
     state = deepcopy(state or {})
@@ -348,14 +350,21 @@ def submit_action(
         "submitted_at": now_ts(),
     }
 
+    if claim:
+        claims = state.setdefault("caldero_claims", {})
+        claims[player_name] = {
+            "claim": str(claim).strip(),
+            "submitted_at": now_ts(),
+        }
+
     state.setdefault("caldero_public_log", []).append({
         "player_name": player_name,
         "house": player_house,
-        "text": _public_action_line(player_name, action),
+        "text": _public_action_line(player_name, action, claim),
         "at": now_ts(),
     })
 
-    state["caldero_public_log"] = state.get("caldero_public_log", [])[-10:]
+    state["caldero_public_log"] = state.get("caldero_public_log", [])[-15:]
 
     return {
         "state": state,
@@ -365,12 +374,18 @@ def submit_action(
     }
 
 
-def _public_action_line(player_name: str, action: str) -> str:
+def _public_action_line(player_name: str, action: str, claim: Optional[str] = None) -> str:
+    line = ""
     if action == "meter":
-        return f"{player_name} se acercó al caldero con demasiada seguridad. Sospechoso."
-    if action == "descartar":
-        return f"{player_name} descartó algo. O salvó a todos, o desperdició gloria."
-    return f"{player_name} acusó a alguien. El drama académico sube de nivel."
+        line = f"{player_name} se acercó al caldero con demasiada seguridad."
+    elif action == "descartar":
+        line = f"{player_name} descartó algo. O salvó a todos, o desperdició gloria."
+    else:
+        line = f"{player_name} acusó a alguien. El drama académico sube de nivel."
+
+    if claim:
+        return f"{player_name} declara: “{claim}”. {line}"
+    return line
 
 
 def _action_confirmation(action: str) -> str:
@@ -453,26 +468,34 @@ def calculate_results(state: dict, players: List[dict]) -> dict:
     correctly_accused_targets = set()
     accusation_results = []
 
-    for accuser, target in accusations:
-        target_answer = answers.get(target) if target else None
-        target_ingredient = ingredients.get(target) if target else None
-        is_correct = bool(
+        is_correct_explosive = bool(
             target_answer
             and target_answer.get("action") == "meter"
             and target_ingredient
             and target_ingredient.get("type") == "explosivo"
         )
+        is_correct_malo = bool(
+            target_answer
+            and target_answer.get("action") == "meter"
+            and target_ingredient
+            and target_ingredient.get("type") == "malo"
+        )
 
-        if is_correct:
+        if is_correct_explosive:
             correctly_accused_targets.add(target)
-            add_event(accuser, 70, "acusacion_correcta")
+            add_event(accuser, 90, "acusacion_correcta_explosivo")
+        elif is_correct_malo:
+            correctly_accused_targets.add(target)
+            add_event(accuser, 40, "acusacion_correcta_malo")
         else:
             add_event(accuser, -30, "acusacion_incorrecta")
 
         accusation_results.append({
             "accuser": accuser,
             "target": target,
-            "correct": is_correct,
+            "correct_explosive": is_correct_explosive,
+            "correct_malo": is_correct_malo,
+            "correct": is_correct_explosive or is_correct_malo,
         })
 
     if survived:
@@ -509,10 +532,10 @@ def calculate_results(state: dict, players: List[dict]) -> dict:
             player_house = players_by_name.get(player_name, {}).get("house")
 
             if ingredient_type == "explosivo" and player_name not in correctly_accused_targets:
-                add_event(player_name, 80, "explosivo_no_detectado")
+                add_event(player_name, 100, "explosivo_no_detectado")
 
             if ingredient_type == "malo":
-                add_event(player_name, 40, "ingrediente_malo_explota")
+                add_event(player_name, 50, "ingrediente_malo_explota")
 
             if ingredient_type in {"bueno", "dorado"} and player_house:
                 affected_houses.add(player_house)
@@ -525,7 +548,7 @@ def calculate_results(state: dict, players: List[dict]) -> dict:
     for player_name in discarded_entries:
         ingredient = ingredients.get(player_name)
         if ingredient and ingredient.get("type") == "explosivo":
-            add_event(player_name, 35, "descarto_explosivo")
+            add_event(player_name, 60, "descarto_explosivo")
 
     points_by_player: Dict[str, int] = {}
     reasons_by_player: Dict[str, List[str]] = {}
@@ -543,6 +566,7 @@ def calculate_results(state: dict, players: List[dict]) -> dict:
             "house": player.get("house"),
             "ingredient": ingredient,
             "action": answer.get("action") or "sin_accion",
+            "claim": state.get("caldero_claims", {}).get(player_name, {}).get("claim"),
             "target": answer.get("target"),
             "points": points_by_player.get(player_name, 0),
             "reasons": reasons_by_player.get(player_name, []),

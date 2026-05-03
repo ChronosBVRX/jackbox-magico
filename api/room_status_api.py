@@ -58,6 +58,8 @@ def sanitize_game_state(state: dict) -> dict:
             "point_events",
             "sombrero_result",
             "pociones_result",
+            "caldero_result",
+            "caldero_claims",
             "snitch_result",
             "trivia_result",
             "retratos_result",

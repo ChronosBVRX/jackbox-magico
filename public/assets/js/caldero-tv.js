@@ -2,6 +2,8 @@
   const CALDERO_PHASE = "caldero_mentiroso";
   const CALDERO_RESULTS = "results_caldero_mentiroso";
   let lastCalderoKey = "";
+  let calderoRevealInFlight = false;
+  let lastCalderoRevealRound = "";
 
   const originalRenderPlaying = window.renderPlaying;
   const originalRenderResults = window.renderResults;
@@ -47,12 +49,13 @@
       ingrediente_bueno_sobrevive: "Ingrediente bueno +120",
       ingrediente_dorado_sobrevive: "Dorado +180",
       casa_con_mas_buenos: "Casa con más buenos +100",
-      explosivo_no_detectado: "Explosivo no detectado +80",
-      ingrediente_malo_explota: "Ingrediente malo +40",
+      explosivo_no_detectado: "Explosivo no detectado +100",
+      ingrediente_malo_explota: "Ingrediente malo +50",
       casa_afectada_por_explosion: "Casa afectada -50",
-      acusacion_correcta: "Acusación correcta +70",
+      acusacion_correcta_explosivo: "Acusación correcta (Explosivo) +90",
+      acusacion_correcta_malo: "Acusación correcta (Malo) +40",
       acusacion_incorrecta: "Acusación incorrecta -30",
-      descarto_explosivo: "Descartó explosivo +35",
+      descarto_explosivo: "Descartó explosivo +60",
       no_decidio: "No decidió -20",
     };
     return labels[reason] || reason;
@@ -99,6 +102,14 @@
       if (typeof playMagicSound === "function") {
         playMagicSound(submitted ? "click" : "start");
       }
+    }
+
+    // Auto-reveal logic
+    const allVoted = total > 0 && submitted >= total;
+    const timeOut = left <= 0;
+
+    if ((allVoted || timeOut) && !calderoRevealInFlight && lastCalderoRevealRound !== state.round_id) {
+      revealCalderoResults(state.room_code || window.currentRoom, state.round_id);
     }
 
     if (typeof showScreen === "function") {
@@ -153,6 +164,35 @@
     `;
   }
 
+  async function revealCalderoResults(roomCode, roundId) {
+    if (!roomCode || calderoRevealInFlight) return;
+    
+    calderoRevealInFlight = true;
+    lastCalderoRevealRound = roundId;
+
+    console.log("Revelando resultados de Caldero automáticamente...");
+
+    try {
+      const res = await fetch(`/api/caldero/reveal_results_tv/${roomCode}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          tv_token: typeof getTvToken === "function" ? getTvToken() : "tv_host"
+        })
+      });
+
+      if (!res.ok) {
+        console.error("Error al revelar Caldero:", await res.json());
+      }
+    } catch (error) {
+      console.error("Error de red al revelar Caldero:", error);
+    } finally {
+      setTimeout(() => {
+        calderoRevealInFlight = false;
+      }, 3000);
+    }
+  }
+
   function renderCalderoResults(data) {
     const state = data.game_state || {};
     const result = state.caldero_result || {};
@@ -180,6 +220,7 @@
             <div class="caldero-result-meta">
               ${esc(ingredient.name || "Ingrediente desconocido")} · ${esc(ingredient.label || "?")} · ${esc(actionLabel(item.action))}${item.target ? ` contra ${esc(item.target)}` : ""}
             </div>
+            ${item.claim ? `<div class="caldero-result-meta" style="font-style:italic; color: #a1a1ff;">Declaró: “${esc(item.claim)}”</div>` : ""}
             <div class="caldero-result-meta">${esc(reasons || "Sin bonus especial")}</div>
           </div>
           <div class="caldero-result-points">${Number(item.points || 0) > 0 ? "+" : ""}${Number(item.points || 0)}</div>

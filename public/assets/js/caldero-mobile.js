@@ -5,6 +5,7 @@
   let playerViewCache = null;
   let loadingView = false;
   let submitting = false;
+  let selectedClaim = "";
 
   const originalHideGamePanels = window.hideGamePanels;
   const originalRenderResultsWait = window.renderResultsWait;
@@ -176,13 +177,43 @@
   function renderControls(view) {
     const ingredient = view.ingredient || {};
 
+    if (!selectedClaim) {
+      const claims = [
+        "Tengo algo bueno, confíen en mí.",
+        "Mi ingrediente es raro, pero puede salvarnos.",
+        "Si explota, no fui yo.",
+        "Voy a descartar por seguridad.",
+        "Alguien aquí trae algo explosivo y no soy yo.",
+      ];
+
+      return `
+        <div class="caldero-mobile-card">
+          <div class="caldero-mobile-secret">
+            <div class="caldero-mobile-emoji">${esc(ingredient.emoji || "🧪")}</div>
+            <div class="caldero-mobile-type">${esc(ingredient.label || "Ingrediente")}</div>
+            <h2 class="caldero-mobile-name">${esc(ingredient.name || "Ingrediente misterioso")}</h2>
+            <p class="caldero-mobile-tone">Primero elige tu coartada pública. ¿Qué dirás a los demás?</p>
+          </div>
+
+          <div class="caldero-mobile-actions">
+            ${claims.map(c => `
+              <button class="caldero-action-btn" onclick="calderoSelectClaim('${attr(c)}')">
+                “${esc(c)}”
+              </button>
+            `).join("")}
+          </div>
+        </div>
+      `;
+    }
+
     return `
       <div class="caldero-mobile-card">
         <div class="caldero-mobile-secret">
           <div class="caldero-mobile-emoji">${esc(ingredient.emoji || "🧪")}</div>
           <div class="caldero-mobile-type">${esc(ingredient.label || "Ingrediente")} · ${Number(ingredient.effect || 0) > 0 ? "+" : ""}${Number(ingredient.effect || 0)} estabilidad</div>
           <h2 class="caldero-mobile-name">${esc(ingredient.name || "Ingrediente misterioso")}</h2>
-          <p class="caldero-mobile-tone">${esc(ingredient.tone || "El caldero te mira raro. Tú sabrás.")}</p>
+          <p class="caldero-mobile-tone">Tu coartada: “${esc(selectedClaim)}”</p>
+          <button class="caldero-link-btn" onclick="calderoResetClaim()">Cambiar coartada</button>
         </div>
 
         <div class="caldero-mobile-actions">
@@ -208,7 +239,7 @@
         </div>
 
         <div id="caldero-mobile-status" class="caldero-mobile-status">
-          Pueden mentir, claro. No sería la primera vez que un mago finge inocencia.
+          Ahora elige tu acción real. Recuerda que la TV mostrará tu declaración pero no tu ingrediente.
         </div>
       </div>
     `;
@@ -231,6 +262,7 @@
     if (roundKey !== lastLoadedRound) {
       lastLoadedRound = roundKey;
       playerViewCache = null;
+      selectedClaim = "";
       safePlay("start");
       safeBuzz([25, 40, 25]);
     }
@@ -294,6 +326,7 @@
           player_name: name,
           action,
           target_name: action === "acusar" ? target : null,
+          claim: selectedClaim,
         }),
       });
 
@@ -322,6 +355,24 @@
       safeBuzz(55);
     } finally {
       submitting = false;
+    }
+  };
+
+  window.calderoSelectClaim = function(claim) {
+    selectedClaim = claim;
+    safePlay("click");
+    if (playerViewCache) {
+      const panel = ensurePanel();
+      panel.innerHTML = renderControls(playerViewCache);
+    }
+  };
+
+  window.calderoResetClaim = function() {
+    selectedClaim = "";
+    safePlay("click");
+    if (playerViewCache) {
+      const panel = ensurePanel();
+      panel.innerHTML = renderControls(playerViewCache);
     }
   };
 
