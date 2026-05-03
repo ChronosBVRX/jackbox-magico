@@ -24,6 +24,8 @@ export interface ServerToClientEvents {
   room_state: (state: RoomState) => void;
   error_message: (message: string) => void;
   game_started: (gameId: string) => void;
+  game_state: (data: any) => void;
+  game_player_state: (data: any) => void;
   trivia_question: (data: any) => void;
   answer_ack: (data: { success: boolean }) => void;
   answer_count: (data: { count: number; total: number }) => void;
@@ -44,6 +46,7 @@ export interface ClientToServerEvents {
   }) => void;
   tv_start_game: (gameId: string) => void;
   answer_submit: (data: { answer: string }) => void;
+  player_action: (data: any) => void;
   tv_next_round: () => void;
   tv_back_to_lobby: () => void;
   heartbeat: () => void;

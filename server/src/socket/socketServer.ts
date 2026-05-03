@@ -7,6 +7,8 @@ import {
   SocketData 
 } from '../types/events';
 import { roomEngine } from '../engine/roomEngine';
+import { createGameModule } from '../games/gameFactory';
+import { GameModule } from '../games/base';
 
 export function setupSocketServer(httpServer: HttpServer) {
   const io = new Server<
@@ -15,49 +17,34 @@ export function setupSocketServer(httpServer: HttpServer) {
     InterServerEvents,
     SocketData
   >(httpServer, {
-    cors: {
-      origin: "*",
-      methods: ["GET", "POST"]
-    }
+    cors: { origin: "*", methods: ["GET", "POST"] }
   });
 
-  const activeGames: Map<string, any> = new Map();
+  const activeGames: Map<string, { module: GameModule, state: any }> = new Map();
 
   io.on('connection', (socket) => {
-    console.log('Nuevo cliente conectado:', socket.id);
-
     socket.on('tv_create_room', () => {
       const roomCode = roomEngine.createRoom();
       socket.data.roomCode = roomCode;
       socket.data.isTv = true;
       socket.join(roomCode);
       socket.emit('room_created', roomCode);
-      
       const state = roomEngine.getRoom(roomCode);
-      if (state) {
-        socket.emit('room_state', state);
-      }
-      console.log(`Sala creada: ${roomCode}`);
+      if (state) socket.emit('room_state', state);
     });
 
     socket.on('player_join', (data) => {
       const { roomCode, clientId, name, house, gender } = data;
-      
       const result = roomEngine.addPlayer(roomCode, { clientId, name, house, gender });
-      
       if (result.success) {
         socket.data.roomCode = roomCode;
         socket.data.clientId = clientId;
         socket.data.isTv = false;
         socket.join(roomCode);
-        
         const state = roomEngine.getRoom(roomCode);
-        if (state) {
-          io.to(roomCode).emit('room_state', state);
-        }
-        console.log(`Jugador ${name} se unió a ${roomCode}`);
+        if (state) io.to(roomCode).emit('room_state', state);
       } else {
-        socket.emit('error_message', result.error || 'Error desconocido al unirse');
+        socket.emit('error_message', result.error || 'Error al unirse');
       }
     });
 
@@ -65,28 +52,58 @@ export function setupSocketServer(httpServer: HttpServer) {
       const { roomCode, isTv } = socket.data;
       if (!isTv || !roomCode) return;
 
-      if (gameId === 'trivia_magica') {
-        const { TriviaMagica } = require('../games/triviaMagica');
-        const game = new TriviaMagica(roomCode, io, roomEngine);
-        activeGames.set(roomCode, game);
-        
-        roomEngine.setRoomStatus(roomCode, 'playing');
-        roomEngine.setCurrentGameId(roomCode, gameId);
-        
-        game.start();
-        io.to(roomCode).emit('game_started', gameId);
+      const module = createGameModule(gameId as any);
+      if (!module) {
+        socket.emit('error_message', 'Minijuego no soportado o deshabilitado.');
+        return;
       }
+
+      const room = roomEngine.getRoom(roomCode);
+      if (!room) return;
+
+      const state = module.init(room.players);
+      activeGames.set(roomCode, { module, state });
+
+      roomEngine.setRoomStatus(roomCode, 'playing');
+      roomEngine.setCurrentGameId(roomCode, gameId);
+
+      // Notify start
+      io.to(roomCode).emit('game_started', gameId);
+      
+      // Send initial state
+      updateGameClients(roomCode);
+    });
+
+    socket.on('player_action', (data) => {
+      handlePlayerInteraction(data);
     });
 
     socket.on('answer_submit', (data) => {
+      handlePlayerInteraction(data);
+    });
+
+    function handlePlayerInteraction(data: any) {
       const { roomCode, clientId } = socket.data;
       if (!roomCode || !clientId) return;
 
       const game = activeGames.get(roomCode);
       if (game) {
-        game.handleEvent('answer_submit', data, clientId);
+        const player = roomEngine.getPlayer(roomCode, clientId);
+        if (!player) return;
+
+        const result = game.module.handlePlayerAction(game.state, player, data);
+        game.state = result.state;
+        
+        if (result.events) {
+          result.events.forEach(ev => {
+            if (ev.target === 'players') socket.emit(ev.type as any, ev.payload);
+            else io.to(roomCode).emit(ev.type as any, ev.payload);
+          });
+        }
+
+        updateGameClients(roomCode);
       }
-    });
+    }
 
     socket.on('tv_next_round', () => {
       const { roomCode, isTv } = socket.data;
@@ -94,35 +111,42 @@ export function setupSocketServer(httpServer: HttpServer) {
 
       const game = activeGames.get(roomCode);
       if (game) {
-        game.handleEvent('tv_next_round', {}, 'HOST');
+        const result = game.module.handleHostAction(game.state, 'next');
+        game.state = result.state;
+        
+        if (result.finished) {
+          activeGames.delete(roomCode);
+          roomEngine.setRoomStatus(roomCode, 'lobby');
+          io.to(roomCode).emit('room_state', roomEngine.getRoom(roomCode)!);
+        } else {
+          updateGameClients(roomCode);
+        }
       }
     });
 
-    socket.on('tv_back_to_lobby', () => {
-      const { roomCode, isTv } = socket.data;
-      if (!isTv || !roomCode) return;
-
+    function updateGameClients(roomCode: string) {
       const game = activeGames.get(roomCode);
-      if (game) {
-        game.handleEvent('tv_back_to_lobby', {}, 'HOST');
-        activeGames.delete(roomCode);
-      }
-    });
+      if (!game) return;
 
-    socket.on('heartbeat', () => {
-      socket.emit('pong');
-    });
+      const room = roomEngine.getRoom(roomCode);
+      if (!room) return;
+
+      // TV View
+      io.to(roomCode).emit('game_state' as any, game.module.getTvState(game.state));
+
+      // Individual Player Views
+      room.players.forEach(p => {
+        io.to(p.clientId).emit('game_player_state' as any, game.module.getPlayerState(game.state, p));
+      });
+    }
 
     socket.on('disconnect', () => {
       const { roomCode, clientId, isTv } = socket.data;
       if (roomCode && clientId && !isTv) {
         roomEngine.setPlayerConnection(roomCode, clientId, false);
         const state = roomEngine.getRoom(roomCode);
-        if (state) {
-          io.to(roomCode).emit('room_state', state);
-        }
+        if (state) io.to(roomCode).emit('room_state', state);
       }
-      console.log('Cliente desconectado:', socket.id);
     });
   });
 

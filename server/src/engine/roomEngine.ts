@@ -27,6 +27,11 @@ export class RoomEngine {
     return state;
   }
 
+  getPlayer(roomCode: string, clientId: string): Player | undefined {
+    const room = this.getRoom(roomCode);
+    return room?.players.find(p => p.clientId === clientId);
+  }
+
   addPlayer(roomCode: string, playerData: Omit<Player, 'points' | 'streak' | 'isConnected'>): { success: boolean; error?: string } {
     const room = this.getRoom(roomCode);
     if (!room) return { success: false, error: 'Sala no encontrada' };
