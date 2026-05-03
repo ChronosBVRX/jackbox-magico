@@ -7,6 +7,8 @@ import { SombreroBurlon } from './sombreroBurlon/index';
 import { ClasePociones } from './clasePociones/index';
 import { MapaTravieso } from './mapaTravieso/index';
 import { CalderoMentiroso } from './calderoMentiroso/index';
+import { RetratosChismosos } from './retratosChismosos/index';
+import { HechizoIncompleto } from './hechizoIncompleto/index';
 
 export function createGameModule(gameId: GameId): GameModule | null {
   switch (gameId) {
@@ -26,6 +28,10 @@ export function createGameModule(gameId: GameId): GameModule | null {
       return new MapaTravieso();
     case 'caldero_mentiroso':
       return new CalderoMentiroso();
+    case 'retratos_chismosos':
+      return new RetratosChismosos();
+    case 'hechizo_incompleto':
+      return new HechizoIncompleto();
     // Remaining games will be added here as they are implemented
     default:
       return null;

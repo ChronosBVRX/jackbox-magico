@@ -275,6 +275,74 @@ body {
   to { transform: translateX(0); opacity: 1; }
 }
 
+/* RETRATOS CHISMOSOS */
+.portrait-gallery {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+  margin: 2rem 0;
+}
+.portrait-frame {
+  width: 250px;
+  height: 320px;
+  background: #1a1a1a;
+  border: 15px solid #d4af37;
+  border-image: linear-gradient(to bottom, #d4af37, #aa8a2e) 1;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+.portrait-character {
+  font-size: 8rem;
+  animation: sway 4s infinite ease-in-out;
+}
+.gossip-bubble {
+  max-width: 600px;
+  padding: 1.5rem 2rem;
+  font-style: italic;
+  font-family: 'Crimson Text', serif;
+  font-size: 1.4rem;
+  line-height: 1.4;
+  position: relative;
+  border-left: 4px solid var(--color-accent);
+}
+
+/* HECHIZO INCOMPLETO */
+.spell-parchment {
+  background: #f4e4bc;
+  padding: 3rem;
+  border-radius: 4px;
+  max-width: 800px;
+  margin: 2rem auto;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.5), inset 0 0 100px rgba(0,0,0,0.1);
+  color: #2a1a0a;
+  text-align: center;
+  position: relative;
+  border: 1px solid #d2b48c;
+}
+.spell-text {
+  font-family: 'Crimson Text', serif;
+  font-size: 3.5rem;
+  letter-spacing: 2px;
+  margin-bottom: 0.5rem;
+}
+.spell-text span.blank {
+  display: inline-block;
+  width: 150px;
+  border-bottom: 3px solid #8b4513;
+  margin: 0 10px;
+  vertical-align: bottom;
+  animation: pulseOpacity 2s infinite;
+}
+@keyframes pulseOpacity {
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 0.8; }
+}
+
 .player-card.offline {
   opacity: 0.4;
   filter: grayscale(1);

@@ -150,7 +150,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'retratos_chismosos',
     name: 'Retratos Chismosos',
     shortName: 'Retratos',
-    status: 'dev',
+    status: 'beta',
     mode: 'quiz',
     description: 'Escucha los rumores de los retratos y adivina de quién están hablando.',
     rules: [
@@ -162,13 +162,13 @@ export const GAME_CATALOG: GameInfo[] = [
     durationSeconds: 20,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   },
   {
     id: 'hechizo_incompleto',
     name: 'Hechizo Incompleto',
     shortName: 'Hechizo',
-    status: 'dev',
+    status: 'beta',
     mode: 'quiz',
     description: 'Completa los encantamientos antiguos que han perdido algunas palabras.',
     rules: [
@@ -180,7 +180,7 @@ export const GAME_CATALOG: GameInfo[] = [
     durationSeconds: 15,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   },
   {
     id: 'caldero_mentiroso',

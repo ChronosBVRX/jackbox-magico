@@ -151,12 +151,56 @@ socket.on('game_player_state', (data) => {
     else renderPocionesInput(data);
   } else if (data.phase === 'results') {
     showMobileView('wait-screen');
+  } else if (currentGameId === 'retratos_chismosos') {
+    renderRetratosInput(data);
+  } else if (currentGameId === 'hechizo_incompleto') {
+    renderHechizoInput(data);
   } else if (currentGameId === 'mapa_travieso') {
     renderMapaInput(data);
   } else if (currentGameId === 'caldero_mentiroso') {
     renderCalderoInput(data);
   }
 });
+
+function renderRetratosInput(data) {
+  if (data.alreadyAnswered) {
+    showView('answer-sent');
+    return;
+  }
+  showView('retratos-input');
+  const container = document.getElementById('portrait-mobile-options');
+  container.innerHTML = '';
+  data.options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-target';
+    btn.textContent = opt;
+    btn.onclick = () => {
+      socket.emit('player_action', { type: 'portrait_answer', answer: opt });
+      showView('answer-sent');
+    };
+    container.appendChild(btn);
+  });
+}
+
+function renderHechizoInput(data) {
+  if (data.alreadyAnswered) {
+    showView('answer-sent');
+    return;
+  }
+  showView('hechizo-input');
+  const container = document.getElementById('hechizo-mobile-options');
+  container.innerHTML = '';
+  data.options.forEach(opt => {
+    const btn = document.createElement('button');
+    btn.className = 'btn-target';
+    btn.textContent = opt;
+    btn.onclick = () => {
+      socket.emit('player_action', { type: 'spell_answer', answer: opt });
+      showView('answer-sent');
+    };
+    container.appendChild(btn);
+  });
+}
 
 function renderMapaInput(data) {
   if (data.alreadyAnswered) {

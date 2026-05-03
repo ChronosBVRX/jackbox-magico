@@ -16,7 +16,7 @@
   </div>
 
   <div class="tv-layout" id="view-lobby" style="display: none;">
-    <!-- Header -->
+    <header class="header">
       <div class="title-group">
         <h1 class="text-gradient-gold">Jackbox Mágico</h1>
         <p>Copa de las Casas</p>
@@ -57,6 +57,14 @@
         <select id="game-select" class="glass-input" style="background: rgba(0,0,0,0.4); color: white; border: 1px solid var(--color-accent); border-radius: 8px; padding: 0.5rem 1rem;">
           <option value="trivia_magica">Trivia del Mundo Mágico</option>
           <option value="artes_ridiculas">Artes Ridículas</option>
+          <option value="atrapa_snitch">Atrapa la Snitch</option>
+          <option value="duelo_hechizos">Duelo de Hechizos</option>
+          <option value="sombrero_burlon">Sombrero Burlón</option>
+          <option value="clase_pociones">Clase de Pociones</option>
+          <option value="mapa_travieso">El Mapa Travieso</option>
+          <option value="caldero_mentiroso">El Caldero Mentiroso</option>
+          <option value="retratos_chismosos">Retratos Chismosos</option>
+          <option value="hechizo_incompleto">Hechizo Incompleto</option>
         </select>
         <button class="btn-start-premium" id="btn-start" style="display: none;">Iniciar Juego</button>
       </div>
@@ -119,7 +127,41 @@
     </div>
   </div>
 
-      <!-- Results View -->
+      <!-- Retratos Chismosos Screen -->
+  <div class="tv-layout" id="view-retratos" style="display: none;">
+    <header class="header">
+        <div class="title-group">
+          <h1 class="text-gradient-gold" id="portrait-category">Retratos Chismosos</h1>
+          <p id="portrait-name">Un retrato te observa...</p>
+        </div>
+    </header>
+    <div class="portrait-gallery">
+        <div class="portrait-frame">
+          <div class="portrait-character" id="portrait-img">🖼️</div>
+        </div>
+        <div class="gossip-bubble glass-panel">
+          <p id="portrait-clue">"Escuché que alguien..."</p>
+        </div>
+    </div>
+    <div class="trivia-options" id="portrait-options"></div>
+  </div>
+
+  <!-- Hechizo Incompleto Screen -->
+  <div class="tv-layout" id="view-hechizo" style="display: none;">
+    <header class="header">
+        <div class="title-group">
+          <h1 class="text-gradient-gold">Hechizo Incompleto</h1>
+          <p id="spell-category">Encantamientos</p>
+        </div>
+    </header>
+    <div class="spell-parchment">
+        <h2 id="spell-text" class="spell-text">Wingardium Levio___</h2>
+        <p id="spell-context" style="opacity:0.6; margin-top:1rem;"></p>
+    </div>
+    <div class="trivia-options" id="spell-options"></div>
+  </div>
+
+  <!-- Results View -->
   <div class="tv-layout" id="view-results" style="display: none;">
     <header class="header">
       <div class="title-group">

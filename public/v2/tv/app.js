@@ -111,12 +111,82 @@ socket.on('game_state', (data) => {
     renderSombreroView(data);
   } else if (currentGameId === 'clase_pociones') {
     renderPocionesView(data);
+  } else if (currentGameId === 'retratos_chismosos') {
+    renderRetratosView(data);
+  } else if (currentGameId === 'hechizo_incompleto') {
+    renderHechizoView(data);
   } else if (currentGameId === 'mapa_travieso') {
     renderMapaView(data);
   } else if (currentGameId === 'caldero_mentiroso') {
     renderCalderoView(data);
   }
 });
+
+function renderRetratosView(data) {
+  if (data.phase === 'results') {
+    renderRetratosResults(data);
+    return;
+  }
+  showView('view-retratos');
+  document.getElementById('portrait-category').textContent = data.currentClue?.category || 'Retratos Chismosos';
+  document.getElementById('portrait-name').textContent = data.currentClue?.portraitName || 'Escuchando...';
+  document.getElementById('portrait-clue').textContent = `"${data.currentClue?.clue}"`;
+  
+  const options = document.getElementById('portrait-options');
+  options.innerHTML = data.currentClue?.options.map(opt => `
+    <div class="option-card glass-panel">
+      <div class="option-label">${opt}</div>
+    </div>
+  `).join('') || '';
+}
+
+function renderHechizoView(data) {
+  if (data.phase === 'results') {
+    renderHechizoResults(data);
+    return;
+  }
+  showView('view-hechizo');
+  document.getElementById('spell-category').textContent = data.currentSpell?.category.toUpperCase() || 'HECHIZO';
+  document.getElementById('spell-text').textContent = data.currentSpell?.incompleteText || '...';
+  document.getElementById('spell-context').textContent = data.currentSpell?.context || '';
+  
+  const options = document.getElementById('spell-options');
+  options.innerHTML = data.currentSpell?.options.map(opt => `
+    <div class="option-card glass-panel">
+      <div class="option-label">${opt}</div>
+    </div>
+  `).join('') || '';
+}
+
+function renderRetratosResults(data) {
+  showView('view-results');
+  document.getElementById('correct-answer').textContent = data.results.correctAnswer;
+  document.getElementById('narrator-comment').textContent = `"${data.results.explanation}" - ${data.results.narrator}`;
+  
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  data.results.ranking.forEach(res => {
+    const card = document.createElement('div');
+    card.className = 'result-player-card glass-panel';
+    card.innerHTML = `<div class="player-name">${res.name}</div><div class="result-status ${res.correct?'status-correct':'status-wrong'}">${res.correct?'¡ACERTÓ!':'FALLÓ'}</div><div class="points-gain">+${res.points}</div>`;
+    list.appendChild(card);
+  });
+}
+
+function renderHechizoResults(data) {
+  showView('view-results');
+  document.getElementById('correct-answer').textContent = data.results.completedText;
+  document.getElementById('narrator-comment').textContent = `"${data.results.explanation}" - ${data.results.narrator}`;
+  
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  data.results.ranking.forEach(res => {
+    const card = document.createElement('div');
+    card.className = 'result-player-card glass-panel';
+    card.innerHTML = `<div class="player-name">${res.name}</div><div class="result-status ${res.correct?'status-correct':'status-wrong'}">${res.correct?'ÉXITO':'FALLO'}</div><div class="points-gain">+${res.points}</div>`;
+    list.appendChild(card);
+  });
+}
 
 function renderMapaView(data) {
   if (data.phase === 'results') {
