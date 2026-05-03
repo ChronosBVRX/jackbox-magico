@@ -468,6 +468,10 @@ def calculate_results(state: dict, players: List[dict]) -> dict:
     correctly_accused_targets = set()
     accusation_results = []
 
+    for accuser, target in accusations:
+        target_answer = answers.get(target)
+        target_ingredient = ingredients.get(target)
+
         is_correct_explosive = bool(
             target_answer
             and target_answer.get("action") == "meter"

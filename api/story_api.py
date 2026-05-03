@@ -469,6 +469,7 @@ def start_step_for_story(
         )
 
         # Nueva Escena de Instrucciones
+        from api.scenes.instructions_scene import build_instruction_scene
         return build_instruction_scene(
             game_id=game_id,
             previous_state=game_state,
