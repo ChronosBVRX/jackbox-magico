@@ -1215,6 +1215,25 @@ function renderPlaying(data) {
       return;
     }
   }
+  if (state.phase === "sombrero" || state.phase === "sombrero_tiebreak") {
+    if (window.SombreroTv?.render) {
+      window.SombreroTv.render(state, players);
+      
+      // Auto-advance sub-rounds if in reveal mode
+      if (state.round_reveal && !window._sombreroTransitionLock) {
+        const revealStart = state.round_reveal_started_at || 0;
+        const revealDuration = state.round_reveal_seconds || 6;
+        const now = Date.now() / 1000;
+        
+        if (now > revealStart + revealDuration) {
+          window._sombreroTransitionLock = true;
+          revelarResultados(); // This will trigger the next sub-round on the backend
+          setTimeout(() => { window._sombreroTransitionLock = false; }, 2000);
+        }
+      }
+      return;
+    }
+  }
 
   if (state.phase === "atrapa_snitch") {
     if (typeof window.renderSnitchTv === "function") {
@@ -1497,6 +1516,21 @@ function renderResults(data) {
     if (explanation) explanation.innerText = "";
     if (extra && window.DueloTv?.renderResults) {
       window.DueloTv.renderResults(state, extra);
+    } else {
+      renderGenericResults(state, players);
+    }
+    if (scores) scores.innerHTML = renderScoreGrid(players);
+    return;
+  }
+
+  if (phase === "results_sombrero") {
+    const title = document.getElementById("titulo-resultados");
+    const extra = document.getElementById("tv-extra-results");
+    const scores = document.getElementById("tv-marcadores");
+
+    if (title) title.innerText = "Resultado del Sombrero Burlón";
+    if (extra && window.SombreroTv?.renderResults) {
+      window.SombreroTv.renderResults(state, extra);
     } else {
       renderGenericResults(state, players);
     }

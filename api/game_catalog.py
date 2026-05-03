@@ -37,9 +37,9 @@ GAME_CATALOG = {
     "sombrero_burlon": {
         "name": "Sombrero Burlón", "short_name": "Sombrero", "status": "implemented", "featured": True, "mode": "social_vote",
         "players": {"max_total": 8, "max_per_house": 2},
-        "description": "Minijuego social de votación. El Sombrero hace una pregunta incómoda, graciosa o sospechosa y todos votan por el jugador que mejor encaje.",
-        "rules": ["Cada jugador vota desde su celular.", "No puedes votar por ti mismo.", "El más votado gana puntos.", "Puede haber desempate."],
-        "points": {"most_voted": 120, "vote_received": 15, "winner_house": 80, "zero_votes": 30},
+        "description": "Mini ronda social de 3 preguntas incómodas, graciosas o sospechosas. El Sombrero pone a prueba la reputación de cada jugador y casa.",
+        "rules": ["Se juegan 3 subrondas de votación.", "Cada jugador vota por otro en cada pregunta.", "Hay revelaciones parciales después de cada voto.", "El resultado final es acumulativo.", "Algunas preguntas son secretas y solo se ven en el celular."],
+        "points": {"most_voted_round": 60, "vote_received_round": 10, "zero_votes_round": 15, "overall_winner": 100, "winner_house_bonus": 60},
     },
     "clase_pociones": {
         "name": "Clase de Pociones", "short_name": "Pociones", "status": "implemented", "featured": True, "mode": "memory_recipe",

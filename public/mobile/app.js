@@ -555,7 +555,11 @@ function iniciarRadarMovil() {
         }
 
         if (phase === "sombrero" || phase === "sombrero_tiebreak") {
-          renderSombreroMobile(state);
+          if (window.SombreroMobile?.render) {
+            window.SombreroMobile.render(state);
+          } else {
+            renderSombreroMobile(state);
+          }
           return;
         }
 
