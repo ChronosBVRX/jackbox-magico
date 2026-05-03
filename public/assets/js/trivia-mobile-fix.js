@@ -514,22 +514,38 @@
 
     const elapsedMs = Math.max(0, Date.now() - stateMemory.startedMs);
 
+    const payload = {
+      room_code: room,
+      player_name: player,
+      answer,
+      answer_index: answerIndex,
+      answer_label: answerLabel,
+      client_elapsed_ms: elapsedMs,
+    };
+
     try {
-      const res = await fetch("/api/player/trivia_answer", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        cache: "no-store",
-        body: JSON.stringify({
-          room_code: room,
-          player_name: player,
-          answer,
-          answer_index: answerIndex,
-          answer_label: answerLabel,
-          client_elapsed_ms: elapsedMs,
-        }),
-      });
+      const postTriviaAnswer = async (p) => {
+        const primary = await fetch("/api/player/trivia_answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify(p),
+        });
+
+        if (primary.ok) return primary;
+        if (![404, 405, 500].includes(primary.status)) return primary;
+
+        console.warn("Falling back to /api/player/submit_answer after trivia_answer failed:", primary.status);
+
+        return fetch("/api/player/submit_answer", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          cache: "no-store",
+          body: JSON.stringify(p),
+        });
+      };
+
+      const res = await postTriviaAnswer(payload);
 
       const data = await res.json();
 

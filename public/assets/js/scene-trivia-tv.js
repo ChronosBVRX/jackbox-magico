@@ -76,14 +76,44 @@
     finishingTriviaKey = key;
 
     try {
-      await fetch(`/api/trivia/${room}/finish`, {
+      const res = await fetch(`/api/trivia/${room}/finish`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        cache: "no-store",
         body: JSON.stringify({ tv_token: token, force: false })
       });
+
+      let data = null;
+      try {
+        data = await res.json();
+      } catch (_) {
+        data = null;
+      }
+
+      if (!res.ok) {
+        console.error("Error cerrando trivia:", res.status, data);
+        finishingTriviaKey = "";
+
+        // Reintentar después de un momento para no dejar congelada la ronda
+        setTimeout(() => {
+          if (state && state.phase === "trivia") {
+            finishTriviaFromTv(state);
+          }
+        }, 1200);
+
+        return;
+      }
+
+      console.log("Trivia cerrada correctamente:", data);
     } catch (e) {
       console.error("Error cerrando trivia", e);
-      finishingTriviaKey = ""; // Reset on error so we can retry
+      finishingTriviaKey = "";
+
+      setTimeout(() => {
+        if (state && state.phase === "trivia") {
+          finishTriviaFromTv(state);
+        }
+      }, 1200);
     }
   }
 

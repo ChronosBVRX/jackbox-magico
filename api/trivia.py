@@ -1200,9 +1200,13 @@ def resolve_for_reveal(state: dict, players=None):
     if state.get("scored"):
         return state, state.get("point_events", []), True
 
-    answers = state.get("answers") or {}
-    session = state.get("trivia_session") or {}
+    # Robustez en acceso a datos
+    answered = state.get("answered") or state.get("answers") or {}
+    # Asegurar que answers existe (legacy fallback)
+    if "answers" not in state:
+        state["answers"] = answered
 
+    session = state.get("trivia_session") or {}
     streaks = session.get("streaks") or {}
     correct_counts = session.get("correct_counts") or {}
     wrong_counts = session.get("wrong_counts") or {}
@@ -1211,29 +1215,32 @@ def resolve_for_reveal(state: dict, players=None):
     point_events = []
     player_results = []
 
-    correct_entries = [
-        {
-            "player_name": name,
-            **payload,
-        }
-        for name, payload in answers.items()
-        if payload.get("correct")
-    ]
+    correct_entries = []
+    for name, payload in answered.items():
+        if isinstance(payload, dict) and payload.get("correct"):
+            correct_entries.append({
+                "player_name": name,
+                **payload,
+            })
 
     fastest_correct = None
-
     if correct_entries:
-        fastest_correct = min(
-            correct_entries,
-            key=lambda item: float(item.get("elapsed_seconds") or 999),
-        )
+        try:
+            fastest_correct = min(
+                correct_entries,
+                key=lambda item: float(item.get("elapsed_seconds") or 999),
+            )
+        except Exception as e:
+            print(f"TRIVIA ERROR calculando fastest_correct: {e}", flush=True)
 
     for player in players:
         name = player.get("name")
+        if not name: continue
+        
         house = player.get("house")
-        payload = answers.get(name)
+        payload = answered.get(name)
 
-        if not payload:
+        if not payload or not isinstance(payload, dict):
             streaks[name] = 0
             player_results.append({
                 "player_name": name,
@@ -1267,7 +1274,6 @@ def resolve_for_reveal(state: dict, players=None):
             if streaks[name] > 0 and streaks[name] % 3 == 0:
                 points += STREAK_3_BONUS
                 labels.append(random.choice(STREAK_LINES) + f" +{STREAK_3_BONUS}")
-
         else:
             streaks[name] = 0
             wrong_counts[name] = int(wrong_counts.get(name) or 0) + 1
@@ -1577,67 +1583,88 @@ async def finish_trivia_endpoint(request: Request, room_code: str):
         raise HTTPException(status_code=500, detail="Faltan credenciales")
 
     try:
-        payload = await request.json()
-    except Exception:
-        payload = {}
+        try:
+            payload = await request.json()
+        except Exception:
+            payload = {}
 
-    tv_token = payload.get("tv_token")
-    force = payload.get("force", False)
+        tv_token = payload.get("tv_token")
+        force = payload.get("force", False)
 
-    if not tv_token:
-        raise HTTPException(status_code=403, detail="Falta tv_token. Solo la TV puede cerrar la pregunta.")
+        if not tv_token:
+            raise HTTPException(status_code=403, detail="Falta tv_token. Solo la TV puede cerrar la pregunta.")
 
-    room_code = str(room_code).upper().strip()
+        room_code = str(room_code).upper().strip()
 
-    room = (
-        supabase.table("rooms")
-        .select("id, game_state")
-        .eq("room_code", room_code)
-        .execute()
-    )
+        room = (
+            supabase.table("rooms")
+            .select("id, game_state")
+            .eq("room_code", room_code)
+            .execute()
+        )
 
-    if not room.data:
-        raise HTTPException(status_code=404, detail="Sala no encontrada")
+        if not room.data:
+            raise HTTPException(status_code=404, detail="Sala no encontrada")
 
-    room_id = room.data[0]["id"]
-    state = room.data[0].get("game_state") or {}
+        room_id = room.data[0]["id"]
+        state = deepcopy(room.data[0].get("game_state") or {})
 
-    if state.get("phase") != "trivia":
-        return {"phase": state.get("phase")}
+        # Validar si ya no estamos en trivia o ya se procesó
+        if state.get("phase") != "trivia":
+            return {"phase": state.get("phase"), "status": "already_finished"}
 
-    if state.get("scored") or state.get("results_applied"):
-        return {"phase": state.get("phase")}
+        if state.get("scored") or state.get("results_applied"):
+            return {"phase": state.get("phase"), "status": "already_scored"}
 
-    duration = float(state.get("duration_seconds") or 20)
-    started_at = float(state.get("started_at") or 0)
-    
-    import time
-    now = time.time()
-    
-    if not force and started_at > 0:
-        elapsed = now - started_at
-        if elapsed < duration:
-            # Aún hay tiempo, no forzar cierre a menos que force == True
-            return {"phase": state.get("phase")}
+        duration = float(state.get("duration_seconds") or 20)
+        started_at = float(state.get("started_at") or 0)
+        
+        now = time.time()
+        
+        if not force and started_at > 0:
+            elapsed = now - started_at
+            if elapsed < duration:
+                # Aún hay tiempo, no forzar cierre
+                return {"phase": state.get("phase"), "status": "waiting_timer", "elapsed": elapsed}
 
-    players = (
-        supabase.table("players")
-        .select("name, house, score")
-        .eq("room_id", room_id)
-        .execute()
-    ).data or []
+        # Obtener jugadores para calcular puntos
+        players = (
+            supabase.table("players")
+            .select("name, house, score")
+            .eq("room_id", room_id)
+            .execute()
+        ).data or []
 
-    new_state, point_events, scored = resolve_for_reveal(state, players)
+        # Resolver resultados
+        new_state, point_events, scored = resolve_for_reveal(state, players)
 
-    if point_events:
-        # Import local para no causar ciclos si main lo tiene
-        from api.main import apply_point_events
-        apply_point_events(room_id, point_events)
+        if point_events:
+            try:
+                # Import local para evitar ciclos
+                from api.main import apply_point_events
+                apply_point_events(room_id, point_events)
+            except Exception as pe_err:
+                print(f"TRIVIA ERROR aplicando puntos: {pe_err}", flush=True)
 
-    new_state["results_applied"] = True
+        new_state["results_applied"] = True
 
-    supabase.table("rooms").update({
-        "game_state": new_state,
-    }).eq("room_code", room_code).execute()
+        supabase.table("rooms").update({
+            "game_state": new_state,
+        }).eq("room_code", room_code).execute()
 
-    return {"phase": "results_trivia"}
+        return {"phase": "results_trivia", "accepted": True}
+
+    except HTTPException:
+        raise
+    except Exception as error:
+        import traceback
+        print("TRIVIA FINISH CRITICAL ERROR:", repr(error), flush=True)
+        print(traceback.format_exc(), flush=True)
+        raise HTTPException(
+            status_code=500,
+            detail={
+                "error": "TRIVIA_FINISH_FAILED",
+                "message": str(error),
+            }
+        )
+
