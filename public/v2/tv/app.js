@@ -7,11 +7,9 @@ const displayCode = document.getElementById('display-code');
 const playersList = document.getElementById('players-list');
 const statusText = document.getElementById('status-text');
 const playerCount = document.getElementById('player-count');
-const btnStart = document.getElementById('btn-start');
 const btnNextRound = document.getElementById('btn-next-round');
-const viewQuiz = document.getElementById('view-trivia'); // We'll reuse this as a generic quiz view
+const viewQuiz = document.getElementById('view-trivia'); 
 const viewResults = document.getElementById('view-results');
-const btnStoryLobby = document.getElementById('btn-story-lobby');
 
 let currentRoom = null;
 let currentGameId = null;
@@ -188,11 +186,6 @@ btnCreate.addEventListener('click', () => {
   socket.emit('tv_create_room');
 });
 
-btnStart.addEventListener('click', () => {
-  if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
-  const gameId = document.getElementById('game-select').value;
-  socket.emit('tv_start_game', gameId);
-});
 
 btnNextRound.addEventListener('click', () => {
   socket.emit('tv_next_round');
@@ -301,18 +294,12 @@ socket.on('room_state', (state) => {
     playerCount.textContent = `${state.players.length} / 8 Jugadores`;
     
     const actions = document.getElementById('lobby-actions');
-    if (state.players.length >= 1) { // Reducido a 1 para pruebas, normalmente 2
+    if (state.players.length >= 1) {
+      statusText.textContent = `${state.players.length} mago(s) listo(s)`;
       if (actions) actions.style.display = 'flex';
     } else {
-      if (actions) actions.style.display = 'none';
-    }
-      statusText.textContent = `${state.players.length} mago(s) listo(s)`;
-      btnStart.style.display = 'inline-block';
-      btnStoryLobby.style.display = 'inline-block';
-    } else {
       statusText.textContent = 'Esperando jugadores...';
-      btnStart.style.display = 'none';
-      btnStoryLobby.style.display = 'none';
+      if (actions) actions.style.display = 'none';
     }
   }
 });
