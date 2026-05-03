@@ -63,6 +63,7 @@ def sanitize_game_state(state: dict) -> dict:
             "retratos_result",
             "mapa_result",
             "hechizo_result",
+            "patronus_result",
             "votes_by_voter",
             "votes_by_target",
         ]:

@@ -971,7 +971,7 @@ async def submit_answer(request: Request):
 
         return format_snitch_response(result)
 
-    elif phase in {"patronus_personalizado"}:
+    elif phase in {"patronus_personalizado", "results_patronus_personalizado"}:
         event = patronus_personalizado.decode_event_key(str(answer))
 
         if not event:
@@ -1006,6 +1006,13 @@ async def submit_answer(request: Request):
         parsed = patronus_personalizado.parse_event_log(votes, round_id)
 
         event_type = event.get("type")
+
+        if phase == "results_patronus_personalizado":
+            return {
+                "message": "La votación de Patronus ha terminado.",
+                "accepted": False,
+            }
+
 
         if event_type == "answer":
             if event.get("player_name") != player_name:
@@ -1102,6 +1109,19 @@ async def submit_answer(request: Request):
             parsed = patronus_personalizado.parse_event_log(votes, round_id)
             state["voted_count"] = len(parsed.get("vote_by_voter", {}))
 
+            # Auto-reveal if all players voted
+            total_players = state.get("total_players") or len(players)
+            if state["voted_count"] >= total_players and not state.get("scored"):
+                result = patronus_personalizado.calculate_results(state)
+                state["patronus_result"] = result
+                state["point_events"] = result.get("point_events", [])
+                state["votes_by_voter"] = result.get("votes_by_voter", {})
+                state["votes_by_target"] = result.get("votes_by_target", {})
+                state["phase"] = "results_patronus_personalizado"
+                state["scored"] = True
+
+                apply_point_events(room_id, state["point_events"])
+
             supabase.table("rooms").update({
                 "game_state": state,
             }).eq("room_code", room_code).execute()
@@ -1112,6 +1132,27 @@ async def submit_answer(request: Request):
             }
 
         if event_type == "control":
+            action = event.get("action")
+            if action == "RESULTS" and not state.get("scored"):
+                result = patronus_personalizado.calculate_results(state)
+                state["patronus_result"] = result
+                state["point_events"] = result.get("point_events", [])
+                state["votes_by_voter"] = result.get("votes_by_voter", {})
+                state["votes_by_target"] = result.get("votes_by_target", {})
+                state["phase"] = "results_patronus_personalizado"
+                state["scored"] = True
+
+                apply_point_events(room_id, state["point_events"])
+
+                supabase.table("rooms").update({
+                    "game_state": state,
+                }).eq("room_code", room_code).execute()
+
+                return {
+                    "message": "Resultados de Patronus calculados.",
+                    "accepted": True,
+                }
+
             return {
                 "message": "El control de Patronus se hace desde la TV.",
                 "accepted": False,
