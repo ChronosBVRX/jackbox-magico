@@ -16,7 +16,7 @@ export const torneoMagicoRelampago: StoryDefinition = {
       title: "Torneo Mágico Relámpago",
       subtitle: "Poco tiempo, mucho desorden",
       visual: "lightning_tournament",
-      voiceSlot: "story_intro_torneo_relampago",
+      voiceSlot: "torneo_relampago_inicio",
       lines: [
         "Bienvenidos al Torneo Mágico Relámpago.",
         "Aquí no hay tiempo para discursos largos, explicaciones solemnes ni dignidad excesiva.",
@@ -36,7 +36,8 @@ export const torneoMagicoRelampago: StoryDefinition = {
       type: "trivia_block",
       title: "Trivia Relámpago",
       questions: 3,
-      reason: "La Copa quiere empezar rápido."
+      reason: "La Copa quiere empezar rápido.",
+      voiceSlot: "torneo_relampago_trivia"
     },
     {
       id: "instrucciones_snitch_relampago",
@@ -50,7 +51,8 @@ export const torneoMagicoRelampago: StoryDefinition = {
       type: "fixed_minigame",
       gameId: "atrapa_snitch",
       title: "Atrapa la Snitch",
-      reason: "Nada dice competencia justa como una bola dorada moviéndose sin piedad."
+      reason: "Nada dice competencia justa como una bola dorada moviéndose sin piedad.",
+      voiceSlot: "torneo_relampago_snitch"
     },
     {
       id: "marcador_relampago_1",
@@ -71,7 +73,8 @@ export const torneoMagicoRelampago: StoryDefinition = {
       type: "fixed_minigame",
       gameId: "artes_ridiculas",
       title: "Defensa Contra las Artes Ridículas",
-      reason: "La Copa exige reflejos mentales y sentido del humor."
+      reason: "La Copa exige reflejos mentales y sentido del humor.",
+      voiceSlot: "torneo_relampago_artes"
     },
     {
       id: "instrucciones_duelo_relampago",
@@ -85,7 +88,8 @@ export const torneoMagicoRelampago: StoryDefinition = {
       type: "fixed_minigame",
       gameId: "duelo_hechizos",
       title: "Duelo de Hechizos",
-      reason: "Dos jugadores se enfrentarán antes de que alguien pida revancha."
+      reason: "Dos jugadores se enfrentarán antes de que alguien pida revancha.",
+      voiceSlot: "torneo_relampago_duelo"
     },
     {
       id: "marcador_relampago_2",
@@ -106,14 +110,15 @@ export const torneoMagicoRelampago: StoryDefinition = {
       type: "copa_final",
       gameId: "copa_final",
       title: "Copa Final",
-      reason: "Una pregunta final para cerrar el caos."
+      reason: "Una pregunta final para cerrar el caos.",
+      voiceSlot: "torneo_relampago_final"
     },
     {
       id: "cierre_relampago",
       type: "story_complete",
       title: "El torneo terminó",
       subtitle: "Rápido, injusto y glorioso",
-      voiceSlot: "story_final_winner",
+      voiceSlot: "torneo_relampago_cierre",
       lines: [
         "El Torneo Relámpago ha terminado.",
         "Fue breve, intenso y probablemente dejó más preguntas que respuestas.",

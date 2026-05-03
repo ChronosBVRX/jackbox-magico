@@ -16,7 +16,7 @@ export const copaCasasClasica: StoryDefinition = {
       title: "Bienvenidos al Gran Comedor",
       subtitle: "La Copa despierta",
       visual: "great_hall_intro",
-      voiceSlot: "story_intro_copa_clasica",
+      voiceSlot: "copa_clasica_bienvenida",
       lines: [
         "Las velas flotan sobre el Gran Comedor y la Copa de las Casas ha despertado.",
         "Esta noche, cada respuesta, cada voto y cada decisión moverá el destino de las casas.",
@@ -53,6 +53,7 @@ export const copaCasasClasica: StoryDefinition = {
       title: "El Sombrero interrumpe",
       subtitle: "Una opinión no solicitada",
       visual: "sorting_hat",
+      voiceSlot: "copa_clasica_sombrero_intro",
       lines: [
         "Justo cuando todos pensaban que la competencia sería seria, el Sombrero decidió opinar.",
         "La Copa permite conocimiento, pero el Sombrero exige juicio social.",
@@ -86,6 +87,7 @@ export const copaCasasClasica: StoryDefinition = {
       title: "Clase de Pociones",
       subtitle: "El caldero está listo",
       visual: "potions_class",
+      voiceSlot: "copa_clasica_pociones_intro",
       lines: [
         "El aire cambia. Un aroma extraño sale de los calderos.",
         "La siguiente prueba no premia solo la memoria. Premia la calma bajo presión.",
@@ -119,8 +121,9 @@ export const copaCasasClasica: StoryDefinition = {
       title: "El castillo se mueve",
       subtitle: "El mapa aparece",
       visual: "moving_castle",
+      voiceSlot: "copa_clasica_mapa_intro",
       lines: [
-        "Las escaleras cambian. Los pasillos se estirar. Alguien jura haber visto una sombra correr.",
+        "Las escaleras cambian. Los pasillos se estiran. Alguien jura haber visto una sombra correr.",
         "En medio del caos, aparece un mapa antiguo.",
         "Observen bien. Lo que vean ahora tal vez desaparezca en segundos."
       ]
@@ -145,6 +148,7 @@ export const copaCasasClasica: StoryDefinition = {
       title: "Los retratos murmuran",
       subtitle: "Pistas entre marcos",
       visual: "portrait_gallery",
+      voiceSlot: "copa_clasica_retratos_intro",
       lines: [
         "Los retratos del castillo comenzaron a murmurar.",
         "Algunos dicen verdades. Otros exageran. Todos se sienten importantes.",
@@ -178,6 +182,7 @@ export const copaCasasClasica: StoryDefinition = {
       title: "La sala se convierte en arena",
       subtitle: "Varitas listas",
       visual: "duel_arena",
+      voiceSlot: "copa_clasica_duelo_intro",
       lines: [
         "Las luces bajan. Dos nombres resuenan en el Gran Comedor.",
         "La Copa exige valentía, reflejos y una cantidad razonable de dramatismo.",
@@ -238,7 +243,7 @@ export const copaCasasClasica: StoryDefinition = {
       title: "La Copa Final",
       subtitle: "Todo puede cambiar",
       visual: "final_cup",
-      voiceSlot: "story_final_winner",
+      voiceSlot: "copa_clasica_final_intro",
       lines: [
         "Las velas se detienen. El Gran Comedor guarda silencio.",
         "Una pregunta puede levantar a una casa o hundirla con elegancia.",
@@ -264,7 +269,7 @@ export const copaCasasClasica: StoryDefinition = {
       type: "story_complete",
       title: "La Copa ha decidido",
       subtitle: "Una casa se alza sobre las demás",
-      voiceSlot: "story_final_winner",
+      voiceSlot: "copa_clasica_cierre",
       lines: [
         "La competencia ha terminado.",
         "La Copa reconoce conocimiento, instinto, estrategia y una alarmante capacidad para acusar amigos.",

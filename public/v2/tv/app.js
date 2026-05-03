@@ -17,6 +17,12 @@ let currentRoom = null;
 let currentGameId = null;
 let tvTimerInterval = null;
 let autoNextTriggered = false;
+window.lastVoiceCue = null;
+
+// Initialize Voice Bridge
+if (window.VoiceBridge) {
+    window.VoiceBridge.init(socket);
+}
 
 // Helper to switch views
 function showView(viewId) {
@@ -46,10 +52,12 @@ function safeHTML(id, value) {
 }
 
 btnCreate.addEventListener('click', () => {
+  if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
   socket.emit('tv_create_room');
 });
 
 btnStart.addEventListener('click', () => {
+  if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
   const gameId = document.getElementById('game-select').value;
   socket.emit('tv_start_game', gameId);
 });
@@ -84,6 +92,50 @@ document.getElementById('btn-story-next-score').onclick = () => {
 document.getElementById('btn-story-end').onclick = () => {
   socket.emit('tv_story_next');
 };
+
+// Voice Control UI Listeners
+const btnVoiceToggle = document.getElementById('btn-voice-toggle');
+const btnVoiceRepeat = document.getElementById('btn-voice-repeat');
+const voiceStatus = document.getElementById('voice-status');
+
+if (btnVoiceToggle) {
+    btnVoiceToggle.addEventListener('click', () => {
+        if (window.VoiceManagerV2) {
+            window.VoiceManagerV2.unlock();
+            const muted = window.VoiceManagerV2.toggleMute();
+            updateVoiceStatus();
+        }
+    });
+}
+
+if (btnVoiceRepeat) {
+    btnVoiceRepeat.addEventListener('click', () => {
+        if (window.VoiceBridge && window.lastVoiceCue) {
+            const repeatCue = { ...window.lastVoiceCue, force: true, interrupt: true };
+            window.VoiceBridge.handleVoiceCue(repeatCue);
+        }
+    });
+}
+
+function updateVoiceStatus() {
+    if (!window.VoiceManagerV2 || !voiceStatus) return;
+    const enabled = window.VoiceManagerV2.isVoiceEnabled();
+    const unlocked = window.VoiceManagerV2.isUnlocked();
+    
+    btnVoiceToggle.textContent = enabled ? '🔊 Voz' : '🔇 Mudo';
+    btnVoiceToggle.style.opacity = enabled ? '1' : '0.5';
+    
+    if (!unlocked) {
+        voiceStatus.textContent = 'Audio pendiente de activación';
+        voiceStatus.style.color = '#fbbf24';
+    } else {
+        voiceStatus.textContent = enabled ? 'Voces listas' : 'Voces silenciadas';
+        voiceStatus.style.color = enabled ? '#10b981' : 'var(--color-text-dim)';
+    }
+}
+
+// Initial status
+updateVoiceStatus();
 
 socket.on('game_started', (gameId) => {
   currentGameId = gameId;

@@ -963,3 +963,40 @@ body {
   text-align: center;
   margin-bottom: 1rem;
 }
+
+/* Voice Controls */
+.voice-controls-panel {
+  pointer-events: all;
+}
+
+.btn-voice {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--color-accent);
+  color: white;
+  border-radius: 20px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: inherit;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.btn-voice:hover {
+  background: var(--color-accent);
+  box-shadow: 0 0 15px var(--color-accent);
+  transform: scale(1.05);
+}
+
+.btn-voice:active {
+  transform: scale(0.95);
+}
+
+.voice-status-text {
+  font-family: var(--font-title);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  opacity: 0.8;
+}

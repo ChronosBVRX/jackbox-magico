@@ -1,4 +1,21 @@
 import { StoryState } from '../story/storyTypes';
+import { GameId } from '../data/gameCatalog';
+
+export type VoiceCueType = 'event' | 'instruction' | 'voiceSlot' | 'winner' | 'audioFile';
+
+export interface VoiceCue {
+  type: VoiceCueType;
+  eventName?: string;
+  gameId?: GameId | string;
+  slotId?: string;
+  stepId?: string;
+  audioPath?: string;
+  winnerHouse?: string;
+  delayMs?: number;
+  cooldownMs?: number;
+  interrupt?: boolean;
+  force?: boolean;
+}
 
 export interface Player {
   clientId: string;
@@ -36,6 +53,7 @@ export interface ServerToClientEvents {
   scoreboard_state: (data: any) => void;
   game_error: (message: string) => void;
   pong: () => void;
+  voice_cue: (cue: VoiceCue) => void;
 }
 
 export interface ClientToServerEvents {

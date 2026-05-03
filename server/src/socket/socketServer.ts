@@ -33,6 +33,7 @@ export function setupSocketServer(httpServer: HttpServer) {
       socket.data.isTv = true;
       socket.join(roomCode);
       socket.emit('room_created', roomCode);
+      socket.emit('voice_cue', { type: 'event', eventName: 'lobby', delayMs: 500, cooldownMs: 4000 });
       const state = roomEngine.getRoom(roomCode);
       if (state) socket.emit('room_state', state);
     });
@@ -257,6 +258,48 @@ export function setupSocketServer(httpServer: HttpServer) {
           }
 
           io.to(roomCode).emit('game_state' as any, { phase: 'story_step', ...tvData });
+
+          // Voice Cues
+          if (step.voiceSlot) {
+            io.to(roomCode).emit('voice_cue', {
+              type: 'voiceSlot',
+              slotId: step.voiceSlot,
+              delayMs: 300,
+              interrupt: true
+            });
+          } else if (step.type === 'instructions' && step.instructionGameId) {
+            io.to(roomCode).emit('voice_cue', {
+              type: 'instruction',
+              gameId: step.instructionGameId,
+              stepId: step.id,
+              delayMs: 300,
+              interrupt: true
+            });
+          } else if (step.type === 'fixed_minigame' || step.type === 'minigame_random') {
+              // Usually no direct voice for the game transition if there was instructions
+              // but we can play a round_start event
+              io.to(roomCode).emit('voice_cue', {
+                  type: 'event',
+                  eventName: 'round_start',
+                  delayMs: 500,
+                  cooldownMs: 3000
+              });
+          } else if (step.type === 'scoreboard') {
+              io.to(roomCode).emit('voice_cue', {
+                  type: 'event',
+                  eventName: 'leaderboard',
+                  delayMs: 500,
+                  cooldownMs: 5000
+              });
+          } else if (step.type === 'story_complete') {
+              // The closure voice
+              io.to(roomCode).emit('voice_cue', {
+                  type: 'winner',
+                  winnerHouse: tvData.winner.house,
+                  delayMs: 800,
+                  interrupt: true
+              });
+          }
           
           room.players.forEach(p => {
              let mobilePhase = 'story_wait';

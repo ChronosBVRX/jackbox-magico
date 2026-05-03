@@ -16,7 +16,7 @@ export const nocheEnElCastillo: StoryDefinition = {
       title: "La noche cae sobre el castillo",
       subtitle: "Algo se mueve en los pasillos",
       visual: "castle_night",
-      voiceSlot: "story_intro_noche_castillo",
+      voiceSlot: "noche_castillo_inicio",
       lines: [
         "La noche cayó sobre el castillo y algo se mueve entre los pasillos.",
         "Nadie sabe si es magia antigua, una broma o alguien que claramente no sabe respetar horarios.",
@@ -44,6 +44,7 @@ export const nocheEnElCastillo: StoryDefinition = {
       title: "Los retratos despiertan",
       subtitle: "Nadie pidió su opinión",
       visual: "haunted_gallery",
+      voiceSlot: "noche_castillo_retratos",
       lines: [
         "Un marco cruje. Luego otro. Pronto, todos los retratos parecen tener algo que decir.",
         "La mayoría habla al mismo tiempo. Como una junta, pero con más polvo.",
@@ -77,6 +78,7 @@ export const nocheEnElCastillo: StoryDefinition = {
       title: "Un peligro absurdo aparece",
       subtitle: "No todo misterio es elegante",
       visual: "ridiculous_threat",
+      voiceSlot: "noche_castillo_artes",
       lines: [
         "Una sombra apareció al fondo del pasillo.",
         "Por un momento pareció una amenaza seria.",
@@ -104,6 +106,7 @@ export const nocheEnElCastillo: StoryDefinition = {
       title: "El caldero escondido",
       subtitle: "Alguien está saboteando la poción",
       visual: "hidden_cauldron",
+      voiceSlot: "noche_castillo_caldero",
       lines: [
         "En una sala abandonada, un caldero hierve sin supervisión.",
         "Eso nunca es buena señal.",
@@ -138,6 +141,7 @@ export const nocheEnElCastillo: StoryDefinition = {
       title: "Hechizos en la pared",
       subtitle: "Letras incompletas",
       visual: "glowing_runes",
+      voiceSlot: "noche_castillo_hechizo",
       lines: [
         "En una pared de piedra aparecen palabras incompletas.",
         "Son hechizos antiguos, o tal vez apuntes de alguien con muy mala letra.",
@@ -164,6 +168,7 @@ export const nocheEnElCastillo: StoryDefinition = {
       title: "La oscuridad se acerca",
       subtitle: "La luz debe tomar forma",
       visual: "patronus_light",
+      voiceSlot: "noche_castillo_patronus",
       lines: [
         "La oscuridad se cerró alrededor del grupo.",
         "Para avanzar, cada jugador debe imaginar una defensa luminosa.",
@@ -198,6 +203,7 @@ export const nocheEnElCastillo: StoryDefinition = {
       title: "La última pista",
       subtitle: "Todo apunta a la Copa",
       visual: "final_clue",
+      voiceSlot: "story_transition_trivia",
       lines: [
         "La última pista no estaba en el mapa, ni en los retratos, ni en el caldero.",
         "Estaba en lo que cada casa sabía desde el principio.",
@@ -244,7 +250,7 @@ export const nocheEnElCastillo: StoryDefinition = {
       type: "story_complete",
       title: "Amanece en el castillo",
       subtitle: "La Copa ya eligió",
-      voiceSlot: "story_final_winner",
+      voiceSlot: "noche_castillo_cierre",
       lines: [
         "El sol aparece sobre las torres.",
         "El misterio terminó, aunque algunos todavía no entienden qué pasó.",

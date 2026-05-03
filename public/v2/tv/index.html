@@ -21,9 +21,17 @@
         <h1 class="text-gradient-gold">Jackbox Mágico</h1>
         <p>Copa de las Casas</p>
       </div>
-      <div class="connection-status">
-        <div class="status-dot"></div>
-        <span>Servidor Mágico Conectado</span>
+      <div class="connection-status" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
+        <div style="display: flex; align-items: center; gap: 0.5rem;">
+          <div class="status-dot"></div>
+          <span>Servidor Mágico Conectado</span>
+        </div>
+        <!-- Voice Controls -->
+        <div id="voice-controls" class="voice-controls-panel" style="display: flex; gap: 0.5rem; align-items: center;">
+          <button id="btn-voice-toggle" class="btn-voice" title="Alternar Voces">🔊 Voz</button>
+          <button id="btn-voice-repeat" class="btn-voice" title="Repetir Instrucción" style="display: none;">↻ Repetir</button>
+          <span id="voice-status" class="voice-status-text" style="font-size: 0.7rem; color: var(--color-text-dim);"></span>
+        </div>
       </div>
     </header>
 
@@ -384,6 +392,8 @@
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/v2/shared/voiceManager.js"></script>
+  <script src="voiceBridge.js"></script>
   <script src="app.js"></script>
   <script>
     // Simple candle generator for atmosphere
