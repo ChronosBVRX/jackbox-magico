@@ -19,19 +19,151 @@ let tvTimerInterval = null;
 let autoNextTriggered = false;
 window.lastVoiceCue = null;
 
+// Selection Manager (Premium Carousel)
+const SelectionManager = {
+    items: [],
+    currentIndex: 0,
+    active: false,
+
+    init(stories, games) {
+        this.items = [
+            ...stories.map(s => ({ ...s, type: 'story' })),
+            ...games.filter(g => g.enabled && g.id !== 'copa_final').map(g => ({ ...g, type: 'minigame' }))
+        ];
+        this.currentIndex = 0;
+        this.render();
+        this.updateDetails();
+        this.active = true;
+        showView('view-selection');
+    },
+
+    render() {
+        const track = document.getElementById('selection-carousel');
+        if (!track) return;
+        track.innerHTML = '';
+        
+        const visualMap = {
+            'trivia_magica': '❓', 'artes_ridiculas': '🤡', 'atrapa_snitch': '✨',
+            'duelo_hechizos': '🪄', 'sombrero_burlon': '🎩', 'clase_pociones': '🧪',
+            'mapa_travieso': '🏰', 'retratos_chismosos': '🖼️', 'hechizo_incompleto': '📜',
+            'caldero_mentiroso': '🍯', 'patronus_personalizado': '🦌',
+            'copa_casas_clasica': '🏆', 'noche_en_el_castillo': '🌙', 'torneo_magico_relampago': '⚡'
+        };
+
+        this.items.forEach((item, i) => {
+            const card = document.createElement('div');
+            card.className = `selection-card ${i === this.currentIndex ? 'active' : ''}`;
+            card.innerHTML = `
+                <div class="card-type">${item.type === 'story' ? 'Historia' : 'Minijuego'}</div>
+                <div class="card-icon">${visualMap[item.id] || '✨'}</div>
+                <h3>${item.shortName || item.shortTitle || item.name}</h3>
+            `;
+            track.appendChild(card);
+        });
+        this.updateScroll();
+    },
+
+    updateScroll() {
+        const track = document.getElementById('selection-carousel');
+        const offset = this.currentIndex * (280 + 40); // card width + gap
+        track.style.transform = `translateX(-${offset}px)`;
+        
+        document.querySelectorAll('.selection-card').forEach((card, i) => {
+            card.classList.toggle('active', i === this.currentIndex);
+        });
+        this.updateDetails();
+    },
+
+    updateDetails() {
+        const item = this.items[this.currentIndex];
+        if (!item) return;
+
+        safeText('detail-title', item.name || item.title);
+        safeText('detail-desc', item.description);
+        safeText('detail-players', `👥 ${item.recommendedPlayers || `${item.maxPlayers} máx`}`);
+        safeText('detail-time', `⏱️ ${item.estimatedMinutes || item.durationSeconds || 20} min`);
+        safeText('detail-mode', `✨ ${item.mode || 'Historia'}`);
+        safeText('selection-category-label', item.type === 'story' ? 'Historias Mágicas' : 'Minijuegos Individuales');
+
+        const struct = document.getElementById('detail-structure');
+        struct.innerHTML = '';
+        
+        // If it's a story, show steps (simplified)
+        if (item.steps) {
+            item.steps.forEach(step => {
+                const icon = document.createElement('div');
+                icon.className = 'struct-step';
+                icon.setAttribute('data-label', step.title);
+                icon.textContent = step.type === 'fixed_minigame' || step.type === 'minigame_random' ? '🎮' : '📖';
+                struct.appendChild(icon);
+            });
+        }
+    },
+
+    navigate(dir) {
+        if (!this.active) return;
+        const oldIndex = this.currentIndex;
+        if (dir === 'left' && this.currentIndex > 0) this.currentIndex--;
+        if (dir === 'right' && this.currentIndex < this.items.length - 1) this.currentIndex++;
+        
+        if (oldIndex !== this.currentIndex) {
+            this.updateScroll();
+            if (window.VoiceManagerV2) {
+                // Subtle click sound or short cue
+            }
+        }
+    },
+
+    select() {
+        if (!this.active) return;
+        const item = this.items[this.currentIndex];
+        if (item.type === 'story') {
+            socket.emit('tv_select_story', item.id);
+        } else {
+            socket.emit('tv_start_game', item.id);
+        }
+    }
+};
+
+// Update showView
+function showView(viewId) {
+  // Ocultar todas las vistas principales
+  document.querySelectorAll('.tv-layout, .init-screen, .selection-section').forEach(v => v.style.display = 'none');
+  
+  const target = document.getElementById(viewId);
+  if (target) {
+    if (viewId === 'view-init') target.style.display = 'block';
+    else if (viewId === 'view-selection') target.style.display = 'flex';
+    else target.style.display = 'grid';
+  }
+}
+
+// Global Key Listeners for TV Remote
+window.addEventListener('keydown', (e) => {
+    switch(e.key) {
+        case 'ArrowLeft':
+            SelectionManager.navigate('left');
+            break;
+        case 'ArrowRight':
+            SelectionManager.navigate('right');
+            break;
+        case 'Enter':
+            SelectionManager.select();
+            break;
+        case 'Escape':
+            if (SelectionManager.active) {
+                showView('view-lobby');
+                SelectionManager.active = false;
+            }
+            break;
+    }
+});
+
 // Initialize Voice Bridge
 if (window.VoiceBridge) {
     window.VoiceBridge.init(socket);
 }
 
-// Helper to switch views
-function showView(viewId) {
-  document.querySelectorAll('.tv-layout, .init-screen').forEach(v => v.style.display = 'none');
-  const target = document.getElementById(viewId);
-  if (target) {
-    target.style.display = viewId === 'view-init' ? 'block' : 'grid';
-  }
-}
 
 // Helper to escape HTML and prevent XSS
 function escapeHTML(str) {
@@ -66,10 +198,11 @@ btnNextRound.addEventListener('click', () => {
   socket.emit('tv_next_round');
 });
 
-if (btnStoryLobby) {
-  btnStoryLobby.addEventListener('click', () => {
-    renderStorySelect();
-    showView('view-story-select');
+const btnSelectAdventure = document.getElementById('btn-select-adventure');
+if (btnSelectAdventure) {
+  btnSelectAdventure.addEventListener('click', () => {
+    if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
+    SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
   });
 }
 
@@ -167,7 +300,12 @@ socket.on('room_state', (state) => {
     renderPlayers(state.players);
     playerCount.textContent = `${state.players.length} / 8 Jugadores`;
     
-    if (state.players.length > 0) {
+    const actions = document.getElementById('lobby-actions');
+    if (state.players.length >= 1) { // Reducido a 1 para pruebas, normalmente 2
+      if (actions) actions.style.display = 'flex';
+    } else {
+      if (actions) actions.style.display = 'none';
+    }
       statusText.textContent = `${state.players.length} mago(s) listo(s)`;
       btnStart.style.display = 'inline-block';
       btnStoryLobby.style.display = 'inline-block';
@@ -229,11 +367,31 @@ socket.on('game_state', (data) => {
   }
 });
 
-// Story Mode Renderers
+// Catalogs for selection
 const STORY_CATALOG_FRONT = [
-    { id: 'copa_casas_clasica', title: 'Copa de las Casas Clásica', desc: 'Una experiencia balanceada para iniciar a cualquier grupo.', min: 35, players: '2-8', diff: 'Normal' },
-    { id: 'noche_en_el_castillo', title: 'Noche en el Castillo', desc: 'Una historia misteriosa explorando secretos.', min: 40, players: '3-8', diff: 'Normal' },
-    { id: 'torneo_magico_relampago', title: 'Torneo Mágico Relámpago', desc: 'Versión rápida e intensa para acción inmediata.', min: 20, players: '2-8', diff: 'Familiar' }
+    { id: 'copa_casas_clasica', title: 'Copa de las Casas Clásica', desc: 'La experiencia definitiva de Jackbox Mágico. Un viaje por el Gran Comedor, clases y la gran final.', min: 35, players: '2-8', diff: 'Normal', steps: [
+        { title: 'Bienvenida', type: 'story' }, { title: 'Trivia Mágica', type: 'minigame' }, { title: 'Pociones', type: 'minigame' }, { title: 'Duelo', type: 'minigame' }, { title: 'Copa Final', type: 'minigame' }
+    ]},
+    { id: 'noche_en_el_castillo', title: 'Noche en el Castillo', desc: 'Explora los pasillos prohibidos. Una historia de misterio y sigilo con pruebas de memoria visual.', min: 40, players: '3-8', diff: 'Difícil', steps: [
+        { title: 'Intro Nocturna', type: 'story' }, { title: 'Mapa Travieso', type: 'minigame' }, { title: 'Retratos', type: 'minigame' }, { title: 'Hechizo', type: 'minigame' }, { title: 'Final', type: 'minigame' }
+    ]},
+    { id: 'torneo_magico_relampago', title: 'Torneo Mágico Relámpago', desc: 'Sin diálogos largos, solo acción pura. Perfecto para partidas rápidas y competitivas.', min: 15, players: '2-8', diff: 'Fácil', steps: [
+        { title: 'Inicio', type: 'story' }, { title: 'Snitch', type: 'minigame' }, { title: 'Artes Ridículas', type: 'minigame' }, { title: 'Final', type: 'minigame' }
+    ]}
+];
+
+const GAME_CATALOG_FRONT = [
+    { id: 'trivia_magica', name: 'Trivia del Mundo Mágico', shortName: 'Trivia', description: 'Demuestra quién realmente puso atención a los libros.', durationSeconds: 5, mode: 'Quiz', maxPlayers: 8, enabled: true },
+    { id: 'artes_ridiculas', name: 'Artes Ridículas', shortName: 'Artes Ridículas', description: 'Enfrenta boggarts y amenazas absurdas con risas.', durationSeconds: 5, mode: 'Quiz', maxPlayers: 8, enabled: true },
+    { id: 'atrapa_snitch', name: 'Atrapa la Snitch', shortName: 'Snitch', description: 'Reflejos puros para capturar la bola dorada.', durationSeconds: 3, mode: 'Acción', maxPlayers: 8, enabled: true },
+    { id: 'duelo_hechizos', name: 'Duelo de Hechizos', shortName: 'Duelo', description: 'Estrategia de piedra, papel o tijera con varitas.', durationSeconds: 4, mode: 'Estrategia', maxPlayers: 8, enabled: true },
+    { id: 'clase_pociones', name: 'Clase de Pociones', shortName: 'Pociones', description: 'Memoriza y repite ingredientes en tu caldero.', durationSeconds: 6, mode: 'Memoria', maxPlayers: 8, enabled: true },
+    { id: 'sombrero_burlon', name: 'El Sombrero Burlón', shortName: 'Sombrero', description: 'Votación social sobre quién es quién en el grupo.', durationSeconds: 4, mode: 'Social', maxPlayers: 8, enabled: true },
+    { id: 'mapa_travieso', name: 'El Mapa Travieso', shortName: 'Mapa', description: 'Memoria espacial. Encuentra a los intrusos.', durationSeconds: 5, mode: 'Memoria', maxPlayers: 8, enabled: true },
+    { id: 'retratos_chismosos', name: 'Retratos Chismosos', shortName: 'Retratos', description: 'Adivina el personaje basándote en los chismes.', durationSeconds: 4, mode: 'Quiz', maxPlayers: 8, enabled: true },
+    { id: 'hechizo_incompleto', name: 'Hechizo Incompleto', shortName: 'Hechizo', description: 'Completa los encantamientos que han perdido palabras.', durationSeconds: 4, mode: 'Quiz', maxPlayers: 8, enabled: true },
+    { id: 'caldero_mentiroso', name: 'El Caldero Mentiroso', shortName: 'Caldero', description: 'Estrategia y engaño con ingredientes secretos.', durationSeconds: 7, mode: 'Estrategia', maxPlayers: 8, enabled: true },
+    { id: 'patronus_personalizado', name: 'Patronus', shortName: 'Patronus', description: 'Creatividad y votación por el mejor protector.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true }
 ];
 
 function renderStorySelect() {
