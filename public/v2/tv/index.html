@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Jackbox Mágico V2 - TV</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #1e293b;
+      --accent: #38bdf8;
+      --text: #f1f5f9;
+      --gryffindor: #991b1b;
+      --slytherin: #166534;
+      --ravenclaw: #1e40af;
+      --hufflepuff: #854d0e;
+    }
+    body {
+      margin: 0;
+      font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .container {
+      width: 90%;
+      max-width: 1200px;
+      text-align: center;
+    }
+    .room-info {
+      margin-bottom: 2rem;
+    }
+    .room-code {
+      font-size: 6rem;
+      font-weight: bold;
+      letter-spacing: 0.5rem;
+      color: var(--accent);
+      text-shadow: 0 0 20px rgba(56, 189, 248, 0.5);
+    }
+    .players-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 1.5rem;
+      margin-top: 2rem;
+    }
+    .player-card {
+      background: var(--card);
+      padding: 1.5rem;
+      border-radius: 1rem;
+      border-left: 10px solid #ccc;
+      transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+      animation: pop 0.4s ease-out;
+    }
+    @keyframes pop {
+      0% { transform: scale(0.5); opacity: 0; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+    .player-card.gryffindor { border-left-color: var(--gryffindor); }
+    .player-card.slytherin { border-left-color: var(--slytherin); }
+    .player-card.ravenclaw { border-left-color: var(--ravenclaw); }
+    .player-card.hufflepuff { border-left-color: var(--hufflepuff); }
+    
+    .player-name { font-size: 1.5rem; font-weight: bold; margin-bottom: 0.5rem; }
+    .player-house { font-size: 0.9rem; opacity: 0.7; text-transform: uppercase; }
+    
+    .status-msg { margin-top: 3rem; font-size: 1.2rem; opacity: 0.8; }
+    
+    #btn-start {
+      margin-top: 2rem;
+      padding: 1rem 3rem;
+      font-size: 1.5rem;
+      background: var(--accent);
+      color: var(--bg);
+      border: none;
+      border-radius: 2rem;
+      cursor: pointer;
+      font-weight: bold;
+      display: none; /* Se muestra cuando hay jugadores */
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div id="view-init">
+      <h1>Jackbox Mágico V2</h1>
+      <button id="btn-create" style="padding: 1rem 2rem; font-size: 1.2rem; cursor: pointer;">Crear Sala</button>
+    </div>
+
+    <div id="view-lobby" style="display: none;">
+      <div class="room-info">
+        <p>ENTRA EN <strong>localhost:3000/v2/mobile</strong> CON EL CÓDIGO:</p>
+        <div class="room-code" id="display-code">----</div>
+      </div>
+
+      <div class="players-grid" id="players-list">
+        <!-- Jugadores aquí -->
+      </div>
+
+      <div class="status-msg" id="status-text">Esperando jugadores...</div>
+      
+      <button id="btn-start">Iniciar Partida</button>
+    </div>
+  </div>
+
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
