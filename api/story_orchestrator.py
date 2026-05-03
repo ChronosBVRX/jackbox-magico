@@ -177,40 +177,62 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
 
 def list_stories() -> List[Dict[str, Any]]:
     """Devuelve un resumen enriquecido para mostrar cartas modernas en la TV."""
-    from api.game_catalog import GAME_CATALOG
+    # Intentamos importar el catálogo de juegos de forma segura
+    try:
+        from api.game_catalog import GAME_CATALOG
+    except ImportError:
+        try:
+            from game_catalog import GAME_CATALOG
+        except ImportError:
+            GAME_CATALOG = {}
 
     results = []
     for story_id, story in STORY_CATALOG.items():
         steps = story.get("steps", [])
         
         trivia_blocks = [s for s in steps if s.get("type") == "trivia_block"]
-        trivia_questions = sum(int(s.get("questions", 0)) for s in trivia_blocks)
+        trivia_questions = 0
+        for s in trivia_blocks:
+            try:
+                trivia_questions += int(s.get("questions") or 0)
+            except (ValueError, TypeError):
+                continue
+
         minigame_slots = len([s for s in steps if s.get("type") == "minigame_random"])
         includes_final = any(s.get("type") == "copa_final" for s in steps)
         
-        # Obtener nombres bonitos de minijuegos disponibles
-        # Si el step tiene un pool específico, lo usamos; si no, el pool general
         pool_ids = set()
+        has_random_minigame = False
         for s in steps:
             if s.get("type") == "minigame_random":
-                pool_ids.update(s.get("pool") or STORY_MINIGAME_POOL)
+                has_random_minigame = True
+                pool = s.get("pool")
+                if isinstance(pool, list) and pool:
+                    pool_ids.update(pool)
+                else:
+                    pool_ids.update(STORY_MINIGAME_POOL)
         
-        if not pool_ids: # Fallback por si no hay slots pero queremos mostrar qué hay en el sistema
-             pool_ids = set(STORY_MINIGAME_POOL)
+        if not has_random_minigame:
+             # Si no hay aleatorios, podemos mostrar la lista base o vacía
+             pool_ids = set()
 
-        available_names = [
-            GAME_CATALOG.get(m_id, {}).get("name", m_id) 
-            for m_id in pool_ids
-        ]
+        available_names = []
+        for m_id in pool_ids:
+            game_info = GAME_CATALOG.get(m_id)
+            if isinstance(game_info, dict) and "name" in game_info:
+                available_names.append(game_info["name"])
+            else:
+                # Fallback: limpiar el ID para que se vea decente
+                available_names.append(str(m_id).replace("_", " ").title())
 
         results.append({
             "story_id": story_id,
-            "title": story["title"],
-            "tone": story["tone"],
-            "description": story["description"],
+            "title": story.get("title", "Historia sin título"),
+            "tone": story.get("tone", "mágico"),
+            "description": story.get("description", ""),
             "steps_count": len(steps),
             "format": "Partida Estándar" if minigame_slots > 0 else "Solo Trivia",
-            "estimated_minutes": 15 + (len(steps) * 2), # Estimación simple
+            "estimated_minutes": 15 + (len(steps) * 2),
             "trivia_blocks_count": len(trivia_blocks),
             "trivia_questions_count": trivia_questions,
             "random_minigame_slots": minigame_slots,
