@@ -1,0 +1,267 @@
+@import url('../shared/theme.css');
+
+body {
+  height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: radial-gradient(circle at center, #111827 0%, #030712 100%);
+  position: relative;
+}
+
+/* Background Effects */
+.bg-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+}
+
+.candle {
+  position: absolute;
+  width: 2px;
+  height: 40px;
+  background: linear-gradient(to top, transparent, rgba(251, 191, 36, 0.4));
+  filter: blur(1px);
+  animation: float 6s ease-in-out infinite;
+  opacity: 0.3;
+}
+
+/* Main Layout */
+.tv-layout {
+  width: 90vw;
+  height: 85vh;
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  gap: 2rem;
+  z-index: 10;
+  animation: fadeIn 1s ease-out;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.title-group h1 {
+  font-family: var(--font-title);
+  font-size: 3.5rem;
+  margin: 0;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.title-group p {
+  font-size: 1.2rem;
+  color: var(--color-text-dim);
+  margin: 0.2rem 0 0 0;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+.connection-status {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.9rem;
+  color: #10b981;
+  background: rgba(16, 185, 129, 0.1);
+  padding: 0.5rem 1rem;
+  border-radius: 2rem;
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.status-dot {
+  width: 8px;
+  height: 8px;
+  background: #10b981;
+  border-radius: 50%;
+  box-shadow: 0 0 10px #10b981;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.5; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+/* Central Panel */
+.central-panel {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4rem;
+  padding: 3rem;
+}
+
+.room-display {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+}
+
+.room-label {
+  font-size: 1.2rem;
+  color: var(--color-text-dim);
+  margin-bottom: 1rem;
+  letter-spacing: 0.1em;
+}
+
+.room-code-large {
+  font-family: var(--font-title);
+  font-size: 8rem;
+  font-weight: 800;
+  color: var(--color-accent);
+  letter-spacing: 0.3em;
+  margin: 0;
+  animation: glowPulse 3s infinite ease-in-out;
+  padding-left: 0.3em; /* Offset for centering letters */
+}
+
+.qr-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+#qrcode {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 1rem;
+  box-shadow: 0 0 40px rgba(0, 0, 0, 0.4);
+  transition: transform 0.3s ease;
+}
+
+#qrcode:hover {
+  transform: scale(1.05);
+}
+
+.join-url {
+  font-family: monospace;
+  font-size: 1.1rem;
+  opacity: 0.6;
+}
+
+/* Player Grid */
+.players-section {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.players-header {
+  display: flex;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.5rem;
+}
+
+.players-grid {
+  display: grid;
+  grid-template-columns: repeat(8, 1fr);
+  gap: 1rem;
+  min-height: 120px;
+}
+
+.player-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  border-radius: 1rem;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  animation: magicIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  transition: all 0.3s ease;
+}
+
+@keyframes magicIn {
+  0% { transform: scale(0) rotate(-10deg); opacity: 0; filter: blur(10px); }
+  100% { transform: scale(1) rotate(0); opacity: 1; filter: blur(0); }
+}
+
+.player-card.offline {
+  opacity: 0.4;
+  filter: grayscale(1);
+}
+
+.player-avatar {
+  font-size: 2.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.player-name {
+  font-weight: 600;
+  font-size: 0.9rem;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* House Variants */
+.player-card.gryffindor { border-bottom: 4px solid var(--house-gryffindor); }
+.player-card.slytherin { border-bottom: 4px solid var(--house-slytherin); }
+.player-card.ravenclaw { border-bottom: 4px solid var(--house-ravenclaw); }
+.player-card.hufflepuff { border-bottom: 4px solid var(--house-hufflepuff); }
+
+/* Footer */
+.footer {
+  display: flex;
+  justify-content: center;
+  padding-top: 1rem;
+}
+
+.btn-start-premium {
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+  color: #000;
+  border: none;
+  padding: 1.2rem 4rem;
+  font-size: 1.5rem;
+  font-weight: 800;
+  font-family: var(--font-title);
+  border-radius: 3rem;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(251, 191, 36, 0.3);
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+}
+
+.btn-start-premium:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 15px 35px rgba(251, 191, 36, 0.5);
+}
+
+.btn-start-premium:active {
+  transform: translateY(0);
+}
+
+/* Start Screen */
+.init-screen {
+  text-align: center;
+  max-width: 600px;
+}
+
+.btn-create-premium {
+  background: var(--glass-bg);
+  color: var(--color-text);
+  border: 1px solid var(--glass-border);
+  padding: 1.5rem 3rem;
+  font-size: 1.5rem;
+  border-radius: 1rem;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.3s ease;
+}
+
+.btn-create-premium:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: var(--color-accent);
+}

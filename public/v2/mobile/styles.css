@@ -1,0 +1,133 @@
+@import url('../shared/theme.css');
+
+body {
+  min-height: 100vh;
+  padding: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(to bottom, #111827, #030712);
+}
+
+.mobile-container {
+  width: 100%;
+  max-width: 450px;
+  animation: fadeIn 0.5s ease-out;
+}
+
+/* Join Form */
+.join-card {
+  padding: 2.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.2rem;
+}
+
+.join-card h1 {
+  font-family: var(--font-title);
+  font-size: 2rem;
+  text-align: center;
+  margin: 0 0 1rem 0;
+}
+
+.input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.input-group label {
+  font-size: 0.85rem;
+  color: var(--color-text-dim);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  padding-left: 0.5rem;
+}
+
+input, select {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--glass-border);
+  border-radius: 0.8rem;
+  padding: 1rem;
+  color: white;
+  font-size: 1rem;
+  font-family: var(--font-main);
+  transition: all 0.3s ease;
+}
+
+input:focus, select:focus {
+  outline: none;
+  border-color: var(--color-accent);
+  background: rgba(255, 255, 255, 0.1);
+  box-shadow: 0 0 15px rgba(251, 191, 36, 0.2);
+}
+
+.btn-join-premium {
+  background: var(--color-accent);
+  color: #000;
+  border: none;
+  padding: 1.2rem;
+  border-radius: 1rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  font-family: var(--font-title);
+  cursor: pointer;
+  margin-top: 1rem;
+  transition: all 0.3s ease;
+}
+
+.btn-join-premium:active {
+  transform: scale(0.98);
+}
+
+/* Wait Screen */
+.wait-screen {
+  text-align: center;
+  padding: 3rem 2rem;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2rem;
+}
+
+.wand-icon {
+  font-size: 5rem;
+  filter: drop-shadow(0 0 20px var(--color-accent));
+  animation: float 3s ease-in-out infinite;
+}
+
+.house-banner {
+  padding: 0.5rem 1.5rem;
+  border-radius: 2rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+  font-size: 0.9rem;
+}
+
+/* House Themes for Wait Screen */
+.theme-gryffindor { border-top: 5px solid var(--house-gryffindor); }
+.theme-gryffindor .house-banner { background: var(--house-gryffindor); color: var(--house-gryffindor-accent); }
+
+.theme-slytherin { border-top: 5px solid var(--house-slytherin); }
+.theme-slytherin .house-banner { background: var(--house-slytherin); color: var(--house-slytherin-accent); }
+
+.theme-ravenclaw { border-top: 5px solid var(--house-ravenclaw); }
+.theme-ravenclaw .house-banner { background: var(--house-ravenclaw); color: var(--house-ravenclaw-accent); }
+
+.theme-hufflepuff { border-top: 5px solid var(--house-hufflepuff); }
+.theme-hufflepuff .house-banner { background: var(--house-hufflepuff); color: var(--house-hufflepuff-accent); }
+
+.status-text {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  color: var(--color-text-dim);
+}
+
+.status-text strong {
+  color: var(--color-text);
+  display: block;
+  font-size: 1.5rem;
+  margin-bottom: 0.5rem;
+}

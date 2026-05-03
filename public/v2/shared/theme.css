@@ -1,0 +1,80 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;700&display=swap');
+
+:root {
+  /* Core Colors */
+  --color-bg: #030712;
+  --color-surface: rgba(17, 24, 39, 0.7);
+  --color-accent: #fbbf24; /* Golden Magical */
+  --color-text: #f9fafb;
+  --color-text-dim: #9ca3af;
+  
+  /* House Colors - Deep & Elegant */
+  --house-gryffindor: #991b1b;
+  --house-gryffindor-accent: #fbbf24;
+  
+  --house-slytherin: #064e3b;
+  --house-slytherin-accent: #94a3b8;
+  
+  --house-ravenclaw: #1e3a8a;
+  --house-ravenclaw-accent: #92400e;
+  
+  --house-hufflepuff: #a16207;
+  --house-hufflepuff-accent: #171717;
+
+  /* Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.03);
+  --glass-border: rgba(255, 255, 255, 0.1);
+  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
+  --glass-filter: blur(12px);
+
+  /* Typography */
+  --font-main: 'Inter', system-ui, sans-serif;
+  --font-title: 'Outfit', sans-serif;
+}
+
+* {
+  box-sizing: border-box;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-text);
+  font-family: var(--font-main);
+  overflow-x: hidden;
+}
+
+.glass-panel {
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--glass-shadow);
+  border-radius: 1.5rem;
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes float {
+  0% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+  100% { transform: translateY(0px); }
+}
+
+@keyframes glowPulse {
+  0% { text-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
+  50% { text-shadow: 0 0 30px rgba(251, 191, 36, 0.6); }
+  100% { text-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
+}
