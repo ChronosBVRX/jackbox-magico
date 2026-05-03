@@ -478,14 +478,9 @@ if (joinBtn) {
 }
 
 async function maybeAutoReconnect() {
-  const roomInput = document.getElementById("m-room").value.trim().toUpperCase();
-  const nameInput = document.getElementById("m-name").value.trim();
-
-  if (roomInput && nameInput && savedName) {
-    setTimeout(() => {
-      joinRoom(true);
-    }, 450);
-  }
+  // No reconectar automáticamente desde la pantalla de entrada.
+  // Esto evita que el jugador sea enviado al lobby antes de elegir Mago/Maga.
+  return;
 }
 
 document.addEventListener("DOMContentLoaded", () => {

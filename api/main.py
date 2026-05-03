@@ -2,6 +2,7 @@ import random
 import string
 import uuid
 import asyncio
+import time
 import os
 from copy import deepcopy
 from typing import Optional
@@ -292,7 +293,7 @@ def get_room_by_code(room_code: str):
 def get_players(room_id: int):
     players = (
         supabase.table("players")
-        .select("name, house, score")
+        .select("name, house, score, gender")
         .eq("room_id", room_id)
         .execute()
     )
@@ -535,7 +536,7 @@ async def join_room(info: PlayerJoinInfo):
 
     existing_player = (
         supabase.table("players")
-        .select("id, name, house, score")
+        .select("id, name, house, score, gender")
         .eq("room_id", room_id)
         .eq("name", info.player_name)
         .execute()
@@ -560,12 +561,26 @@ async def join_room(info: PlayerJoinInfo):
     if not is_reconnect and status != "lobby":
         raise HTTPException(status_code=403, detail="Partida ya en curso")
 
+    # Normalizar género
+    gender = str(info.gender or "wizard").lower()
+    if gender in ["witch", "maga", "female"]:
+        gender = "witch"
+    else:
+        gender = "wizard"
+
     if not is_reconnect:
         supabase.table("players").insert({
             "room_id": room_id,
             "name": info.player_name,
             "house": info.house,
+            "gender": gender,
         }).execute()
+    else:
+        # Si es reconexión, permitir actualizar género
+        supabase.table("players").update({
+            "gender": gender,
+            "house": info.house, # Por si cambió de casa también
+        }).eq("id", existing_player.data[0]["id"]).execute()
 
     supabase.table("rooms").update({
         "game_state": state,
