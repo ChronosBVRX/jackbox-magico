@@ -18,21 +18,9 @@ from fastapi import APIRouter, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-from api.database import HostControlInfo, supabase
-from api import (
-    artes_ridiculas,
-    atrapa_snitch,
-    caldero_mentiroso,
-    clase_pociones,
-    copa_final,
-    duelo,
-    hechizo_incompleto,
-    mapa_travieso,
-    patronus_personalizado,
-    retratos_chismosos,
-    sombrero,
-    trivia,
-)
+# Imports pesados movidos a local para mantener el endpoint /catalog ligero en Vercel Hobby
+# from api.database import HostControlInfo, supabase
+# from api import artes_ridiculas, atrapa_snitch, ...
 from api.game_catalog import GAME_CATALOG
 from api.story_orchestrator import (
     DEFAULT_FINAL_GAME_ID,
@@ -46,8 +34,8 @@ from api.story_orchestrator import (
     list_stories,
     pick_minigame_for_story,
 )
-from api.services import room_service
-from api.scenes.instructions_scene import build_instruction_scene
+# from api.services import room_service
+# from api.scenes.instructions_scene import build_instruction_scene
 
 
 app = FastAPI(title="Jackbox Mágico Story API")
@@ -82,11 +70,15 @@ class StoryRoomCreateInfo(BaseModel):
     story_id: str
 
 
-class StoryHostStartInfo(HostControlInfo):
+class StoryHostStartInfo(BaseModel):
+    player_name: str
+    host_token: str
     random_seed: Optional[str] = None
 
 
-class StoryHostNextInfo(HostControlInfo):
+class StoryHostNextInfo(BaseModel):
+    player_name: str
+    host_token: str
     random_seed: Optional[str] = None
 
 
@@ -229,61 +221,73 @@ def start_step_for_story(
 def build_game_state_for_game(room_code: str, game_id: str, previous_state: dict) -> Dict[str, Any]:
     """Constructor local de estados para no importar `api.main` y no duplicar apps."""
     if game_id == "trivia_magica":
+        from api import trivia
         return trivia.build_trivia_state(
             room_code=room_code.upper(),
             previous_state=previous_state,
         )
 
     if game_id == "duelo_hechizos":
+        from api import duelo
         return duelo.build_duelo_state(
             room_code=room_code,
             previous_state=previous_state,
         )
 
     if game_id == "sombrero_burlon":
+        from api import sombrero
         return sombrero.build_sombrero_state(
             room_code=room_code,
             previous_state=previous_state,
         )
 
     if game_id == "clase_pociones":
+        from api import clase_pociones
         return clase_pociones.build_state(
             room_code=room_code,
             previous_state=previous_state,
         )
 
     if game_id == "atrapa_snitch":
+        from api import atrapa_snitch
         return atrapa_snitch.build_state(
             room_code=room_code,
             previous_state=previous_state,
         )
 
     if game_id == "retratos_chismosos":
+        from api import retratos_chismosos
         return retratos_chismosos.build_state(
             previous_state=previous_state,
         )
 
     if game_id == "mapa_travieso":
+        from api import mapa_travieso
         return mapa_travieso.build_state()
 
     if game_id == "hechizo_incompleto":
+        from api import hechizo_incompleto
         return hechizo_incompleto.build_state(
             previous_state=previous_state,
         )
 
     if game_id == "artes_ridiculas":
+        from api import artes_ridiculas
         return artes_ridiculas.build_state(
             previous_state=previous_state,
             humor_mode=True,
         )
 
     if game_id == "caldero_mentiroso":
+        from api import caldero_mentiroso
         return caldero_mentiroso.build_state()
 
     if game_id == "patronus_personalizado":
+        from api import patronus_personalizado
         return patronus_personalizado.build_state(room_code)
 
     if game_id == "copa_final":
+        from api import copa_final
         return copa_final.build_state()
 
     raise HTTPException(status_code=400, detail="Juego sin constructor")
@@ -406,6 +410,7 @@ def start_step_for_story(
         )
         
         # Nueva Escena de Instrucciones
+        from api.scenes.instructions_scene import build_instruction_scene
         return build_instruction_scene(
             game_id=game_id,
             previous_state=game_state,
@@ -440,6 +445,7 @@ def start_step_for_story(
         )
 
         # Nueva Escena de Instrucciones
+        from api.scenes.instructions_scene import build_instruction_scene
         return build_instruction_scene(
             game_id=game_id,
             previous_state=game_state,
@@ -487,18 +493,10 @@ async def story_health():
 
 @router.get("/catalog")
 async def story_catalog():
-    try:
-        return {
-            "stories": list_stories(),
-            "minigame_pool": STORY_MINIGAME_POOL,
-        }
-    except Exception as e:
-        import traceback
-        return {
-            "error": str(e),
-            "traceback": traceback.format_exc(),
-            "stories": []
-        }
+    return {
+        "stories": list_stories(),
+        "minigame_pool": STORY_MINIGAME_POOL,
+    }
 
 
 @router.post("/start")
@@ -550,6 +548,8 @@ async def story_pick_minigame(info: MinigamePickInfo):
 
 @router.post("/host/create_room")
 async def create_story_room(info: StoryRoomCreateInfo):
+    from api.services import room_service
+    from api.database import supabase
 
     try:
         story_state = build_story_state(info.story_id)
@@ -581,6 +581,7 @@ async def create_story_room(info: StoryRoomCreateInfo):
 
 @router.post("/host/{room_code}/start")
 async def start_story_room(room_code: str, info: StoryHostStartInfo):
+    from api.services import room_service
     room = room_service.get_room_by_code(room_code)
     previous_state = deepcopy(room.get("game_state") or {})
     host = room_service.validate_host(previous_state, info.player_name, info.host_token)
@@ -613,6 +614,7 @@ async def start_story_room(room_code: str, info: StoryHostStartInfo):
 
 @router.post("/host/{room_code}/next")
 async def story_next_step(room_code: str, info: StoryHostNextInfo):
+    from api.services import room_service
     room = room_service.get_room_by_code(room_code)
     previous_state = deepcopy(room.get("game_state") or {})
     host = room_service.validate_host(previous_state, info.player_name, info.host_token)

@@ -29,10 +29,6 @@
       "use": "@vercel/python"
     },
     {
-      "src": "api/story_catalog_api.py",
-      "use": "@vercel/python"
-    },
-    {
       "src": "api/story_prepare_api.py",
       "use": "@vercel/python"
     },
@@ -101,10 +97,6 @@
     {
       "src": "/api/story-prepare/(.*)",
       "dest": "api/story_prepare_api.py"
-    },
-    {
-      "src": "/api/story/catalog",
-      "dest": "api/story_catalog_api.py"
     },
     {
       "src": "/api/story/(.*)",
