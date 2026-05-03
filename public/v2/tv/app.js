@@ -115,12 +115,100 @@ socket.on('game_state', (data) => {
     renderRetratosView(data);
   } else if (currentGameId === 'hechizo_incompleto') {
     renderHechizoView(data);
+  } else if (currentGameId === 'patronus_personalizado') {
+    renderPatronusView(data);
+  } else if (currentGameId === 'copa_final') {
+    renderCopaFinalView(data);
   } else if (currentGameId === 'mapa_travieso') {
     renderMapaView(data);
   } else if (currentGameId === 'caldero_mentiroso') {
     renderCalderoView(data);
   }
 });
+
+function renderPatronusView(data) {
+  if (data.phase === 'results') {
+    renderPatronusResults(data);
+    return;
+  }
+  showView('view-patronus');
+  document.getElementById('patronus-prompt').textContent = data.prompt?.text || '...';
+  document.getElementById('patronus-count').textContent = data.phase === 'submit' ? data.submitCount : data.voteCount;
+  document.getElementById('patronus-total').textContent = data.totalPlayers;
+  
+  const list = document.getElementById('patronus-submissions-list');
+  list.innerHTML = '';
+  if (data.phase === 'vote') {
+    data.submissions.forEach(sub => {
+      const card = document.createElement('div');
+      card.className = 'submission-card glass-panel';
+      card.textContent = sub.text;
+      list.appendChild(card);
+    });
+  } else {
+    list.innerHTML = `<p style="text-align:center; width:100%; opacity:0.6;">Esperando conjuros...</p>`;
+  }
+}
+
+function renderCopaFinalView(data) {
+  if (data.phase === 'results') {
+    renderCopaResults(data);
+    return;
+  }
+  showView('view-copafinal');
+  document.getElementById('copa-phase-label').textContent = data.phase === 'wager' ? 'Hagan sus apuestas' : '¡PREGUNTA FINAL!';
+  document.getElementById('copa-count').textContent = data.phase === 'wager' ? data.wagerCount : data.answerCount;
+  document.getElementById('copa-total').textContent = data.totalPlayers;
+
+  const qContainer = document.getElementById('copa-question-container');
+  const wagerGrid = document.getElementById('copa-wager-status');
+  
+  if (data.phase === 'question') {
+    qContainer.style.display = 'block';
+    wagerGrid.style.display = 'none';
+    document.getElementById('copa-question-text').textContent = data.question?.question;
+    const opts = document.getElementById('copa-options');
+    opts.innerHTML = data.question?.options.map(opt => `
+      <div class="option-card glass-panel">
+        <div class="option-label">${opt}</div>
+      </div>
+    `).join('');
+  } else {
+    qContainer.style.display = 'none';
+    wagerGrid.style.display = 'flex';
+    // Optionally render house scores/wager status here
+  }
+}
+
+function renderPatronusResults(data) {
+  showView('view-results');
+  document.getElementById('correct-answer').textContent = "Ranking de Patronus";
+  document.getElementById('narrator-comment').textContent = `"${data.results.narrator}"`;
+  
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  data.results.ranking.forEach(res => {
+    const card = document.createElement('div');
+    card.className = 'result-player-card glass-panel';
+    card.innerHTML = `<div class="player-name">${res.playerName} (${res.house})</div><div class="result-status status-correct">${res.votes} votos</div><div class="points-gain">${res.text}</div>`;
+    list.appendChild(card);
+  });
+}
+
+function renderCopaResults(data) {
+  showView('view-results');
+  document.getElementById('correct-answer').textContent = data.results.correctAnswer;
+  document.getElementById('narrator-comment').textContent = `"${data.results.explanation}" - ${data.results.narrator}`;
+  
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  data.results.ranking.forEach(res => {
+    const card = document.createElement('div');
+    card.className = 'result-player-card glass-panel';
+    card.innerHTML = `<div class="player-name">${res.name}</div><div class="result-status ${res.correct?'status-correct':'status-wrong'}">${res.correct?'¡ACERTÓ!':'FALLÓ'}</div><div class="points-gain">${res.correct?'+':''}${res.points} (Apostó ${res.wager})</div>`;
+    list.appendChild(card);
+  });
+}
 
 function renderRetratosView(data) {
   if (data.phase === 'results') {

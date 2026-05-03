@@ -9,6 +9,8 @@ import { MapaTravieso } from './mapaTravieso/index';
 import { CalderoMentiroso } from './calderoMentiroso/index';
 import { RetratosChismosos } from './retratosChismosos/index';
 import { HechizoIncompleto } from './hechizoIncompleto/index';
+import { PatronusPersonalizado } from './patronusPersonalizado/index';
+import { CopaFinal } from './copaFinal/index';
 
 export function createGameModule(gameId: GameId): GameModule | null {
   switch (gameId) {
@@ -32,6 +34,10 @@ export function createGameModule(gameId: GameId): GameModule | null {
       return new RetratosChismosos();
     case 'hechizo_incompleto':
       return new HechizoIncompleto();
+    case 'patronus_personalizado':
+      return new PatronusPersonalizado();
+    case 'copa_final':
+      return new CopaFinal();
     // Remaining games will be added here as they are implemented
     default:
       return null;

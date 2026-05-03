@@ -65,6 +65,8 @@
           <option value="caldero_mentiroso">El Caldero Mentiroso</option>
           <option value="retratos_chismosos">Retratos Chismosos</option>
           <option value="hechizo_incompleto">Hechizo Incompleto</option>
+          <option value="patronus_personalizado">Patronus Personalizado</option>
+          <option value="copa_final">La Copa Final</option>
         </select>
         <button class="btn-start-premium" id="btn-start" style="display: none;">Iniciar Juego</button>
       </div>
@@ -159,6 +161,48 @@
         <p id="spell-context" style="opacity:0.6; margin-top:1rem;"></p>
     </div>
     <div class="trivia-options" id="spell-options"></div>
+  </div>
+
+  <!-- Patronus Personalizado Screen -->
+  <div class="tv-layout" id="view-patronus" style="display: none;">
+    <header class="header">
+        <div class="title-group">
+          <h1 class="text-gradient-gold">Patronus Personalizado</h1>
+          <p id="patronus-prompt">Cargando tema...</p>
+        </div>
+    </header>
+    <div class="patronus-arena">
+        <div class="patronus-aura">✨</div>
+        <div id="patronus-submissions-list" class="submissions-grid">
+          <!-- Waiting for proposals / list of proposals for voting -->
+        </div>
+    </div>
+    <div class="vote-meter glass-panel">
+        <span id="patronus-count">0</span> / <span id="patronus-total">0</span> magos listos
+    </div>
+  </div>
+
+  <!-- Copa Final Screen -->
+  <div class="tv-layout" id="view-copafinal" style="display: none;">
+    <header class="header">
+        <div class="title-group">
+          <h1 class="text-gradient-gold">La Copa Final</h1>
+          <p id="copa-phase-label">Hagan sus apuestas</p>
+        </div>
+    </header>
+    <div class="copa-central">
+        <div class="copa-trophy">🏆</div>
+        <div id="copa-question-container" style="display:none">
+            <h2 id="copa-question-text" class="trivia-question"></h2>
+            <div id="copa-options" class="trivia-options"></div>
+        </div>
+        <div id="copa-wager-status" class="wager-grid">
+            <!-- House scores and wager status -->
+        </div>
+    </div>
+    <div class="vote-meter glass-panel">
+        <span id="copa-count">0</span> / <span id="copa-total">0</span> magos listos
+    </div>
   </div>
 
   <!-- Results View -->

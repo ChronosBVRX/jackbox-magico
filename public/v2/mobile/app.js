@@ -155,12 +155,116 @@ socket.on('game_player_state', (data) => {
     renderRetratosInput(data);
   } else if (currentGameId === 'hechizo_incompleto') {
     renderHechizoInput(data);
+  } else if (currentGameId === 'patronus_personalizado') {
+    renderPatronusInput(data);
+  } else if (currentGameId === 'copa_final') {
+    renderCopaInput(data);
   } else if (currentGameId === 'mapa_travieso') {
     renderMapaInput(data);
   } else if (currentGameId === 'caldero_mentiroso') {
     renderCalderoInput(data);
   }
 });
+
+function renderPatronusInput(data) {
+  if (data.phase === 'submit') {
+    if (data.alreadySubmitted) {
+      showView('answer-sent');
+      return;
+    }
+    showView('patronus-input');
+    document.getElementById('patronus-submit-area').style.display = 'block';
+    document.getElementById('patronus-vote-area').style.display = 'none';
+    document.getElementById('patronus-prompt-mobile').textContent = data.prompt;
+    
+    document.getElementById('btn-patronus-submit').onclick = () => {
+      const text = document.getElementById('patronus-text').value;
+      if (!text.trim()) return;
+      socket.emit('player_action', { type: 'patronus_submit', text });
+      showView('answer-sent');
+    };
+  } else if (data.phase === 'vote') {
+    if (data.alreadyVoted) {
+      showView('answer-sent');
+      return;
+    }
+    showView('patronus-input');
+    document.getElementById('patronus-submit-area').style.display = 'none';
+    document.getElementById('patronus-vote-area').style.display = 'block';
+    
+    const container = document.getElementById('patronus-mobile-options');
+    container.innerHTML = '';
+    data.submissions.forEach(sub => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-target';
+      btn.textContent = sub.text;
+      btn.onclick = () => {
+        socket.emit('player_action', { type: 'patronus_vote', submissionId: sub.id });
+        showView('answer-sent');
+      };
+      container.appendChild(btn);
+    });
+  }
+}
+
+function renderCopaInput(data) {
+  if (data.phase === 'wager') {
+    if (data.alreadyWagered) {
+      showView('answer-sent');
+      return;
+    }
+    showView('copafinal-input');
+    document.getElementById('copa-wager-area').style.display = 'block';
+    document.getElementById('copa-question-area').style.display = 'none';
+    document.getElementById('copa-my-score').textContent = data.myScore;
+    
+    const container = document.getElementById('copa-wager-options');
+    container.innerHTML = '';
+    data.wagerOptions.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-target';
+      btn.textContent = `${opt} Pts`;
+      btn.onclick = () => {
+        socket.emit('player_action', { type: 'final_wager', amount: opt });
+        showView('answer-sent');
+      };
+      container.appendChild(btn);
+    });
+    // Add All-In if score > 0
+    if (data.myScore > 0 && !data.wagerOptions.includes(data.myScore)) {
+        const btnAll = document.createElement('button');
+        btnAll.className = 'btn-target';
+        btnAll.style.borderLeft = '5px solid #d4af37';
+        btnAll.textContent = `¡TODO O NADA! (${data.myScore})`;
+        btnAll.onclick = () => {
+            socket.emit('player_action', { type: 'final_wager', amount: data.myScore });
+            showView('answer-sent');
+        };
+        container.appendChild(btnAll);
+    }
+  } else if (data.phase === 'question') {
+    if (data.alreadyAnswered) {
+      showView('answer-sent');
+      return;
+    }
+    showView('copafinal-input');
+    document.getElementById('copa-wager-area').style.display = 'none';
+    document.getElementById('copa-question-area').style.display = 'block';
+    
+    const container = document.getElementById('copa-mobile-options');
+    container.innerHTML = '';
+    data.options.forEach((opt, idx) => {
+      const btn = document.createElement('button');
+      btn.className = `btn-trivia btn-${['a','b','c','d'][idx]}`;
+      btn.textContent = opt;
+      btn.onclick = () => {
+        socket.emit('player_action', { type: 'final_answer', answer: opt });
+        showView('answer-sent');
+      };
+      container.appendChild(btn);
+    });
+  }
+}
 
 function renderRetratosInput(data) {
   if (data.alreadyAnswered) {

@@ -338,9 +338,79 @@ body {
   vertical-align: bottom;
   animation: pulseOpacity 2s infinite;
 }
-@keyframes pulseOpacity {
-  0%, 100% { opacity: 0.3; }
-  50% { opacity: 0.8; }
+/* PATRONUS PERSONALIZADO */
+.patronus-arena {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 400px;
+  position: relative;
+}
+.patronus-aura {
+  font-size: 15rem;
+  opacity: 0.1;
+  position: absolute;
+  z-index: 0;
+  animation: breathe 5s infinite alternate ease-in-out;
+}
+.submissions-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  width: 100%;
+  max-width: 1000px;
+  z-index: 1;
+}
+.submission-card {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 1.5rem;
+  border-radius: 12px;
+  text-align: center;
+  font-family: 'Crimson Text', serif;
+  font-size: 1.2rem;
+  box-shadow: 0 4px 15px rgba(0,0,0,0.3);
+  transition: all 0.3s ease;
+}
+
+/* COPA FINAL */
+.copa-central {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3rem;
+  margin-top: 2rem;
+}
+.copa-trophy {
+  font-size: 12rem;
+  filter: drop-shadow(0 0 30px gold);
+  animation: shine 3s infinite alternate;
+}
+.wager-grid {
+  display: flex;
+  gap: 2rem;
+  justify-content: center;
+  width: 100%;
+}
+.house-wager-card {
+  padding: 1.5rem;
+  width: 180px;
+  text-align: center;
+  border-bottom: 4px solid #ccc;
+}
+.house-wager-card.sealed {
+  border-bottom-color: var(--color-accent);
+  background: rgba(212, 175, 55, 0.1);
+}
+
+@keyframes breathe {
+  from { transform: scale(1); opacity: 0.05; }
+  to { transform: scale(1.2); opacity: 0.15; }
+}
+@keyframes shine {
+  from { filter: drop-shadow(0 0 20px gold) brightness(1); }
+  to { filter: drop-shadow(0 0 50px gold) brightness(1.2); }
 }
 
 .player-card.offline {

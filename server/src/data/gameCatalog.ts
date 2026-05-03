@@ -204,36 +204,36 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'patronus_personalizado',
     name: 'Patronus Personalizado',
     shortName: 'Patronus',
-    status: 'dev',
+    status: 'beta',
     mode: 'social',
-    description: 'Propón formas de Patronus para tus amigos y voten por la mejor.',
+    description: 'Conjura un Patronus único respondiendo a situaciones mágicas y vota por el mejor.',
     rules: [
-      'Escribe una propuesta creativa de Patronus para el tema dado.',
-      'Vota por la propuesta más original de tus compañeros.',
-      'Gana por ser el más votado.'
+      'Responde creativamente al tema propuesto.',
+      'Vota por el Patronus más original o divertido de tus compañeros.',
+      'No puedes votar por ti mismo.'
     ],
-    points: { min: 0, max: 150, description: 'Votos recibidos + bonus ganador' },
-    durationSeconds: 45,
+    points: { min: 0, max: 200, description: 'Votos recibidos + bonus ganador' },
+    durationSeconds: 90,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   },
   {
     id: 'copa_final',
     name: 'Copa Final',
-    shortName: 'Copa',
-    status: 'dev',
+    shortName: 'Final',
+    status: 'beta',
     mode: 'quiz',
-    description: 'Apuesta tus puntos acumulados en una última pregunta decisiva.',
+    description: 'La gran pregunta final donde apuestas tus puntos para ganar la Copa de las Casas.',
     rules: [
-      'Apuesta una parte de tus puntos actuales.',
-      'Responde la pregunta final de alta dificultad.',
-      'Si aciertas sumas tu apuesta, si fallas la pierdes.'
+      'Apuesta una cantidad de tus puntos actuales.',
+      'Responde la pregunta experta final.',
+      'Si aciertas sumas la apuesta, si fallas la pierdes.'
     ],
-    points: { min: -500, max: 1000, description: 'Según apuesta' },
-    durationSeconds: 30,
+    points: { min: -300, max: 500, description: 'Resultado de apuesta' },
+    durationSeconds: 60,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   }
 ];
