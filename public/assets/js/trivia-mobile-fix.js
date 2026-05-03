@@ -476,6 +476,18 @@
     }
   }
 
+  async function readResponseBody(res) {
+    const text = await res.text();
+    try {
+      return text ? JSON.parse(text) : {};
+    } catch (_) {
+      return {
+        raw: text,
+        parse_error: true,
+      };
+    }
+  }
+
   async function sendTriviaAnswer({ answer, answerIndex, answerLabel, button }) {
     if (stateMemory.sending || stateMemory.answered) return;
 
@@ -524,32 +536,16 @@
     };
 
     try {
-      const postTriviaAnswer = async (p) => {
-        const primary = await fetch("/api/player/trivia_answer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify(p),
-        });
+      const res = await fetch("/api/player/submit_answer", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        cache: "no-store",
+        body: JSON.stringify(payload),
+      });
 
-        if (primary.ok) return primary;
-        if (![404, 405, 500].includes(primary.status)) return primary;
+      const data = await readResponseBody(res);
 
-        console.warn("Falling back to /api/player/submit_answer after trivia_answer failed:", primary.status);
-
-        return fetch("/api/player/submit_answer", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          cache: "no-store",
-          body: JSON.stringify(p),
-        });
-      };
-
-      const res = await postTriviaAnswer(payload);
-
-      const data = await res.json();
-
-      console.log("TRIVIA FIX RESPONSE:", data);
+      console.log("TRIVIA ANSWER RESPONSE:", res.status, data);
 
       if (!res.ok || data.accepted === false) {
         stateMemory.sending = false;
@@ -562,16 +558,21 @@
 
         if (feedback) {
           feedback.className = "trivia-mobile-feedback bad";
+          const detail = data.detail || data;
           feedback.innerHTML = `
             No se aceptó la respuesta.<br>
-            <small>${escapeHTML(data?.detail?.error || data?.detail?.mensaje || data?.detail || data?.message || "Revisa si la trivia sigue activa.")}</small>
+            <small>${escapeHTML(
+              detail.message ||
+              detail.error ||
+              detail.mensaje ||
+              data.message ||
+              "El servidor rechazó la respuesta."
+            )}</small>
           `;
         }
 
         if (status) {
-          status.innerText = data?.detail?.phase_actual
-            ? `No aceptada. Fase actual: ${data.detail.phase_actual}`
-            : "No se aceptó la respuesta.";
+          status.innerText = `Error del servidor: ${res.status}`;
         }
 
         play("wrong");
@@ -597,7 +598,7 @@
         renderAnsweredScreen(data);
       }, 450);
     } catch (error) {
-      console.error("TRIVIA FIX ERROR:", error);
+      console.error("TRIVIA SUBMIT ERROR:", error);
 
       stateMemory.sending = false;
       stateMemory.answered = false;
@@ -609,10 +610,10 @@
 
       if (feedback) {
         feedback.className = "trivia-mobile-feedback bad";
-        feedback.textContent = "Error de conexión al enviar respuesta.";
+        feedback.textContent = "Fallo de conexión o red.";
       }
 
-      if (status) status.innerText = "Error de conexión.";
+      if (status) status.innerText = "Error de red.";
 
       play("wrong");
       vibrate([80, 50, 80]);

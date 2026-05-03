@@ -83,7 +83,7 @@
     }
 
     finishingTriviaKey = key;
-    triviaFinishAttempts[key] = attempts + 1;
+    triviaFinishAttempts[key] = (triviaFinishAttempts[key] || 0) + 1;
 
     try {
       const res = await fetch(`/api/trivia/${room}/finish`, {
