@@ -19,32 +19,14 @@ let currentGameId = null;
 
 // Helper to switch views
 function showMobileView(viewId) {
-  const viewIds = [
-    'join-form',
-    'wait-screen',
-    'trivia-input',
-    'answer-sent',
-    'snitch-input',
-    'duelo-input',
-    'clash-input',
-    'sombrero-input',
-    'pociones-input',
-    'retratos-input',
-    'hechizo-input',
-    'patronus-input',
-    'copafinal-input',
-    'mapa-input',
-    'caldero-input'
-  ];
-
-  viewIds.forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = 'none';
+  // Ocultar todas las vistas usando la clase común
+  document.querySelectorAll('.mobile-view').forEach(el => {
+    el.style.display = 'none';
   });
-
+  
   const target = document.getElementById(viewId);
   if (target) {
-    target.style.display = (viewId === 'wait-screen' || viewId === 'answer-sent') ? 'flex' : 'block';
+    target.style.display = (viewId === 'wait-screen' || viewId === 'answer-sent' || viewId === 'story-wait-screen') ? 'flex' : 'block';
   }
 }
 

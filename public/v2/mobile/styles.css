@@ -217,6 +217,8 @@ input:focus, select:focus {
 
 .game-view {
   width: 100%;
+  max-width: 360px;
+  margin: 0 auto;
   padding: 1.2rem 1rem;
   animation: slideUp 0.4s ease-out;
 }
@@ -228,17 +230,19 @@ input:focus, select:focus {
 
 /* --- Snitch & Duelo Controls --- */
 .btn-catch {
-  width: 200px;
-  height: 200px;
+  width: 160px;
+  height: 160px;
   border-radius: 50%;
-  border: 10px solid var(--color-accent);
+  border: 8px solid var(--color-accent);
   background: radial-gradient(circle, #ffd700, #b8860b);
   color: #000;
-  font-weight: bold;
-  font-size: 1.5rem;
+  font-weight: 800;
+  font-size: 1.2rem;
   box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
   cursor: pointer;
   transition: transform 0.1s;
+  display: block;
+  margin: 0 auto;
 }
 .btn-catch:active {
   transform: scale(0.9);
@@ -264,16 +268,20 @@ input:focus, select:focus {
 }
 
 .btn-clash {
-  width: 100%;
-  padding: 3rem 1rem;
-  border-radius: 20px;
-  background: linear-gradient(135deg, #ff4d4d, #b30000);
+  width: 160px;
+  height: 160px;
+  border-radius: 50%;
+  border: 8px solid #ef4444;
+  background: radial-gradient(circle, #f87171, #991b1b);
   color: white;
-  font-size: 2rem;
-  font-weight: bold;
-  border: none;
-  box-shadow: 0 10px 20px rgba(179, 0, 0, 0.4);
-  animation: pulse 1s infinite;
+  font-weight: 800;
+  font-size: 1.2rem;
+  box-shadow: 0 10px 30px rgba(239, 68, 68, 0.4);
+  cursor: pointer;
+  transition: transform 0.1s;
+  display: block;
+  margin: 0 auto;
+  animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {

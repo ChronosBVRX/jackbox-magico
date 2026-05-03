@@ -10,7 +10,7 @@
   <div class="mobile-container">
     
     <!-- Join Form -->
-    <div class="join-card glass-panel" id="join-form">
+    <div class="join-card glass-panel mobile-view" id="join-form">
       <h1 class="text-gradient-gold">Jackbox Mágico</h1>
       
       <div class="input-group">
@@ -45,7 +45,7 @@
     </div>
 
     <!-- Wait Screen -->
-    <div class="wait-screen glass-panel" id="wait-screen" style="display: none;">
+    <div class="wait-screen glass-panel mobile-view" id="wait-screen" style="display: none;">
       <div class="wand-icon" id="wand-icon">✨</div>
       <div class="house-banner" id="house-banner">CASA</div>
       
@@ -60,7 +60,7 @@
     </div>
 
     <!-- Trivia Inputs -->
-    <div class="game-view glass-panel" id="trivia-input" style="display: none; padding: 1.5rem;">
+    <div class="game-view glass-panel mobile-view" id="trivia-input" style="display: none; padding: 1.5rem;">
       <h2 id="trivia-question-mobile" style="text-align:center; margin-bottom: 1rem; font-size: 1.1rem;">Cargando pregunta...</h2>
       
       <div class="timer-mobile-wrapper">
@@ -76,14 +76,14 @@
     </div>
 
     <!-- Snitch Input -->
-    <div class="game-view glass-panel" id="snitch-input" style="display: none; text-align: center;">
+    <div class="game-view glass-panel mobile-view" id="snitch-input" style="display: none; text-align: center;">
       <h2 style="margin-bottom: 2rem;">¡ATRAPA LA SNITCH!</h2>
       <button class="btn-catch" id="btn-catch">¡ATRAPAR!</button>
       <div id="snitch-feedback" style="margin-top: 1rem; font-size: 1.2rem;"></div>
     </div>
 
     <!-- Duelo Hechizos Input -->
-    <div class="game-view glass-panel" id="duelo-input" style="display: none; padding: 1rem;">
+    <div class="game-view glass-panel mobile-view" id="duelo-input" style="display: none; padding: 1rem;">
       <h2 style="text-align: center; margin-bottom: 1rem;">Elige Hechizo</h2>
       <div class="duelo-grid">
         <button class="btn-duelo" data-spell="Expelliarmus">Expelliarmus</button>
@@ -95,13 +95,13 @@
     </div>
 
     <!-- Clash Input -->
-    <div class="game-view glass-panel" id="clash-input" style="display: none; text-align: center;">
+    <div class="game-view glass-panel mobile-view" id="clash-input" style="display: none; text-align: center;">
       <h2 style="margin-bottom: 2rem;">¡CHOQUE DE VARITAS!</h2>
       <button class="btn-clash" id="btn-clash">¡TOCAR RÁPIDO!</button>
     </div>
 
     <!-- Sombrero Input -->
-    <div class="game-view glass-panel" id="sombrero-input" style="display: none; padding: 1rem;">
+    <div class="game-view glass-panel mobile-view" id="sombrero-input" style="display: none; padding: 1rem;">
       <h2 style="text-align: center; margin-bottom: 1rem;">Vota por alguien</h2>
       <div class="sombrero-grid" id="sombrero-targets">
         <!-- Target buttons -->
@@ -109,7 +109,7 @@
     </div>
 
     <!-- Pociones Input -->
-    <div class="game-view glass-panel" id="pociones-input" style="display: none; padding: 1rem;">
+    <div class="game-view glass-panel mobile-view" id="pociones-input" style="display: none; padding: 1rem;">
       <h2 style="text-align: center; margin-bottom: 1rem;" id="pociones-mode-label">Prepara la Poción</h2>
       <div class="pociones-sequence-bar" id="pociones-sequence-preview" style="height: 50px; background: rgba(0,0,0,0.2); margin-bottom: 1rem; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem;"></div>
       <div class="pociones-grid" id="pociones-ingredients">
@@ -122,13 +122,13 @@
     </div>
 
     <!-- Mapa Travieso -->
-    <div id="mapa-input" class="game-view glass-panel" style="display:none; padding: 1rem;">
+    <div id="mapa-input" class="game-view glass-panel mobile-view" style="display:none; padding: 1rem;">
       <h2 id="mapa-question" class="title-text" style="text-align: center; margin-bottom: 1rem;">¿Dónde estaba?</h2>
       <div id="mapa-zones" class="sombrero-grid"></div>
     </div>
 
     <!-- Caldero Mentiroso -->
-    <div id="caldero-input" class="game-view glass-panel" style="display:none; padding: 1rem;">
+    <div id="caldero-input" class="game-view glass-panel mobile-view" style="display:none; padding: 1rem;">
       <div id="ingredient-card" class="glass-panel" style="padding:1.5rem; margin-bottom:1.5rem; border-top: 5px solid var(--color-accent); text-align: center;">
         <div id="ing-emoji" style="font-size:3rem">🌿</div>
         <h3 id="ing-name">Ingrediente</h3>
@@ -158,19 +158,19 @@
     </div>
 
     <!-- Retratos Chismosos -->
-    <div id="retratos-input" class="game-view glass-panel" style="display:none; padding: 1rem;">
+    <div id="retratos-input" class="game-view glass-panel mobile-view" style="display:none; padding: 1rem;">
       <h2 id="portrait-question-mobile" class="title-text" style="text-align: center; margin-bottom: 1rem;">¿De quién hablan?</h2>
       <div id="portrait-mobile-options" class="sombrero-grid"></div>
     </div>
 
     <!-- Hechizo Incompleto -->
-    <div id="hechizo-input" class="game-view glass-panel" style="display:none; padding: 1rem;">
+    <div id="hechizo-input" class="game-view glass-panel mobile-view" style="display:none; padding: 1rem;">
       <h2 class="title-text" style="text-align: center; margin-bottom: 1rem;">Completa el Hechizo</h2>
       <div id="hechizo-mobile-options" class="sombrero-grid"></div>
     </div>
 
     <!-- Patronus Personalizado -->
-    <div id="patronus-input" class="game-view glass-panel" style="display:none; padding: 1rem;">
+    <div id="patronus-input" class="game-view glass-panel mobile-view" style="display:none; padding: 1rem;">
       <h2 id="patronus-prompt-mobile" class="title-text" style="text-align: center; margin-bottom: 1rem;">Describe tu Patronus</h2>
       <div id="patronus-submit-area">
         <textarea id="patronus-text" class="glass-input" placeholder="Escribe algo creativo..." maxlength="80" style="width:100%; height:100px; margin-bottom:1rem;"></textarea>
@@ -183,7 +183,7 @@
     </div>
 
     <!-- Copa Final -->
-    <div id="copafinal-input" class="game-view glass-panel" style="display:none; padding: 1rem;">
+    <div id="copafinal-input" class="game-view glass-panel mobile-view" style="display:none; padding: 1rem;">
       <div id="copa-wager-area">
         <h2 class="title-text" style="text-align: center; margin-bottom: 0.5rem;">Copa Final</h2>
         <p style="text-align: center; font-size:0.8rem; margin-bottom:1.5rem;">Tus puntos: <span id="copa-my-score">0</span></p>
@@ -196,13 +196,13 @@
     </div>
 
     <!-- Story Mode Views -->
-    <div class="game-view glass-panel" id="story-wait-screen" style="display: none; text-align: center; padding: 2rem;">
+    <div class="game-view glass-panel mobile-view" id="story-wait-screen" style="display: none; text-align: center; padding: 2rem;">
       <div class="visual-placeholder" style="font-size: 5rem; margin-bottom: 1.5rem;">📜</div>
       <h2 class="text-gradient-gold">Historia en Curso</h2>
       <p style="margin-top: 1rem; color: var(--color-text-dim);">Mira la TV. La aventura está avanzando.</p>
     </div>
 
-    <div class="game-view glass-panel" id="story-instructions-mobile" style="display: none; padding: 2rem;">
+    <div class="game-view glass-panel mobile-view" id="story-instructions-mobile" style="display: none; padding: 2rem;">
       <h2 class="text-gradient-gold" id="story-instr-title-mobile" style="text-align: center;">Minijuego</h2>
       <p id="story-instr-subtitle-mobile" style="text-align: center; font-style: italic; margin-bottom: 1.5rem;"></p>
       <div class="glass-panel" style="padding: 1.5rem; background: rgba(255,255,255,0.05);">
@@ -212,14 +212,14 @@
       <p style="margin-top: 1.5rem; text-align: center; font-weight: bold;">Presta atención a la TV. En un momento tu celular se convertirá en tu varita.</p>
     </div>
 
-    <div class="game-view glass-panel" id="story-personal-score" style="display: none; text-align: center; padding: 2rem;">
+    <div class="game-view glass-panel mobile-view" id="story-personal-score" style="display: none; text-align: center; padding: 2rem;">
       <h2 class="text-gradient-gold">Tu Puntuación</h2>
       <div style="font-size: 4rem; margin: 2rem 0; font-family: var(--font-title);" id="story-personal-points">0</div>
       <p style="color: var(--color-text-dim);">Revisa el marcador en la TV para ver cómo va tu casa.</p>
     </div>
 
     <!-- Answer Sent Feedback -->
-    <div class="wait-screen glass-panel" id="answer-sent" style="display: none;">
+    <div class="wait-screen glass-panel mobile-view" id="answer-sent" style="display: none;">
       <div class="wand-icon">✅</div>
       <p class="status-text">
         <strong>Respuesta Enviada</strong><br>
