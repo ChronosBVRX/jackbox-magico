@@ -7,6 +7,11 @@ const displayCode = document.getElementById('display-code');
 const playersList = document.getElementById('players-list');
 const statusText = document.getElementById('status-text');
 const btnStart = document.getElementById('btn-start');
+const joinUrl = document.getElementById('join-url');
+
+if (joinUrl) {
+  joinUrl.textContent = `${window.location.origin}/v2/mobile/`;
+}
 
 let currentRoom = null;
 
