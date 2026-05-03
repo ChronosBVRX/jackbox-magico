@@ -13,17 +13,38 @@
   }
 
   function looksCorrupted(text) {
-    return /[Ââð�§™□€�œ‡Š]/.test(String(text || ""));
+    // Detect typical mojibake characters
+    return /[Ââð§™□€œ‡Š]/.test(String(text || ""));
   }
 
   function cleanKnownMojibakeText(text) {
-    return String(text || "")
-      .replaceAll("Â¡", "¡")
-      .replaceAll("âœ¨", SPARKLES)
-      .replaceAll("ðŸ¦�", "🦁")
-      .replaceAll("ðŸ��", "🐍")
-      .replaceAll("ðŸ¦…", "🦅")
-      .replaceAll("ðŸ¦¡", "🦡");
+    if (!text) return "";
+    let s = String(text);
+    
+    // Manual mapping for known corruptions that might still come from DB
+    const mapping = {
+      "Â¡": "¡",
+      "âœ¨": "✨",
+      "âœ…": "✅",
+      "â Œ": "❌",
+      "â ³": "⏳",
+      "âš¡": "⚡",
+      "â€œ": "“",
+      "â€ ": "”",
+      "Â·": "·",
+      "ðŸ¦": "🦁",
+      "ðŸ": "🐍",
+      "ðŸ¦…": "🦅",
+      "ðŸ¦¡": "🦡",
+      "§™â€ â™€ï¸ ": WITCH,
+      "§™â€ â™‚ï¸ ": WIZARD
+    };
+
+    for (const [bad, good] of Object.entries(mapping)) {
+      s = s.split(bad).join(good);
+    }
+    
+    return s;
   }
 
   function patchAudioButtons() {
@@ -58,6 +79,7 @@
 
       nodes.forEach((node) => {
         if (looksCorrupted(node.nodeValue)) {
+          // If it looks corrupted, we force the correct gender icon
           node.nodeValue = icon;
         } else {
           node.nodeValue = cleanKnownMojibakeText(node.nodeValue);
@@ -68,6 +90,7 @@
 
   function patchPlayerPayload(payload) {
     const players = payload?.players || [];
+    // Multiple passes to ensure we catch dynamic renders
     setTimeout(() => patchExistingLobbyCards(players), 0);
     setTimeout(() => patchExistingLobbyCards(players), 80);
     setTimeout(() => patchExistingLobbyCards(players), 220);
@@ -97,6 +120,7 @@
   function patchDomLoop() {
     patchAudioButtons();
 
+    // Fallback global check for any player cards in the DOM
     const grid = document.getElementById("lista-jugadores");
     if (grid) {
       const cards = Array.from(grid.children);
@@ -106,8 +130,8 @@
         while (walker.nextNode()) nodes.push(walker.currentNode);
         nodes.forEach((node) => {
           if (looksCorrupted(node.nodeValue)) {
-            node.nodeValue = WIZARD;
-          } else {
+            // We can't know the gender here without the state, 
+            // but we can try to fix basic emoji corruptions.
             node.nodeValue = cleanKnownMojibakeText(node.nodeValue);
           }
         });
@@ -115,6 +139,7 @@
     }
   }
 
+  // Initialize
   patchFetch();
   patchDomLoop();
   document.addEventListener("DOMContentLoaded", patchDomLoop);
@@ -125,5 +150,6 @@
     iconForGender,
     patchExistingLobbyCards,
     patchAudioButtons,
+    cleanKnownMojibakeText
   };
 })();

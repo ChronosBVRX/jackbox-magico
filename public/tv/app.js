@@ -589,6 +589,7 @@ function injectTriviaStyles() {
     .trivia-result-card.wrong {
       background: rgba(239,68,68,.12);
       border-color: rgba(248,113,113,.24);
+        const avatar = isWitch ? "🧙‍♀️" : "🧙‍♂️";
     }
 
     .trivia-result-top {
@@ -760,7 +761,7 @@ function escapeHTML(value) {
 }
 
 function getQuestion(state) {
-  return state.question || state.attack_msg || "Â¡Responde!";
+  return state.question || state.attack_msg || "¡Responde!";
 }
 
 function getRoundKey(state) {
@@ -808,7 +809,7 @@ function renderHouseScoreboard(players = []) {
     .sort((a, b) => Number(scores[b] || 0) - Number(scores[a] || 0))
     .map((house) => `
       <div class="trivia-house-row" style="box-shadow: inset 4px 0 0 ${houseColors[house] || "#facc15"};">
-        <div class="name">${houseIcons[house] || "âœ¨"} ${escapeHTML(houseNames[house] || house)}</div>
+        <div class="name">${houseIcons[house] || "✨"} ${escapeHTML(houseNames[house] || house)}</div>
         <div class="score">${Number(scores[house] || 0)}</div>
       </div>
     `)
@@ -851,7 +852,7 @@ async function loadTvStories() {
     const res = await fetch("/api/story/catalog", { cache: "no-store" });
     const data = await res.json();
     stories = data.stories || [];
-    renderCarousel();
+      <div class="badge">🏆 Copa de las Casas</div>
   } catch (error) {
     console.error("Failed to load stories", error);
   }
@@ -1179,7 +1180,7 @@ function renderLobby(data) {
         
         const isWitch = (player.gender === "witch");
         const label = isWitch ? "Una maga" : "Un mago";
-        const avatar = isWitch ? "§™â€â™€ï¸" : "§™â€â™‚ï¸";
+        const avatar = isWitch ? "🧙‍♀️" : "🧙‍♂️";
         
         item.style.setProperty("--house-color", houseColors[player.house] || "#facc15");
         item.innerHTML = `
@@ -1302,7 +1303,7 @@ function updateTriviaPlayers(state, players) {
 
     item.className = `trivia-player-row ${hasAnswered ? "answered" : ""}`;
     item.innerHTML = `
-      <span>${houseIcons[player.house] || "âœ¨"} ${escapeHTML(player.name)}</span>
+      <span>${houseIcons[player.house] || "✨"} ${escapeHTML(player.name)}</span>
       <span class="status">${hasAnswered ? "Respondió" : "Pensando..."}</span>
     `;
 
@@ -1422,7 +1423,7 @@ function renderGenericGame(state, players = []) {
 
   container.innerHTML = `
     <section class="generic-card">
-      <div class="badge">âœ¨ Minijuego activo</div>
+      <div class="badge">✨ Minijuego activo</div>
       <h2 class="question-title">${escapeHTML(getQuestion(state))}</h2>
       <div class="options-grid" id="tv-opciones"></div>
       <div class="host-help">La TV revelará los resultados pronto. Prepárense.</div>
@@ -1508,19 +1509,19 @@ function renderTriviaResults(state, players = []) {
         </div>
 
         <p class="trivia-results-comment">
-          â€œ${escapeHTML(commentary)}â€
+          “${escapeHTML(commentary)}”
         </p>
 
         ${
           fastest
             ? `
               <div class="trivia-fastest-banner">
-                âš¡ Respuesta correcta más rápida: ${escapeHTML(fastest.player_name)} Â· ${Number(fastest.elapsed_seconds || 0).toFixed(2)}s Â· +40
+                ⚡ Respuesta correcta más rápida: ${escapeHTML(fastest.player_name)} · ${Number(fastest.elapsed_seconds || 0).toFixed(2)}s · +40
               </div>
             `
             : `
               <div class="trivia-fastest-banner">
-                ’¨ Nadie acertó lo suficientemente rápido. El pergamino está decepcionado.
+                ⏳ Nadie acertó lo suficientemente rápido. El pergamino está decepcionado.
               </div>
             `
         }
@@ -1552,10 +1553,10 @@ function renderTriviaResultCard(row) {
       <div class="trivia-result-top">
         <div>
           <div class="trivia-result-name">
-            ${isCorrect ? "âœ…" : row.answered ? "âŒ" : "â³"} ${escapeHTML(row.player_name || "Jugador")}
+            ${isCorrect ? "✅" : row.answered ? "âŒ" : "â³"} ${escapeHTML(row.player_name || "Jugador")}
           </div>
           <div class="trivia-result-house">
-            ${houseIcons[row.house] || "âœ¨"} ${escapeHTML(row.house || "Sin casa")}
+            ${houseIcons[row.house] || "✨"} ${escapeHTML(row.house || "Sin casa")}
           </div>
         </div>
 
@@ -1622,7 +1623,7 @@ function renderScoreGrid(players = []) {
   return sorted.map((player, index) => `
     <div class="score-card" style="border-color:${houseColors[player.house] || "#facc15"};">
       <div class="score-rank">#${index + 1}</div>
-      <div class="score-name">${houseIcons[player.house] || "âœ¨"} ${escapeHTML(player.name)}</div>
+      <div class="score-name">${houseIcons[player.house] || "✨"} ${escapeHTML(player.name)}</div>
       <div class="score-points">${Number(player.score || 0)} pts</div>
     </div>
   `).join("");
@@ -1704,7 +1705,7 @@ function renderScoreboardScene(state) {
 
   container.innerHTML = `
     <section class="scene-card scoreboard-scene">
-      <div class="badge">† Copa de las Casas</div>
+      <div class="badge">🏆 Copa de las Casas</div>
       <h1>${escapeHTML(state.scoreboard_title || "Marcador general")}</h1>
       <p class="scene-subtitle">${escapeHTML(state.scoreboard_subtitle || "Así va la competencia.")}</p>
       <div class="scoreboard-list">
@@ -1712,15 +1713,15 @@ function renderScoreboardScene(state) {
           <div class="scoreboard-row ${index === 0 ? "leader" : ""}">
             <div class="scoreboard-position">${index + 1}</div>
             <div class="scoreboard-house">
-              <span>${escapeHTML(item.icon || "âœ¨")}</span>
+              <span>${escapeHTML(item.icon || "✨")}</span>
               <strong>${escapeHTML(item.label || item.house)}</strong>
             </div>
             <div class="scoreboard-points">${Number(item.score || 0)} pts</div>
           </div>
         `).join("")}
       </div>
-      ${leader ? `<div class="leader-banner">Casa líder: ${escapeHTML(leader.icon || "âœ¨")} ${escapeHTML(leader.label || leader.house)}</div>` : ""}
-      ${topPlayer ? `<div class="top-player-banner">Jugador destacado: ${escapeHTML(topPlayer.icon || "âœ¨")} ${escapeHTML(topPlayer.name || "")} Â· ${Number(topPlayer.score || 0)} pts</div>` : ""}
+      ${leader ? `<div class="leader-banner">Casa líder: ${escapeHTML(leader.icon || "✨")} ${escapeHTML(leader.label || leader.house)}</div>` : ""}
+      ${topPlayer ? `<div class="top-player-banner">Jugador destacado: ${escapeHTML(topPlayer.icon || "✨")} ${escapeHTML(topPlayer.name || "")} · ${Number(topPlayer.score || 0)} pts</div>` : ""}
       <div class="tv-controls-hint large">
         <span class="key-hint">OK</span> ${escapeHTML(state.cta || "Continuar")}
       </div>
@@ -1735,7 +1736,7 @@ function renderTransitionScene(state) {
 
   container.innerHTML = `
     <section class="scene-card transition-scene">
-      <div class="badge">âœ¨ Transición</div>
+      <div class="badge">✨ Transición</div>
       <h1>${escapeHTML(state.transition_title || "La historia continúa...")}</h1>
       <p class="scene-subtitle">${escapeHTML(state.transition_subtitle || "")}</p>
       <div class="magic-loader">
@@ -1759,8 +1760,8 @@ function renderIntroScene(state) {
 
   container.innerHTML = `
     <section class="scene-card intro-scene">
-      <div class="badge gold">âœ¨ BIENVENIDA</div>
-      <h1>${escapeHTML(state.intro_title || "Â¡Bienvenidos!")}</h1>
+      <div class="badge gold">✨ BIENVENIDA</div>
+      <h1>${escapeHTML(state.intro_title || "¡Bienvenidos!")}</h1>
       <p class="scene-subtitle">${escapeHTML(state.intro_subtitle || "")}</p>
       <div class="scene-content-list">
         ${lines.map(line => `
@@ -1792,7 +1793,7 @@ function renderRulesScene(state) {
 
   container.innerHTML = `
     <section class="scene-card rules-scene">
-      <div class="badge">“– REGLAS DEL CASTILLO</div>
+      <div class="badge">📜 REGLAS DEL CASTILLO</div>
       <h1>${escapeHTML(state.rules_title || "Reglas")}</h1>
       <p class="scene-subtitle">${escapeHTML(state.rules_subtitle || "")}</p>
       <div class="scene-content-list">
