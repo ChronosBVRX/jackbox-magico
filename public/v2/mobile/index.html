@@ -67,7 +67,32 @@
         <button class="btn-trivia btn-c" data-answer="C">C</button>
         <button class="btn-trivia btn-d" data-answer="D">D</button>
       </div>
-    </main>
+    </div>
+
+    <!-- Snitch Input -->
+    <div class="game-view glass-panel" id="snitch-input" style="display: none; text-align: center;">
+      <h2 style="margin-bottom: 2rem;">¡ATRAPA LA SNITCH!</h2>
+      <button class="btn-catch" id="btn-catch">¡ATRAPAR!</button>
+      <div id="snitch-feedback" style="margin-top: 1rem; font-size: 1.2rem;"></div>
+    </div>
+
+    <!-- Duelo Hechizos Input -->
+    <div class="game-view glass-panel" id="duelo-input" style="display: none; padding: 1rem;">
+      <h2 style="text-align: center; margin-bottom: 1rem;">Elige Hechizo</h2>
+      <div class="duelo-grid">
+        <button class="btn-duelo" data-spell="Expelliarmus">Expelliarmus</button>
+        <button class="btn-duelo" data-spell="Protego">Protego</button>
+        <button class="btn-duelo" data-spell="Stupefy">Stupefy</button>
+        <button class="btn-duelo" data-spell="Esquivar">Esquivar</button>
+        <button class="btn-duelo" data-spell="Rictusempra">Rictusempra</button>
+      </div>
+    </div>
+
+    <!-- Clash Input -->
+    <div class="game-view glass-panel" id="clash-input" style="display: none; text-align: center;">
+      <h2 style="margin-bottom: 2rem;">¡CHOQUE DE VARITAS!</h2>
+      <button class="btn-clash" id="btn-clash">¡TOCAR RÁPIDO!</button>
+    </div>
 
     <!-- Answer Sent Feedback -->
     <div class="wait-screen glass-panel" id="answer-sent" style="display: none;">

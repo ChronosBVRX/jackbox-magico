@@ -99,12 +99,95 @@ function renderPlayers(players) {
 
 // GENERIC GAME STATE HANDLING
 socket.on('game_state', (data) => {
-  if (data.phase === 'question' || data.phase === 'threat') {
-    renderQuizView(data);
-  } else if (data.phase === 'results') {
-    renderResultsView(data);
+  if (currentGameId === 'trivia_magica' || currentGameId === 'artes_ridiculas') {
+    if (data.phase === 'question' || data.phase === 'threat') renderQuizView(data);
+    else if (data.phase === 'results') renderResultsView(data);
+  } else if (currentGameId === 'atrapa_snitch') {
+    if (data.phase === 'playing') renderSnitchView(data);
+    else if (data.phase === 'results') renderSnitchResults(data);
+  } else if (currentGameId === 'duelo_hechizos') {
+    renderDueloView(data);
   }
 });
+
+let snitchAnimFrame = null;
+function renderSnitchView(data) {
+  showView('view-snitch');
+  const ball = document.getElementById('snitch-ball');
+  const zone = document.getElementById('snitch-zone');
+  const feed = document.getElementById('catches-feed');
+
+  // Update feed
+  feed.innerHTML = '';
+  data.catches.forEach(c => {
+    const toast = document.createElement('div');
+    toast.className = 'catch-toast';
+    toast.innerHTML = `<span style="color:var(--house-${c.house.toLowerCase()})">${c.playerName}</span>: ${c.label}`;
+    feed.appendChild(toast);
+  });
+
+  if (snitchAnimFrame) cancelAnimationFrame(snitchAnimFrame);
+
+  function animate() {
+    const now = Date.now();
+    const snitchPos = getInterpolatedPos(data.snitchSegments, now);
+    const zonePos = getInterpolatedPos(data.zoneSegments, now);
+
+    if (snitchPos) {
+      ball.style.left = snitchPos.x + '%';
+      ball.style.top = snitchPos.y + '%';
+    }
+    if (zonePos) {
+      zone.style.left = zonePos.x + '%';
+      zone.style.top = zonePos.y + '%';
+    }
+
+    snitchAnimFrame = requestAnimationFrame(animate);
+  }
+  animate();
+}
+
+function getInterpolatedPos(segments, time) {
+  const seg = segments.find(s => time >= s.startTime && time <= s.endTime);
+  if (!seg) return null;
+  let t = (time - seg.startTime) / (seg.endTime - seg.startTime);
+  if (seg.easing === 'ease-in-out') t = t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+  return {
+    x: seg.startX + (seg.endX - seg.startX) * t,
+    y: seg.startY + (seg.endY - seg.startY) * t
+  };
+}
+
+function renderSnitchResults(data) {
+    if (snitchAnimFrame) cancelAnimationFrame(snitchAnimFrame);
+    showView('view-results'); // Reuse quiz results for now or make specific
+    // ... logic to show ranking
+}
+
+function renderDueloView(data) {
+    showView('view-duelo');
+    const status = document.getElementById('duelo-status');
+    const d1 = document.getElementById('duelist-1');
+    const d2 = document.getElementById('duelist-2');
+    const meter = document.getElementById('clash-meter');
+
+    d1.innerHTML = `<h3>${data.duelists[0].name}</h3><p>${data.duelists[0].house}</p>`;
+    d2.innerHTML = `<h3>${data.duelists[1].name}</h3><p>${data.duelists[1].house}</p>`;
+
+    if (data.phase === 'selection') {
+        status.textContent = `Esperando hechizos... (${data.choiceCount}/2)`;
+        meter.style.display = 'none';
+    } else if (data.phase === 'clash') {
+        status.textContent = '¡CHOQUE DE VARITAS! ¡PRESIONA RÁPIDO!';
+        meter.style.display = 'flex';
+        const total = (data.clashTaps[data.duelists[0].clientId] || 0) + (data.clashTaps[data.duelists[1].clientId] || 0) || 1;
+        document.getElementById('clash-bar-1').style.width = ((data.clashTaps[data.duelists[0].clientId] || 0) / total * 100) + '%';
+        document.getElementById('clash-bar-2').style.width = ((data.clashTaps[data.duelists[1].clientId] || 0) / total * 100) + '%';
+    } else if (data.phase === 'results') {
+        status.innerHTML = `<span style="color:var(--color-accent)">${data.results.winner} GANA</span><br><small>${data.results.message}</small>`;
+        meter.style.display = 'none';
+    }
+}
 
 function renderQuizView(data) {
   showView('view-trivia');
@@ -139,13 +222,11 @@ function renderResultsView(data) {
   
   const resultsContainer = document.getElementById('results-list');
   resultsContainer.innerHTML = '';
-  data.results.forEach(res => {
-    // We need player name here... we should probably map it from clientId using current room state
-    // For now, let's assume result includes name or we find it
+  data.results.results.forEach(res => {
     const card = document.createElement('div');
     card.className = 'result-player-card glass-panel';
     card.innerHTML = `
-      <div class="player-name">Jugador</div>
+      <div class="player-name">Mago</div>
       <div class="result-status ${res.isCorrect ? 'status-correct' : 'status-wrong'}">
         ${res.isCorrect ? '¡CORRECTO!' : (res.isFunny ? '¡GRACIOSO!' : 'INCORRECTO')}
       </div>

@@ -60,7 +60,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'atrapa_snitch',
     name: 'Atrapa la Snitch',
     shortName: 'Snitch',
-    status: 'dev',
+    status: 'beta',
     mode: 'action',
     description: 'Reflejos puros. Captura la Snitch cuando entre en tu aro de visión.',
     rules: [
@@ -72,13 +72,13 @@ export const GAME_CATALOG: GameInfo[] = [
     durationSeconds: 25,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   },
   {
     id: 'duelo_hechizos',
     name: 'Duelo de Hechizos',
     shortName: 'Duelo',
-    status: 'dev',
+    status: 'beta',
     mode: 'strategy',
     description: 'Enfréntate en un duelo de varitas usando la tabla de ventajas mágicas.',
     rules: [
@@ -90,7 +90,7 @@ export const GAME_CATALOG: GameInfo[] = [
     durationSeconds: 7,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   },
   {
     id: 'sombrero_burlon',

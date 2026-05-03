@@ -109,6 +109,32 @@
     </footer>
   </div>
 
+  <!-- Snitch Screen -->
+  <div class="tv-layout" id="view-snitch" style="display: none;">
+    <div class="snitch-arena" id="snitch-arena">
+      <div class="snitch-zone" id="snitch-zone"></div>
+      <div class="snitch-ball" id="snitch-ball"></div>
+    </div>
+    <div class="catches-feed" id="catches-feed"></div>
+    <div class="timer-container" style="position: absolute; top: 2rem; right: 2rem; width: 200px;">
+        <div class="timer-bar" id="snitch-timer-bar"></div>
+    </div>
+  </div>
+
+  <!-- Duelo Screen -->
+  <div class="tv-layout" id="view-duelo" style="display: none;">
+    <div class="duelo-container">
+      <div class="duelist duelist-left" id="duelist-1"></div>
+      <div class="duelo-vs">VS</div>
+      <div class="duelist duelist-right" id="duelist-2"></div>
+    </div>
+    <div class="duelo-status" id="duelo-status">Elige tu hechizo...</div>
+    <div class="clash-meter" id="clash-meter" style="display: none;">
+        <div class="clash-bar" id="clash-bar-1"></div>
+        <div class="clash-bar" id="clash-bar-2"></div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="app.js"></script>
   <script>

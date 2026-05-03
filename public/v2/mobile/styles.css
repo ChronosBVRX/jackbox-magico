@@ -180,3 +180,59 @@ input:focus, select:focus {
   from { transform: translateY(50px); opacity: 0; }
   to { transform: translateY(0); opacity: 1; }
 }
+
+/* --- Snitch & Duelo Controls --- */
+.btn-catch {
+  width: 200px;
+  height: 200px;
+  border-radius: 50%;
+  border: 10px solid var(--color-accent);
+  background: radial-gradient(circle, #ffd700, #b8860b);
+  color: #000;
+  font-weight: bold;
+  font-size: 1.5rem;
+  box-shadow: 0 10px 30px rgba(212, 175, 55, 0.4);
+  cursor: pointer;
+  transition: transform 0.1s;
+}
+.btn-catch:active {
+  transform: scale(0.9);
+}
+
+.duelo-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.8rem;
+}
+.btn-duelo {
+  padding: 1.2rem;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.1);
+  border: 1px solid var(--glass-border);
+  color: white;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.btn-duelo:active {
+  background: var(--color-accent);
+  color: black;
+}
+
+.btn-clash {
+  width: 100%;
+  padding: 3rem 1rem;
+  border-radius: 20px;
+  background: linear-gradient(135deg, #ff4d4d, #b30000);
+  color: white;
+  font-size: 2rem;
+  font-weight: bold;
+  border: none;
+  box-shadow: 0 10px 20px rgba(179, 0, 0, 0.4);
+  animation: pulse 1s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.02); }
+  100% { transform: scale(1); }
+}

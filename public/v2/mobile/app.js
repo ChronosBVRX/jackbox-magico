@@ -17,12 +17,12 @@ const wandIcon = document.getElementById('wand-icon');
 
 // Helper to switch views
 function showMobileView(viewId) {
-  [joinForm, waitScreen, triviaInput, answerSent].forEach(v => {
+  [joinForm, waitScreen, triviaInput, answerSent, document.getElementById('snitch-input'), document.getElementById('duelo-input'), document.getElementById('clash-input')].forEach(v => {
     if (v) v.style.display = 'none';
   });
   const target = document.getElementById(viewId);
   if (target) {
-    target.style.display = (viewId === 'trivia-input' || viewId === 'join-form') ? 'block' : 'flex';
+    target.style.display = (viewId === 'wait-screen' || viewId === 'answer-sent') ? 'flex' : 'block';
   }
 }
 
@@ -88,17 +88,53 @@ socket.on('room_state', (state) => {
   }
 });
 
+// Snitch Catch
+document.getElementById('btn-catch').addEventListener('click', () => {
+    socket.emit('player_action', { type: 'catch', timestamp: Date.now() });
+    if (window.navigator?.vibrate) window.navigator.vibrate(50);
+});
+
+// Duelo Spell
+document.querySelectorAll('.btn-duelo').forEach(btn => {
+    btn.addEventListener('click', () => {
+        socket.emit('player_action', { spell: btn.getAttribute('data-spell') });
+        if (window.navigator?.vibrate) window.navigator.vibrate(50);
+    });
+});
+
+// Clash Tap
+document.getElementById('btn-clash').addEventListener('click', () => {
+    socket.emit('player_action', { type: 'tap' });
+    if (window.navigator?.vibrate) window.navigator.vibrate(30);
+});
+
 // GENERIC GAME PLAYER STATE
 socket.on('game_player_state', (data) => {
   if (data.phase === 'question' || data.phase === 'threat') {
-    if (data.alreadyAnswered) {
-      showMobileView('answer-sent');
+    if (data.alreadyAnswered) showMobileView('answer-sent');
+    else showMobileView('trivia-input');
+  } else if (data.phase === 'playing') {
+    showMobileView('snitch-input');
+    document.getElementById('snitch-feedback').textContent = `Intentos: ${data.attemptsRemaining}`;
+  } else if (data.phase === 'selection') {
+    if (data.isDuelist) {
+        if (data.alreadyChosen) showMobileView('answer-sent');
+        else showMobileView('duelo-input');
     } else {
-      showMobileView('trivia-input');
+        showMobileView('wait-screen');
     }
+  } else if (data.phase === 'clash') {
+    if (data.isDuelist) showMobileView('clash-input');
+    else showMobileView('wait-screen');
   } else if (data.phase === 'results') {
     showMobileView('wait-screen');
   }
+});
+
+socket.on('catch_result', (data) => {
+    const feedback = document.getElementById('snitch-feedback');
+    feedback.textContent = `${data.label} (Intentos: ${data.attemptsRemaining})`;
+    feedback.style.color = data.points > 0 ? '#10b981' : '#ef4444';
 });
 
 socket.on('answer_ack', (data) => {

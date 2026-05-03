@@ -1,6 +1,8 @@
 import { GameId, GameModule } from './base';
 import { TriviaMagica } from './triviaMagica/index';
 import { ArtesRidiculas } from './artesRidiculas/index';
+import { AtrapaSnitch } from './atrapaSnitch/index';
+import { DueloHechizos } from './dueloHechizos/index';
 
 export function createGameModule(gameId: GameId): GameModule | null {
   switch (gameId) {
@@ -8,6 +10,10 @@ export function createGameModule(gameId: GameId): GameModule | null {
       return new TriviaMagica();
     case 'artes_ridiculas':
       return new ArtesRidiculas();
+    case 'atrapa_snitch':
+      return new AtrapaSnitch();
+    case 'duelo_hechizos':
+      return new DueloHechizos();
     // Remaining games will be added here as they are implemented
     default:
       return null;
