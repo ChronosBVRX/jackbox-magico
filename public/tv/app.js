@@ -848,13 +848,35 @@ let tvRulesActive = false;
 let selectedStoryId = "";
 
 async function loadTvStories() {
+  const container = document.getElementById("tv-story-carousel");
   try {
     const res = await fetch("/api/story/catalog", { cache: "no-store" });
+    if (!res.ok) {
+      const text = await res.text();
+      console.error("Endpoint returned error:", res.status, text);
+      if (container) {
+        container.innerHTML = `<div class='story-error-card'>Error ${res.status}: El servidor no pudo cargar las historias.</div>`;
+      }
+      return;
+    }
+    
+    const contentType = res.headers.get("content-type");
+    if (!contentType || !contentType.includes("application/json")) {
+      console.error("Endpoint did not return JSON:", contentType);
+      if (container) {
+        container.innerHTML = "<div class='story-error-card'>Error: El servidor devolvió un formato inválido (HTML en lugar de JSON).</div>";
+      }
+      return;
+    }
+
     const data = await res.json();
     stories = data.stories || [];
-      <div class="badge">🏆 Copa de las Casas</div>
+    renderCarousel();
   } catch (error) {
     console.error("Failed to load stories", error);
+    if (container) {
+      container.innerHTML = "<div class='story-error-card'>Error de conexión: No se pudieron cargar las historias mágicas.</div>";
+    }
   }
 }
 
@@ -863,17 +885,67 @@ function renderCarousel() {
   if (!container) return;
   container.innerHTML = "";
   if (!stories.length) {
-    container.innerHTML = "<div class='spinner'>No hay historias disponibles.</div>";
+    container.innerHTML = "<div class='story-error-card'>No hay historias disponibles en este momento.</div>";
     return;
   }
+
   stories.forEach((story, idx) => {
+    const isSelected = (idx === currentStoryIndex);
     const card = document.createElement("div");
-    card.className = "story-card" + (idx === currentStoryIndex ? " selected" : "");
+    card.className = "story-card" + (isSelected ? " selected" : "");
     card.id = `story-card-${idx}`;
+    
+    // Construir lista de minijuegos para el footer
+    const minigamesText = (story.available_minigame_names || []).join(", ");
+
     card.innerHTML = `
-      <h3>${escapeHTML(story.title)}</h3>
-      <p>${escapeHTML(story.description || "Una aventura mágica interactiva.")}</p>
+      <div class="story-card-inner">
+        <div class="story-card-top">
+          <div class="story-mode-pill">${story.format || "Copa de las Casas"}</div>
+          <div class="story-number">#${idx + 1}</div>
+        </div>
+        
+        <h3 class="story-title">${escapeHTML(story.title)}</h3>
+        <p class="story-tone">✨ Estilo: ${escapeHTML(story.tone)}</p>
+        <p class="story-description">${escapeHTML(story.description)}</p>
+        
+        <div class="story-info-grid">
+          <div class="story-info-item">
+            <span class="label">Duración</span>
+            <span class="value">${story.estimated_minutes} min</span>
+          </div>
+          <div class="story-info-item">
+            <span class="label">Actos</span>
+            <span class="value">${story.steps_count} etapas</span>
+          </div>
+          <div class="story-info-item">
+            <span class="label">Trivia</span>
+            <span class="value">${story.trivia_questions_count} preguntas</span>
+          </div>
+          <div class="story-info-item">
+            <span class="label">Retos</span>
+            <span class="value">${story.random_minigame_slots} sorpresa</span>
+          </div>
+        </div>
+
+        <div class="story-section-title">Incluye:</div>
+        <div class="story-minigames">
+          ${minigamesText} ${story.includes_final ? " + <strong>Copa Final</strong>" : ""}
+        </div>
+
+        <div class="story-footer">
+          ${story.minigame_policy}
+        </div>
+        
+        ${isSelected ? '<div class="story-select-prompt">Presiona OK para elegir</div>' : ''}
+      </div>
     `;
+    
+    card.onclick = () => {
+      currentStoryIndex = idx;
+      updateCarouselScroll();
+    };
+
     container.appendChild(card);
   });
   updateCarouselScroll();

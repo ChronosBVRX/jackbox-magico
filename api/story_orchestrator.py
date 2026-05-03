@@ -176,17 +176,49 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
 
 
 def list_stories() -> List[Dict[str, Any]]:
-    """Devuelve un resumen seguro para mostrar en host/celular."""
-    return [
-        {
+    """Devuelve un resumen enriquecido para mostrar cartas modernas en la TV."""
+    from api.game_catalog import GAME_CATALOG
+
+    results = []
+    for story_id, story in STORY_CATALOG.items():
+        steps = story.get("steps", [])
+        
+        trivia_blocks = [s for s in steps if s.get("type") == "trivia_block"]
+        trivia_questions = sum(int(s.get("questions", 0)) for s in trivia_blocks)
+        minigame_slots = len([s for s in steps if s.get("type") == "minigame_random"])
+        includes_final = any(s.get("type") == "copa_final" for s in steps)
+        
+        # Obtener nombres bonitos de minijuegos disponibles
+        # Si el step tiene un pool específico, lo usamos; si no, el pool general
+        pool_ids = set()
+        for s in steps:
+            if s.get("type") == "minigame_random":
+                pool_ids.update(s.get("pool") or STORY_MINIGAME_POOL)
+        
+        if not pool_ids: # Fallback por si no hay slots pero queremos mostrar qué hay en el sistema
+             pool_ids = set(STORY_MINIGAME_POOL)
+
+        available_names = [
+            GAME_CATALOG.get(m_id, {}).get("name", m_id) 
+            for m_id in pool_ids
+        ]
+
+        results.append({
             "story_id": story_id,
             "title": story["title"],
             "tone": story["tone"],
             "description": story["description"],
-            "steps": len(story["steps"]),
-        }
-        for story_id, story in STORY_CATALOG.items()
-    ]
+            "steps_count": len(steps),
+            "format": "Partida Estándar" if minigame_slots > 0 else "Solo Trivia",
+            "estimated_minutes": 15 + (len(steps) * 2), # Estimación simple
+            "trivia_blocks_count": len(trivia_blocks),
+            "trivia_questions_count": trivia_questions,
+            "random_minigame_slots": minigame_slots,
+            "includes_final": includes_final,
+            "available_minigame_names": sorted(available_names),
+            "minigame_policy": "Se eligen algunos al azar para mantener la variedad." if minigame_slots > 0 else "No incluye minijuegos extra."
+        })
+    return results
 
 
 def get_story(story_id: str) -> Dict[str, Any]:
