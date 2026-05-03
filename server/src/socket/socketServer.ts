@@ -41,6 +41,7 @@ export function setupSocketServer(httpServer: HttpServer) {
         socket.data.clientId = clientId;
         socket.data.isTv = false;
         socket.join(roomCode);
+        socket.join(clientId); // Join personal room for private state updates
         const state = roomEngine.getRoom(roomCode);
         if (state) io.to(roomCode).emit('room_state', state);
       } else {
@@ -101,6 +102,10 @@ export function setupSocketServer(httpServer: HttpServer) {
           });
         }
 
+        if (result.pointEvents) {
+          roomEngine.applyPointEvents(roomCode, result.pointEvents);
+        }
+
         updateGameClients(roomCode);
       }
     }
@@ -114,6 +119,10 @@ export function setupSocketServer(httpServer: HttpServer) {
         const result = game.module.handleHostAction(game.state, 'next');
         game.state = result.state;
         
+        if (result.pointEvents) {
+          roomEngine.applyPointEvents(roomCode, result.pointEvents);
+        }
+
         if (result.finished) {
           activeGames.delete(roomCode);
           roomEngine.setRoomStatus(roomCode, 'lobby');

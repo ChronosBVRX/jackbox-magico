@@ -1,16 +1,8 @@
 import { GameModule, GameUpdateResult } from '../base';
 import { Player } from '../../types/events';
-import { HAT_PHRASES } from './data';
-
-interface SombreroState {
-  phase: 'hat_line' | 'voting' | 'results';
-  currentPhrase: string;
-  roundNumber: number;
-  totalRounds: number;
-  votes: Map<string, string>; // VoterID -> TargetID
-  players: Player[];
-  results: any | null;
-}
+import { SombreroState, SombreroPrompt } from './types';
+import { SOMBRERO_PROMPTS_BANK, SOMBRERO_LINES } from './data';
+import { calculateRoundScores, SOMBRERO_SCORING } from './scoring';
 
 export class SombreroBurlon implements GameModule {
   id = 'sombrero_burlon' as const;
@@ -18,44 +10,54 @@ export class SombreroBurlon implements GameModule {
 
   init(players: Player[]): SombreroState {
     return {
-      phase: 'hat_line',
-      currentPhrase: '',
+      phase: 'prompt',
       roundNumber: 0,
       totalRounds: 3,
-      votes: new Map(),
-      players,
-      results: null
+      currentPrompt: null,
+      prompts: [],
+      votes: {},
+      roundResults: null,
+      finalResults: null,
+      startedAt: Date.now(),
+      durationMs: 25000,
+      usedPromptIds: [],
+      players
     };
   }
 
   getTvState(state: SombreroState) {
     return {
       phase: state.phase,
-      currentPhrase: state.currentPhrase,
-      voteCount: state.votes.size,
-      totalPlayers: state.players.length,
-      results: state.results,
       roundNumber: state.roundNumber,
-      totalRounds: state.totalRounds
+      totalRounds: state.totalRounds,
+      prompt: state.currentPrompt,
+      answerCount: Object.keys(state.votes).length,
+      totalPlayers: state.players.length,
+      durationMs: state.durationMs,
+      startedAt: state.startedAt,
+      roundResults: state.roundResults,
+      finalResults: state.finalResults
     };
   }
 
   getPlayerState(state: SombreroState, player: Player) {
     return {
       phase: state.phase,
-      alreadyVoted: state.votes.has(player.clientId),
+      prompt: state.currentPrompt,
+      alreadyVoted: !!state.votes[player.clientId],
       targets: state.players
-        .filter(p => p.clientId !== player.clientId) // Can't vote for self
+        .filter(p => p.clientId !== player.clientId)
         .map(p => ({ clientId: p.clientId, name: p.name, house: p.house }))
     };
   }
 
   handlePlayerAction(state: SombreroState, player: Player, action: any): GameUpdateResult {
-    if (state.phase !== 'voting') return { state };
-    if (state.votes.has(player.clientId)) return { state };
-    if (action.targetId === player.clientId) return { state }; // Anti-self-vote
+    if (state.phase !== 'prompt') return { state };
+    if (action.type !== 'vote') return { state };
+    if (state.votes[player.clientId]) return { state };
+    if (action.targetClientId === player.clientId) return { state };
 
-    state.votes.set(player.clientId, action.targetId);
+    state.votes[player.clientId] = action.targetClientId;
 
     return {
       state,
@@ -65,12 +67,9 @@ export class SombreroBurlon implements GameModule {
 
   handleHostAction(state: SombreroState, action: string): GameUpdateResult {
     if (action === 'next') {
-      if (state.phase === 'hat_line') {
-        state.phase = 'voting';
-        return { state };
-      } else if (state.phase === 'voting') {
-        return this.resolveVotes(state);
-      } else {
+      if (state.phase === 'prompt') {
+        return this.resolveRound(state);
+      } else if (state.phase === 'round_results') {
         return this.startNextRound(state);
       }
     }
@@ -80,37 +79,65 @@ export class SombreroBurlon implements GameModule {
   private startNextRound(state: SombreroState): GameUpdateResult {
     state.roundNumber++;
     if (state.roundNumber > state.totalRounds) {
-      return { state, finished: true };
+      return this.finalizeGame(state);
     }
 
-    state.phase = 'hat_line';
-    state.votes.clear();
-    state.results = null;
-    state.currentPhrase = HAT_PHRASES[Math.floor(Math.random() * HAT_PHRASES.length)];
+    state.phase = 'prompt';
+    state.votes = {};
+    state.roundResults = null;
+    state.startedAt = Date.now();
+    state.currentPrompt = this.getRandomPrompt(state);
 
     return { state };
   }
 
-  private resolveVotes(state: SombreroState): GameUpdateResult {
-    const counts: Record<string, number> = {};
-    state.votes.forEach(targetId => {
-      counts[targetId] = (counts[targetId] || 0) + 1;
+  private getRandomPrompt(state: SombreroState): SombreroPrompt {
+    const categories = Object.keys(SOMBRERO_PROMPTS_BANK);
+    const cat = categories[Math.floor(Math.random() * categories.length)];
+    const bank = SOMBRERO_PROMPTS_BANK[cat];
+    const text = bank[Math.floor(Math.random() * bank.length)];
+    
+    return {
+      id: `${cat}_${Date.now()}`,
+      text,
+      category: cat as any
+    };
+  }
+
+  private resolveRound(state: SombreroState): GameUpdateResult {
+    const playerIds = state.players.map(p => p.clientId);
+    const roundScores = calculateRoundScores(state.votes, playerIds);
+    
+    const pointEvents = roundScores.map(rs => {
+      const player = state.players.find(p => p.clientId === rs.clientId)!;
+      return {
+        clientId: rs.clientId,
+        points: rs.points,
+        reason: rs.reason,
+        house: player.house
+      };
     });
 
-    const results = state.players.map(p => ({
-      clientId: p.clientId,
-      name: p.name,
-      house: p.house,
-      votes: counts[p.clientId] || 0,
-      points: (counts[p.clientId] || 0) * 50
-    })).sort((a, b) => b.votes - a.votes);
-
-    state.phase = 'results';
-    state.results = {
-      winner: results[0].votes > 0 ? results[0] : null,
-      ranking: results
+    state.phase = 'round_results';
+    state.roundResults = {
+      prompt: state.currentPrompt,
+      ranking: roundScores.map(rs => {
+        const p = state.players.find(p => p.clientId === rs.clientId)!;
+        return { name: p.name, house: p.house, votes: rs.votes, points: rs.points };
+      }).sort((a, b) => b.votes - a.votes),
+      hatLine: SOMBRERO_LINES[Math.floor(Math.random() * SOMBRERO_LINES.length)]
     };
 
-    return { state };
+    return { state, pointEvents };
+  }
+
+  private finalizeGame(state: SombreroState): GameUpdateResult {
+    state.phase = 'final_results';
+    
+    // In a real implementation we'd aggregate all rounds, 
+    // but here we rely on the pointEvents sent each round to the engine.
+    // We just show the winner of the last round or a summary.
+    
+    return { state, finished: true };
   }
 }

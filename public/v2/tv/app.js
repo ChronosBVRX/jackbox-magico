@@ -115,13 +115,13 @@ socket.on('game_state', (data) => {
 });
 
 function renderSombreroView(data) {
-  if (data.phase === 'results') {
+  if (data.phase === 'round_results' || data.phase === 'final_results') {
     renderSombreroResults(data);
     return;
   }
   showView('view-sombrero');
-  document.getElementById('hat-phrase').textContent = data.currentPhrase || "Seleccionando víctima...";
-  document.getElementById('vote-count').textContent = data.voteCount;
+  document.getElementById('hat-phrase').textContent = data.prompt ? data.prompt.text : "Preparando sentencia...";
+  document.getElementById('vote-count').textContent = data.answerCount;
   document.getElementById('total-voters').textContent = data.totalPlayers;
 }
 
@@ -134,31 +134,32 @@ function renderPocionesView(data) {
   const display = document.getElementById('sequence-display');
   const status = document.getElementById('pociones-status');
 
-  if (data.phase === 'sequence') {
-    status.textContent = '¡Memoriza la receta!';
+  if (data.phase === 'memorize') {
+    status.innerHTML = `Memoriza la receta: <strong style="color:white">${data.potion?.name}</strong><br><small>Modo: ${data.mode.toUpperCase()}</small>`;
     display.innerHTML = '';
-    data.sequence.forEach((ing, i) => {
+    data.potion?.ingredients.forEach((ing, i) => {
       setTimeout(() => {
         const card = document.createElement('div');
         card.className = 'ing-card';
-        card.textContent = ing.icon;
+        card.textContent = ing.emoji;
         display.appendChild(card);
-      }, i * 1000);
+      }, i * 800);
     });
   } else {
-    status.textContent = '¡Prepara la poción en tu móvil!';
-    display.innerHTML = '<div style="font-size:3rem; opacity:0.5">Mezclando...</div>';
+    status.textContent = '¡Mezcla en tu móvil ahora!';
+    display.innerHTML = '<div style="font-size:3rem; opacity:0.5; animation: sway 2s infinite">🧪 Burbujeando...</div>';
   }
 }
 
 function renderSombreroResults(data) {
   showView('view-results');
-  document.getElementById('correct-answer').textContent = data.results.winner ? data.results.winner.name : 'Nadie';
-  document.getElementById('narrator-comment').textContent = "El sombrero ha hablado.";
+  const results = data.roundResults || data.finalResults;
+  document.getElementById('correct-answer').textContent = results.ranking[0].votes > 0 ? results.ranking[0].name : 'Nadie';
+  document.getElementById('narrator-comment').textContent = results.hatLine || "El sombrero ha hablado.";
   
   const resultsContainer = document.getElementById('results-list');
   resultsContainer.innerHTML = '';
-  data.results.ranking.forEach(res => {
+  results.ranking.forEach(res => {
     const card = document.createElement('div');
     card.className = 'result-player-card glass-panel';
     card.innerHTML = `
@@ -172,19 +173,18 @@ function renderSombreroResults(data) {
 
 function renderPocionesResults(data) {
   showView('view-results');
-  document.getElementById('correct-answer').textContent = data.results.correctSequence.map(i => i.icon).join(' ');
-  document.getElementById('narrator-comment').textContent = "¡Vaya brebaje!";
+  document.getElementById('correct-answer').textContent = data.results.potionName;
+  document.getElementById('narrator-comment').textContent = "¡Clase terminada!";
   
   const resultsContainer = document.getElementById('results-list');
   resultsContainer.innerHTML = '';
   data.results.ranking.forEach(res => {
-    // We'd need to find player name here... assume available or placeholder
     const card = document.createElement('div');
     card.className = 'result-player-card glass-panel';
     card.innerHTML = `
-      <div class="player-name">Mago</div>
-      <div class="result-status ${res.isPerfect ? 'status-correct' : 'status-wrong'}">
-        ${res.matches}/${res.total}
+      <div class="player-name">${res.name}</div>
+      <div class="result-status ${res.perfect ? 'status-correct' : 'status-wrong'}">
+        ${res.perfect ? '¡PERFECTA!' : `${res.errors} ERRORES`}
       </div>
       <div class="points-gain">+${res.points}</div>
     `;

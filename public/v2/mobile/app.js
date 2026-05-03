@@ -139,14 +139,14 @@ socket.on('game_player_state', (data) => {
   } else if (data.phase === 'clash') {
     if (data.isDuelist) showMobileView('clash-input');
     else showMobileView('wait-screen');
-  } else if (data.phase === 'hat_line') {
-    showMobileView('wait-screen');
-  } else if (data.phase === 'voting') {
+  } else if (data.phase === 'prompt') {
     if (data.alreadyVoted) showMobileView('answer-sent');
     else renderSombreroVoting(data);
-  } else if (data.phase === 'sequence') {
+  } else if (data.phase === 'round_results' || data.phase === 'final_results') {
     showMobileView('wait-screen');
-  } else if (data.phase === 'input') {
+  } else if (data.phase === 'memorize') {
+    showMobileView('wait-screen');
+  } else if (data.phase === 'mix') {
     if (data.alreadySubmitted) showMobileView('answer-sent');
     else renderPocionesInput(data);
   } else if (data.phase === 'results') {
@@ -163,7 +163,7 @@ function renderSombreroVoting(data) {
         btn.className = 'btn-target';
         btn.innerHTML = `${t.name} <span style="font-size:0.7rem; opacity:0.6">${t.house}</span>`;
         btn.onclick = () => {
-            socket.emit('player_action', { targetId: t.clientId });
+            socket.emit('player_action', { type: 'vote', targetClientId: t.clientId });
             showMobileView('answer-sent');
         };
         grid.appendChild(btn);
@@ -172,21 +172,34 @@ function renderSombreroVoting(data) {
 
 function renderPocionesInput(data) {
     showMobileView('pociones-input');
-    document.getElementById('pociones-mode-label').textContent = data.mode === 'inverso' ? '¡PREPARA AL REVÉS!' : 'Prepara la Poción';
+    const label = document.getElementById('pociones-mode-label');
+    if (data.mode === 'reverse') label.textContent = '¡PREPARA AL REVÉS!';
+    else if (data.mode === 'unstable') label.textContent = '¡PREPARA RÁPIDO!';
+    else label.textContent = 'Prepara la Poción';
+
     const grid = document.getElementById('pociones-ingredients');
     grid.innerHTML = '';
     data.ingredients.forEach(ing => {
         const btn = document.createElement('button');
         btn.className = 'btn-ing';
-        btn.textContent = ing.icon;
+        btn.textContent = ing.emoji;
         btn.onclick = () => {
             currentPocionSequence.push(ing.id);
-            document.getElementById('pociones-sequence-preview').textContent += ing.icon;
+            document.getElementById('pociones-sequence-preview').textContent += ing.emoji;
             if (window.navigator?.vibrate) window.navigator.vibrate(30);
         };
         grid.appendChild(btn);
     });
 }
+
+// Update Pociones Submit Listener
+document.getElementById('btn-pociones-submit').removeEventListener('click', null); // dummy cleanup
+document.getElementById('btn-pociones-submit').onclick = () => {
+    socket.emit('player_action', { type: 'potion_submit', selectedIngredientIds: currentPocionSequence });
+    currentPocionSequence = [];
+    document.getElementById('pociones-sequence-preview').textContent = '';
+    showMobileView('answer-sent');
+};
 
 socket.on('catch_result', (data) => {
     const feedback = document.getElementById('snitch-feedback');

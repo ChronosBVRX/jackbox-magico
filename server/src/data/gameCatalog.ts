@@ -5,7 +5,7 @@ export interface GameInfo {
   name: string;
   shortName: string;
   status: 'beta' | 'ready' | 'stable' | 'dev';
-  mode: 'quiz' | 'action' | 'strategy' | 'social';
+  mode: 'quiz' | 'action' | 'strategy' | 'social' | 'memory';
   description: string;
   rules: string[];
   points: {

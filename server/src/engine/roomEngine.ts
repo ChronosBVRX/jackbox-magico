@@ -93,6 +93,18 @@ export class RoomEngine {
     }
   }
 
+  applyPointEvents(roomCode: string, events: any[]) {
+    const room = this.getRoom(roomCode);
+    if (!room) return;
+
+    events.forEach(ev => {
+      const player = room.players.find(p => p.clientId === ev.clientId);
+      if (player) {
+        player.points += ev.points;
+      }
+    });
+  }
+
   private generateCode(): string {
     const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
     let code = '';

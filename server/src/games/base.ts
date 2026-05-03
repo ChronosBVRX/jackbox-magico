@@ -21,6 +21,12 @@ export interface GameUpdateResult {
     payload: any;
     target: 'tv' | 'players' | 'all';
   }[];
+  pointEvents?: {
+    clientId: string;
+    points: number;
+    reason: string;
+    house?: string;
+  }[];
   finished?: boolean;
 }
 

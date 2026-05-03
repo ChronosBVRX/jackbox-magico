@@ -1,18 +1,8 @@
 import { GameModule, GameUpdateResult } from '../base';
 import { Player } from '../../types/events';
-import { INGREDIENTS } from './data';
-
-interface PocionesState {
-  phase: 'sequence' | 'input' | 'results';
-  mode: 'normal' | 'inverso';
-  sequence: string[];
-  playerAnswers: Map<string, { sequence: string[], elapsedMs: number }>;
-  roundNumber: number;
-  totalRounds: number;
-  durationMs: number;
-  startedAt: number;
-  results: any | null;
-}
+import { PocionesState, Ingredient, PotionRecipe } from './types';
+import { INGREDIENTS_BANK, POTION_NAMES, NARRATOR_LINES } from './data';
+import { calculatePotionErrors, getPointsForErrors, POCIONES_SCORING } from './scoring';
 
 export class ClasePociones implements GameModule {
   id = 'clase_pociones' as const;
@@ -20,26 +10,30 @@ export class ClasePociones implements GameModule {
 
   init(players: Player[]): PocionesState {
     return {
-      phase: 'sequence',
-      mode: 'normal',
-      sequence: [],
-      playerAnswers: new Map(),
+      phase: 'memorize',
       roundNumber: 0,
       totalRounds: 3,
-      durationMs: 15000,
-      startedAt: 0,
-      results: null
+      potion: null,
+      availableIngredients: [],
+      answers: {},
+      startedAt: Date.now(),
+      memorizeDurationMs: 8000,
+      mixDurationMs: 15000,
+      mode: 'normal',
+      results: null,
+      players
     };
   }
 
   getTvState(state: PocionesState) {
     return {
       phase: state.phase,
-      mode: state.mode,
-      sequence: state.sequence.map(id => INGREDIENTS.find(i => i.id === id)),
       roundNumber: state.roundNumber,
       totalRounds: state.totalRounds,
-      answerCount: state.playerAnswers.size,
+      potion: state.potion,
+      mode: state.mode,
+      answerCount: Object.keys(state.answers).length,
+      totalPlayers: state.players.length,
       results: state.results
     };
   }
@@ -47,20 +41,22 @@ export class ClasePociones implements GameModule {
   getPlayerState(state: PocionesState, player: Player) {
     return {
       phase: state.phase,
-      mode: state.mode,
-      alreadySubmitted: state.playerAnswers.has(player.clientId),
-      ingredients: INGREDIENTS.map(i => ({ id: i.id, icon: i.icon }))
+      alreadySubmitted: !!state.answers[player.clientId],
+      ingredients: state.availableIngredients.map(i => ({ id: i.id, emoji: i.emoji })),
+      mode: state.mode
     };
   }
 
   handlePlayerAction(state: PocionesState, player: Player, action: any): GameUpdateResult {
-    if (state.phase !== 'input') return { state };
-    if (state.playerAnswers.has(player.clientId)) return { state };
+    if (state.phase !== 'mix') return { state };
+    if (action.type !== 'potion_submit') return { state };
+    if (state.answers[player.clientId]) return { state };
 
-    state.playerAnswers.set(player.clientId, {
-      sequence: action.sequence,
+    state.answers[player.clientId] = {
+      clientId: player.clientId,
+      selectedIngredientIds: action.selectedIngredientIds,
       elapsedMs: Date.now() - state.startedAt
-    });
+    };
 
     return {
       state,
@@ -70,13 +66,13 @@ export class ClasePociones implements GameModule {
 
   handleHostAction(state: PocionesState, action: string): GameUpdateResult {
     if (action === 'next') {
-      if (state.phase === 'sequence') {
-        state.phase = 'input';
+      if (state.phase === 'memorize') {
+        state.phase = 'mix';
         state.startedAt = Date.now();
         return { state };
-      } else if (state.phase === 'input') {
+      } else if (state.phase === 'mix') {
         return this.resolveRound(state);
-      } else {
+      } else if (state.phase === 'results') {
         return this.startNextRound(state);
       }
     }
@@ -89,49 +85,78 @@ export class ClasePociones implements GameModule {
       return { state, finished: true };
     }
 
-    state.phase = 'sequence';
-    state.mode = state.roundNumber === 3 ? 'inverso' : 'normal';
-    state.playerAnswers.clear();
-    state.results = null;
+    const modes: PocionesState['mode'][] = ['normal', 'reverse', 'decoy', 'smoke', 'unstable'];
+    state.mode = modes[Math.floor(Math.random() * modes.length)];
     
-    // Sequence length grows
-    const len = 3 + state.roundNumber;
-    state.sequence = [];
-    for (let i = 0; i < len; i++) {
-      state.sequence.push(INGREDIENTS[Math.floor(Math.random() * INGREDIENTS.length)].id);
+    const recipeLen = 3 + state.roundNumber;
+    const recipeIngredients = this.getRandomIngredients(recipeLen);
+    
+    state.potion = {
+      id: `potion_${Date.now()}`,
+      name: POTION_NAMES[Math.floor(Math.random() * POTION_NAMES.length)],
+      ingredients: recipeIngredients,
+      difficulty: 'media',
+      narratorLine: NARRATOR_LINES[Math.floor(Math.random() * NARRATOR_LINES.length)]
+    };
+
+    // Prepare available ingredients for mobile (pool of 12)
+    const pool = [...recipeIngredients];
+    while (pool.length < 12) {
+      const extra = INGREDIENTS_BANK[Math.floor(Math.random() * INGREDIENTS_BANK.length)];
+      if (!pool.find(p => p.id === extra.id)) pool.push(extra);
     }
+    state.availableIngredients = pool.sort(() => Math.random() - 0.5);
+
+    state.phase = 'memorize';
+    state.answers = {};
+    state.results = null;
+    state.startedAt = Date.now();
 
     return { state };
   }
 
+  private getRandomIngredients(count: number): Ingredient[] {
+    const shuffled = [...INGREDIENTS_BANK].sort(() => Math.random() - 0.5);
+    return shuffled.slice(0, count);
+  }
+
   private resolveRound(state: PocionesState): GameUpdateResult {
-    const targetSeq = state.mode === 'inverso' ? [...state.sequence].reverse() : state.sequence;
-    
-    const results: any[] = [];
-    state.playerAnswers.forEach((ans, clientId) => {
-      let matches = 0;
-      ans.sequence.forEach((ing, i) => {
-        if (ing === targetSeq[i]) matches++;
+    const targetIds = state.mode === 'reverse' 
+      ? [...state.potion!.ingredients].reverse().map(i => i.id)
+      : state.potion!.ingredients.map(i => i.id);
+
+    const pointEvents: any[] = [];
+    const playerResults: any[] = [];
+
+    state.players.forEach(p => {
+      const ans = state.answers[p.clientId];
+      const submittedIds = ans ? ans.selectedIngredientIds : [];
+      const errors = calculatePotionErrors(targetIds, submittedIds);
+      const points = getPointsForErrors(errors);
+
+      pointEvents.push({
+        clientId: p.clientId,
+        points,
+        reason: errors === 0 ? "Receta perfecta" : `${errors} errores`,
+        house: p.house
       });
 
-      const isPerfect = matches === targetSeq.length;
-      const points = matches * 20 + (isPerfect ? 50 : 0);
-      
-      results.push({
-        clientId,
-        matches,
-        total: targetSeq.length,
-        isPerfect,
-        points
+      playerResults.push({
+        name: p.name,
+        house: p.house,
+        errors,
+        points,
+        perfect: errors === 0
       });
     });
 
     state.phase = 'results';
     state.results = {
-      correctSequence: targetSeq.map(id => INGREDIENTS.find(i => i.id === id)),
-      ranking: results.sort((a, b) => b.points - a.points)
+      potionName: state.potion?.name,
+      correctSequence: state.potion?.ingredients,
+      ranking: playerResults.sort((a, b) => b.points - a.points)
     };
 
-    return { state };
+    return { state, pointEvents };
   }
 }
