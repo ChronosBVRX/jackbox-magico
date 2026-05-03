@@ -44,9 +44,9 @@ GAME_CATALOG = {
     "clase_pociones": {
         "name": "Clase de Pociones", "short_name": "Pociones", "status": "implemented", "featured": True, "mode": "memory_recipe",
         "players": {"max_total": 8, "max_per_house": 2},
-        "description": "Minijuego de memoria. La TV muestra una receta por pocos segundos y luego cada jugador debe mezclar los ingredientes en el orden correcto.",
-        "rules": ["Memoriza la receta en la pantalla principal.", "Cuando desaparezca, mezcla desde tu celular.", "El orden correcto da más puntos.", "Los errores reducen el puntaje."],
-        "points": {"perfect": 150, "one_error": 80, "two_errors": 40, "three_or_more": 0, "fastest_perfect": 50, "house_most_perfect": 100},
+        "description": "Minijuego de memoria y presión. La TV muestra una receta mágica y los jugadores deben reproducirla. Incluye modos de caos como receta invertida o humo mágico.",
+        "rules": ["Memoriza la receta en la TV.", "Cuando desaparezca, mezcla los ingredientes en orden.", "Cuidado con los modos especiales (Invertido, Humo, Señuelos).", "La casa con mejor desempeño gana bonus compartido."],
+        "points": {"perfect": 150, "one_error": 80, "two_errors": 40, "fastest_bonus": 50, "house_shared_bonus": 50},
     },
     "artes_ridiculas": {
         "name": "Defensa Contra las Artes Ridículas", "short_name": "Artes Ridículas", "status": "implemented", "featured": True, "mode": "quiz_humor",

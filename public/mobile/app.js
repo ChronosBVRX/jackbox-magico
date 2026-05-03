@@ -549,8 +549,12 @@ function iniciarRadarMovil() {
         }
 
         if (phase === "clase_pociones") {
-          renderPocionesMobile(state);
-          updateMobilePocionesTimer(state);
+          if (window.PocionesMobile?.render) {
+            window.PocionesMobile.render(state);
+          } else {
+            renderPocionesMobile(state);
+            updateMobilePocionesTimer(state);
+          }
           return;
         }
 

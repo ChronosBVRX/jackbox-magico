@@ -1235,6 +1235,13 @@ function renderPlaying(data) {
     }
   }
 
+  if (state.phase === "clase_pociones") {
+    if (window.PocionesTv?.render) {
+      window.PocionesTv.render(state, players);
+      return;
+    }
+  }
+
   if (state.phase === "atrapa_snitch") {
     if (typeof window.renderSnitchTv === "function") {
       window.renderSnitchTv(state, players, {
@@ -1531,6 +1538,21 @@ function renderResults(data) {
     if (title) title.innerText = "Resultado del Sombrero Burlón";
     if (extra && window.SombreroTv?.renderResults) {
       window.SombreroTv.renderResults(state, extra);
+    } else {
+      renderGenericResults(state, players);
+    }
+    if (scores) scores.innerHTML = renderScoreGrid(players);
+    return;
+  }
+
+  if (phase === "results_clase_pociones") {
+    const title = document.getElementById("titulo-resultados");
+    const extra = document.getElementById("tv-extra-results");
+    const scores = document.getElementById("tv-marcadores");
+
+    if (title) title.innerText = "Clase de Pociones: Resultados";
+    if (extra && window.PocionesTv?.renderResults) {
+      window.PocionesTv.renderResults(state, extra);
     } else {
       renderGenericResults(state, players);
     }
