@@ -30,25 +30,28 @@ socket.on('room_created', (code) => {
   viewLobby.style.display = 'grid';
 
   // Generate QR Code
-  const mobileUrl = `${window.location.origin}/v2/mobile/?room=${code}`;
+  const mobileUrl = `${window.location.origin}/v2/mobile/?room=${encodeURIComponent(code)}`;
   joinUrl.textContent = `${window.location.origin}/v2/mobile/`;
-  
+
   const qrContainer = document.getElementById('qrcode');
-  qrContainer.innerHTML = ''; // Clear previous
-  
-  if (typeof QRCode !== 'undefined') {
-    QRCode.toCanvas(document.createElement('canvas'), mobileUrl, { 
-      width: 200,
-      margin: 2,
-      color: {
-        dark: '#030712',
-        light: '#ffffff'
-      }
-    }, (error, canvas) => {
-      if (error) console.error(error);
-      qrContainer.appendChild(canvas);
-    });
-  }
+  qrContainer.innerHTML = '';
+
+  const qrImg = document.createElement('img');
+  qrImg.alt = `Código QR para entrar a la sala ${code}`;
+  qrImg.className = 'qr-image';
+  qrImg.width = 220;
+  qrImg.height = 220;
+  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(mobileUrl)}`;
+
+  qrImg.onerror = () => {
+    qrContainer.innerHTML = '';
+    const fallback = document.createElement('div');
+    fallback.className = 'qr-fallback';
+    fallback.textContent = 'No se pudo generar el QR. Usa la URL y el código de sala.';
+    qrContainer.appendChild(fallback);
+  };
+
+  qrContainer.appendChild(qrImg);
 });
 
 socket.on('room_state', (state) => {
