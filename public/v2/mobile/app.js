@@ -15,11 +15,33 @@ const playerNameDisplay = document.getElementById('player-name-display');
 const houseBanner = document.getElementById('house-banner');
 const wandIcon = document.getElementById('wand-icon');
 
+let currentGameId = null;
+
 // Helper to switch views
 function showMobileView(viewId) {
-  [joinForm, waitScreen, triviaInput, answerSent, document.getElementById('snitch-input'), document.getElementById('duelo-input'), document.getElementById('clash-input')].forEach(v => {
-    if (v) v.style.display = 'none';
+  const viewIds = [
+    'join-form',
+    'wait-screen',
+    'trivia-input',
+    'answer-sent',
+    'snitch-input',
+    'duelo-input',
+    'clash-input',
+    'sombrero-input',
+    'pociones-input',
+    'retratos-input',
+    'hechizo-input',
+    'patronus-input',
+    'copafinal-input',
+    'mapa-input',
+    'caldero-input'
+  ];
+
+  viewIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
   });
+
   const target = document.getElementById(viewId);
   if (target) {
     target.style.display = (viewId === 'wait-screen' || viewId === 'answer-sent') ? 'flex' : 'block';
@@ -70,7 +92,12 @@ document.querySelectorAll('.btn-trivia').forEach(btn => {
   });
 });
 
+socket.on('game_started', (gameId) => {
+  currentGameId = gameId;
+});
+
 socket.on('room_state', (state) => {
+  currentGameId = state.currentGameId || currentGameId;
   const myPlayer = state.players.find(p => p.clientId === clientId);
   if (myPlayer) {
     localStorage.setItem('v2_roomCode', state.roomCode);
@@ -80,10 +107,11 @@ socket.on('room_state', (state) => {
 
     if (state.status === 'lobby') {
       showMobileView('wait-screen');
-      waitScreen.className = `wait-screen glass-panel theme-${myPlayer.house.toLowerCase()}`;
-      playerNameDisplay.textContent = myPlayer.name;
-      houseBanner.textContent = myPlayer.house;
-      wandIcon.textContent = myPlayer.gender === 'wizard' ? '🧙‍♂️' : '🧙‍♀️';
+      const waitScreenEl = document.getElementById('wait-screen');
+      if (waitScreenEl) waitScreenEl.className = `wait-screen glass-panel theme-${myPlayer.house.toLowerCase()}`;
+      if (playerNameDisplay) playerNameDisplay.textContent = myPlayer.name;
+      if (houseBanner) houseBanner.textContent = myPlayer.house;
+      if (wandIcon) wandIcon.textContent = myPlayer.gender === 'wizard' ? '🧙‍♂️' : '🧙‍♀️';
     }
   }
 });
@@ -169,214 +197,257 @@ socket.on('game_player_state', (data) => {
 function renderPatronusInput(data) {
   if (data.phase === 'submit') {
     if (data.alreadySubmitted) {
-      showView('answer-sent');
+      showMobileView('answer-sent');
       return;
     }
-    showView('patronus-input');
-    document.getElementById('patronus-submit-area').style.display = 'block';
-    document.getElementById('patronus-vote-area').style.display = 'none';
-    document.getElementById('patronus-prompt-mobile').textContent = data.prompt;
+    showMobileView('patronus-input');
+    const submitArea = document.getElementById('patronus-submit-area');
+    const voteArea = document.getElementById('patronus-vote-area');
+    if (submitArea) submitArea.style.display = 'block';
+    if (voteArea) voteArea.style.display = 'none';
+    const promptEl = document.getElementById('patronus-prompt-mobile');
+    if (promptEl) promptEl.textContent = data.prompt || '';
     
-    document.getElementById('btn-patronus-submit').onclick = () => {
-      const text = document.getElementById('patronus-text').value;
-      if (!text.trim()) return;
-      socket.emit('player_action', { type: 'patronus_submit', text });
-      showView('answer-sent');
-    };
+    const btn = document.getElementById('btn-patronus-submit');
+    if (btn) {
+      btn.onclick = () => {
+        const textEl = document.getElementById('patronus-text');
+        const text = textEl ? textEl.value : '';
+        if (!text.trim()) return;
+        socket.emit('player_action', { type: 'patronus_submit', text });
+        showMobileView('answer-sent');
+      };
+    }
   } else if (data.phase === 'vote') {
     if (data.alreadyVoted) {
-      showView('answer-sent');
+      showMobileView('answer-sent');
       return;
     }
-    showView('patronus-input');
-    document.getElementById('patronus-submit-area').style.display = 'none';
-    document.getElementById('patronus-vote-area').style.display = 'block';
+    showMobileView('patronus-input');
+    const submitArea = document.getElementById('patronus-submit-area');
+    const voteArea = document.getElementById('patronus-vote-area');
+    if (submitArea) submitArea.style.display = 'none';
+    if (voteArea) voteArea.style.display = 'block';
     
     const container = document.getElementById('patronus-mobile-options');
-    container.innerHTML = '';
-    data.submissions.forEach(sub => {
-      const btn = document.createElement('button');
-      btn.className = 'btn-target';
-      btn.textContent = sub.text;
-      btn.onclick = () => {
-        socket.emit('player_action', { type: 'patronus_vote', submissionId: sub.id });
-        showView('answer-sent');
-      };
-      container.appendChild(btn);
-    });
+    if (container && data.submissions) {
+      container.innerHTML = '';
+      data.submissions.forEach(sub => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-target';
+        btn.textContent = sub.text;
+        btn.onclick = () => {
+          socket.emit('player_action', { type: 'patronus_vote', submissionId: sub.id });
+          showMobileView('answer-sent');
+        };
+        container.appendChild(btn);
+      });
+    }
   }
 }
 
 function renderCopaInput(data) {
   if (data.phase === 'wager') {
     if (data.alreadyWagered) {
-      showView('answer-sent');
+      showMobileView('answer-sent');
       return;
     }
-    showView('copafinal-input');
-    document.getElementById('copa-wager-area').style.display = 'block';
-    document.getElementById('copa-question-area').style.display = 'none';
-    document.getElementById('copa-my-score').textContent = data.myScore;
+    showMobileView('copafinal-input');
+    const wagerArea = document.getElementById('copa-wager-area');
+    const questionArea = document.getElementById('copa-question-area');
+    if (wagerArea) wagerArea.style.display = 'block';
+    if (questionArea) questionArea.style.display = 'none';
+    const scoreEl = document.getElementById('copa-my-score');
+    if (scoreEl) scoreEl.textContent = data.myScore || 0;
     
     const container = document.getElementById('copa-wager-options');
-    container.innerHTML = '';
-    data.wagerOptions.forEach(opt => {
-      const btn = document.createElement('button');
-      btn.className = 'btn-target';
-      btn.textContent = `${opt} Pts`;
-      btn.onclick = () => {
-        socket.emit('player_action', { type: 'final_wager', amount: opt });
-        showView('answer-sent');
-      };
-      container.appendChild(btn);
-    });
-    // Add All-In if score > 0
-    if (data.myScore > 0 && !data.wagerOptions.includes(data.myScore)) {
-        const btnAll = document.createElement('button');
-        btnAll.className = 'btn-target';
-        btnAll.style.borderLeft = '5px solid #d4af37';
-        btnAll.textContent = `¡TODO O NADA! (${data.myScore})`;
-        btnAll.onclick = () => {
-            socket.emit('player_action', { type: 'final_wager', amount: data.myScore });
-            showView('answer-sent');
+    if (container && data.wagerOptions) {
+      container.innerHTML = '';
+      data.wagerOptions.forEach(opt => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-target';
+        btn.textContent = `${opt} Pts`;
+        btn.onclick = () => {
+          socket.emit('player_action', { type: 'final_wager', amount: opt });
+          showMobileView('answer-sent');
         };
-        container.appendChild(btnAll);
+        container.appendChild(btn);
+      });
+      // Add All-In if score > 0
+      if (data.myScore > 0 && !data.wagerOptions.includes(data.myScore)) {
+          const btnAll = document.createElement('button');
+          btnAll.className = 'btn-target';
+          btnAll.style.borderLeft = '5px solid #d4af37';
+          btnAll.textContent = `¡TODO O NADA! (${data.myScore})`;
+          btnAll.onclick = () => {
+              socket.emit('player_action', { type: 'final_wager', amount: data.myScore });
+              showMobileView('answer-sent');
+          };
+          container.appendChild(btnAll);
+      }
     }
   } else if (data.phase === 'question') {
     if (data.alreadyAnswered) {
-      showView('answer-sent');
+      showMobileView('answer-sent');
       return;
     }
-    showView('copafinal-input');
-    document.getElementById('copa-wager-area').style.display = 'none';
-    document.getElementById('copa-question-area').style.display = 'block';
+    showMobileView('copafinal-input');
+    const wagerArea = document.getElementById('copa-wager-area');
+    const questionArea = document.getElementById('copa-question-area');
+    if (wagerArea) wagerArea.style.display = 'none';
+    if (questionArea) questionArea.style.display = 'block';
     
     const container = document.getElementById('copa-mobile-options');
-    container.innerHTML = '';
-    data.options.forEach((opt, idx) => {
-      const btn = document.createElement('button');
-      btn.className = `btn-trivia btn-${['a','b','c','d'][idx]}`;
-      btn.textContent = opt;
-      btn.onclick = () => {
-        socket.emit('player_action', { type: 'final_answer', answer: opt });
-        showView('answer-sent');
-      };
-      container.appendChild(btn);
-    });
+    if (container && data.options) {
+      container.innerHTML = '';
+      data.options.forEach((opt, idx) => {
+        const btn = document.createElement('button');
+        btn.className = `btn-trivia btn-${['a','b','c','d'][idx]}`;
+        btn.textContent = opt;
+        btn.onclick = () => {
+          socket.emit('player_action', { type: 'final_answer', answer: opt });
+          showMobileView('answer-sent');
+        };
+        container.appendChild(btn);
+      });
+    }
   }
 }
 
 function renderRetratosInput(data) {
   if (data.alreadyAnswered) {
-    showView('answer-sent');
+    showMobileView('answer-sent');
     return;
   }
-  showView('retratos-input');
+  showMobileView('retratos-input');
   const container = document.getElementById('portrait-mobile-options');
-  container.innerHTML = '';
-  data.options.forEach(opt => {
-    const btn = document.createElement('button');
-    btn.className = 'btn-target';
-    btn.textContent = opt;
-    btn.onclick = () => {
-      socket.emit('player_action', { type: 'portrait_answer', answer: opt });
-      showView('answer-sent');
-    };
-    container.appendChild(btn);
-  });
+  if (container && data.options) {
+    container.innerHTML = '';
+    data.options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-target';
+      btn.textContent = opt;
+      btn.onclick = () => {
+        socket.emit('player_action', { type: 'portrait_answer', answer: opt });
+        showMobileView('answer-sent');
+      };
+      container.appendChild(btn);
+    });
+  }
 }
 
 function renderHechizoInput(data) {
   if (data.alreadyAnswered) {
-    showView('answer-sent');
+    showMobileView('answer-sent');
     return;
   }
-  showView('hechizo-input');
+  showMobileView('hechizo-input');
   const container = document.getElementById('hechizo-mobile-options');
-  container.innerHTML = '';
-  data.options.forEach(opt => {
-    const btn = document.createElement('button');
-    btn.className = 'btn-target';
-    btn.textContent = opt;
-    btn.onclick = () => {
-      socket.emit('player_action', { type: 'spell_answer', answer: opt });
-      showView('answer-sent');
-    };
-    container.appendChild(btn);
-  });
+  if (container && data.options) {
+    container.innerHTML = '';
+    data.options.forEach(opt => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-target';
+      btn.textContent = opt;
+      btn.onclick = () => {
+        socket.emit('player_action', { type: 'spell_answer', answer: opt });
+        showMobileView('answer-sent');
+      };
+      container.appendChild(btn);
+    });
+  }
 }
 
 function renderMapaInput(data) {
   if (data.alreadyAnswered) {
-    showView('answer-sent');
+    showMobileView('answer-sent');
     return;
   }
   if (data.phase === 'observe') {
-    showView('wait-lobby');
-    document.getElementById('wait-text').textContent = 'Observa el Mapa en la TV...';
+    showMobileView('wait-screen');
+    const statusTextEl = document.querySelector('#wait-screen .status-text');
+    if (statusTextEl) statusTextEl.innerHTML = 'Observa el Mapa en la TV...';
   } else if (data.phase === 'answer') {
-    showView('mapa-input');
+    showMobileView('mapa-input');
     const container = document.getElementById('mapa-zones');
-    container.innerHTML = '';
-    data.options.forEach(zone => {
-      const btn = document.createElement('button');
-      btn.className = 'btn-target';
-      btn.textContent = zone.name;
-      btn.onclick = () => {
-        socket.emit('player_action', { type: 'map_answer', zoneId: zone.id });
-        showView('answer-sent');
-      };
-      container.appendChild(btn);
-    });
+    if (container && data.options) {
+      container.innerHTML = '';
+      data.options.forEach(zone => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-target';
+        btn.textContent = zone.name;
+        btn.onclick = () => {
+          socket.emit('player_action', { type: 'map_answer', zoneId: zone.id });
+          showMobileView('answer-sent');
+        };
+        container.appendChild(btn);
+      });
+    }
   } else {
-    showView('wait-lobby');
+    showMobileView('wait-screen');
   }
 }
 
 function renderCalderoInput(data) {
   if (data.alreadyActed) {
-    showView('answer-sent');
+    showMobileView('answer-sent');
     return;
   }
-  showView('caldero-input');
+  showMobileView('caldero-input');
   const ing = data.myIngredient;
-  document.getElementById('ing-emoji').textContent = ing.emoji;
-  document.getElementById('ing-name').textContent = ing.name;
-  document.getElementById('ing-desc').textContent = ing.description;
+  if (!ing) return;
+  safeText('ing-emoji', ing.emoji);
+  safeText('ing-name', ing.name);
+  safeText('ing-desc', ing.description);
   
   // Color the card
   const card = document.getElementById('ingredient-card');
-  const colors = { good: '#10b981', bad: '#ef4444', explosive: '#dc2626', gold: '#f59e0b' };
-  card.style.borderTopColor = colors[ing.type] || 'var(--color-accent)';
+  if (card) {
+    const colors = { good: '#10b981', bad: '#ef4444', explosive: '#dc2626', gold: '#f59e0b' };
+    card.style.borderTopColor = colors[ing.type] || 'var(--color-accent)';
+  }
 
-  document.getElementById('caldero-actions').style.display = 'grid';
-  document.getElementById('accuse-targets').style.display = 'none';
+  const actions = document.getElementById('caldero-actions');
+  const targets = document.getElementById('accuse-targets');
+  if (actions) actions.style.display = 'grid';
+  if (targets) targets.style.display = 'none';
 
-  document.getElementById('btn-caldero-add').onclick = () => {
+  const btnAdd = document.getElementById('btn-caldero-add');
+  if (btnAdd) btnAdd.onclick = () => {
     socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'add' } });
   };
-  document.getElementById('btn-caldero-discard').onclick = () => {
+  const btnDiscard = document.getElementById('btn-caldero-discard');
+  if (btnDiscard) btnDiscard.onclick = () => {
     socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'discard' } });
   };
-  document.getElementById('btn-caldero-accuse').onclick = () => {
-    document.getElementById('caldero-actions').style.display = 'none';
-    document.getElementById('accuse-targets').style.display = 'block';
+  const btnAccuse = document.getElementById('btn-caldero-accuse');
+  if (btnAccuse) btnAccuse.onclick = () => {
+    if (actions) actions.style.display = 'none';
+    if (targets) targets.style.display = 'block';
     const grid = document.getElementById('accuse-grid');
-    grid.innerHTML = '';
-    data.players.forEach(p => {
-      const btn = document.createElement('button');
-      btn.className = 'btn-target';
-      btn.innerHTML = `<span>${p.name}</span><small>${p.house}</small>`;
-      btn.onclick = () => {
-        socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'accuse', targetClientId: p.clientId } });
-      };
-      grid.appendChild(btn);
-    });
+    if (grid && data.players) {
+      grid.innerHTML = '';
+      data.players.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'btn-target';
+        btn.innerHTML = `<span>${escapeHTML(p.name)}</span><small>${escapeHTML(p.house)}</small>`;
+        btn.onclick = () => {
+          socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'accuse', targetClientId: p.clientId } });
+        };
+        grid.appendChild(btn);
+      });
+    }
   };
-  document.getElementById('btn-accuse-back').onclick = () => {
-    document.getElementById('caldero-actions').style.display = 'grid';
-    document.getElementById('accuse-targets').style.display = 'none';
+  const btnBack = document.getElementById('btn-accuse-back');
+  if (btnBack) btnBack.onclick = () => {
+    if (actions) actions.style.display = 'grid';
+    if (targets) targets.style.display = 'none';
   };
+}
+
+function safeText(id, val) {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val ?? '';
 }
 
 function renderSombreroVoting(data) {

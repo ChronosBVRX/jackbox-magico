@@ -53,6 +53,21 @@ export function setupSocketServer(httpServer: HttpServer) {
       const { roomCode, isTv } = socket.data;
       if (!isTv || !roomCode) return;
 
+      const minPlayersByGame: Record<string, number> = {
+        duelo_hechizos: 2,
+        sombrero_burlon: 2,
+        patronus_personalizado: 2,
+        caldero_mentiroso: 2
+      };
+
+      const minRequired = minPlayersByGame[gameId] || 1;
+      const connectedPlayers = roomEngine.getConnectedPlayers(roomCode);
+
+      if (connectedPlayers.length < minRequired) {
+        socket.emit('error_message', `Este minijuego requiere al menos ${minRequired} jugadores.`);
+        return;
+      }
+
       const module = createGameModule(gameId as any);
       if (!module) {
         socket.emit('error_message', 'Minijuego no soportado o deshabilitado.');
@@ -104,6 +119,14 @@ export function setupSocketServer(httpServer: HttpServer) {
 
         if (result.pointEvents) {
           roomEngine.applyPointEvents(roomCode, result.pointEvents);
+          
+          io.to(roomCode).emit('scoreboard_state' as any, {
+            players: roomEngine.getScoreboard(roomCode),
+            houses: roomEngine.getHouseScoreboard(roomCode)
+          });
+
+          const updatedRoom = roomEngine.getRoom(roomCode);
+          if (updatedRoom) io.to(roomCode).emit('room_state', updatedRoom);
         }
 
         updateGameClients(roomCode);
@@ -121,12 +144,24 @@ export function setupSocketServer(httpServer: HttpServer) {
         
         if (result.pointEvents) {
           roomEngine.applyPointEvents(roomCode, result.pointEvents);
+
+          io.to(roomCode).emit('scoreboard_state' as any, {
+            players: roomEngine.getScoreboard(roomCode),
+            houses: roomEngine.getHouseScoreboard(roomCode)
+          });
         }
 
         if (result.finished) {
           activeGames.delete(roomCode);
-          roomEngine.setRoomStatus(roomCode, 'lobby');
-          io.to(roomCode).emit('room_state', roomEngine.getRoom(roomCode)!);
+          roomEngine.resetRoomToLobby(roomCode);
+          
+          const room = roomEngine.getRoom(roomCode);
+          if (room) io.to(roomCode).emit('room_state', room);
+          
+          io.to(roomCode).emit('scoreboard_state' as any, {
+            players: roomEngine.getScoreboard(roomCode),
+            houses: roomEngine.getHouseScoreboard(roomCode)
+          });
         } else {
           updateGameClients(roomCode);
         }

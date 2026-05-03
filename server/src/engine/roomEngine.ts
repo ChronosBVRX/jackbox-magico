@@ -98,11 +98,56 @@ export class RoomEngine {
     if (!room) return;
 
     events.forEach(ev => {
+      if (!ev.clientId) return;
       const player = room.players.find(p => p.clientId === ev.clientId);
       if (player) {
-        player.points += ev.points;
+        const pointsToAdd = Number(ev.points);
+        if (!isNaN(pointsToAdd)) {
+          player.points += pointsToAdd;
+        }
       }
     });
+  }
+
+  getScoreboard(roomCode: string) {
+    const room = this.getRoom(roomCode);
+    if (!room) return [];
+    return [...room.players]
+      .sort((a, b) => b.points - a.points)
+      .map(p => ({
+        clientId: p.clientId,
+        name: p.name,
+        house: p.house,
+        points: p.points,
+        isConnected: p.isConnected
+      }));
+  }
+
+  getHouseScoreboard(roomCode: string) {
+    const room = this.getRoom(roomCode);
+    if (!room) return [];
+    
+    const houses = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'];
+    return houses.map(house => ({
+      house,
+      points: room.players
+        .filter(p => p.house === house)
+        .reduce((sum, p) => sum + p.points, 0)
+    }));
+  }
+
+  resetRoomToLobby(roomCode: string) {
+    const room = this.getRoom(roomCode);
+    if (room) {
+      room.status = 'lobby';
+      room.currentGameId = null;
+      room.phase = 'lobby';
+    }
+  }
+
+  getConnectedPlayers(roomCode: string): Player[] {
+    const room = this.getRoom(roomCode);
+    return room ? room.players.filter(p => p.isConnected) : [];
   }
 
   private generateCode(): string {

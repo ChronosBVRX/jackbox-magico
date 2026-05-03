@@ -26,9 +26,20 @@ function showView(viewId) {
 
 // Helper to escape HTML and prevent XSS
 function escapeHTML(str) {
+  if (!str) return '';
   const p = document.createElement('p');
   p.textContent = str;
   return p.innerHTML;
+}
+
+function safeText(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.textContent = value ?? '';
+}
+
+function safeHTML(id, value) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = value ?? '';
 }
 
 btnCreate.addEventListener('click', () => {
@@ -42,6 +53,10 @@ btnStart.addEventListener('click', () => {
 
 btnNextRound.addEventListener('click', () => {
   socket.emit('tv_next_round');
+});
+
+socket.on('game_started', (gameId) => {
+  currentGameId = gameId;
 });
 
 socket.on('room_created', (code) => {
@@ -132,13 +147,14 @@ function renderPatronusView(data) {
     return;
   }
   showView('view-patronus');
-  document.getElementById('patronus-prompt').textContent = data.prompt?.text || '...';
-  document.getElementById('patronus-count').textContent = data.phase === 'submit' ? data.submitCount : data.voteCount;
-  document.getElementById('patronus-total').textContent = data.totalPlayers;
+  safeText('patronus-prompt', data.prompt?.text);
+  safeText('patronus-count', data.phase === 'submit' ? data.submitCount : data.voteCount);
+  safeText('patronus-total', data.totalPlayers);
   
   const list = document.getElementById('patronus-submissions-list');
+  if (!list) return;
   list.innerHTML = '';
-  if (data.phase === 'vote') {
+  if (data.phase === 'vote' && data.submissions) {
     data.submissions.forEach(sub => {
       const card = document.createElement('div');
       card.className = 'submission-card glass-panel';
@@ -156,56 +172,59 @@ function renderCopaFinalView(data) {
     return;
   }
   showView('view-copafinal');
-  document.getElementById('copa-phase-label').textContent = data.phase === 'wager' ? 'Hagan sus apuestas' : '¡PREGUNTA FINAL!';
-  document.getElementById('copa-count').textContent = data.phase === 'wager' ? data.wagerCount : data.answerCount;
-  document.getElementById('copa-total').textContent = data.totalPlayers;
+  safeText('copa-phase-label', data.phase === 'wager' ? 'Hagan sus apuestas' : '¡PREGUNTA FINAL!');
+  safeText('copa-count', data.phase === 'wager' ? data.wagerCount : data.answerCount);
+  safeText('copa-total', data.totalPlayers);
 
   const qContainer = document.getElementById('copa-question-container');
   const wagerGrid = document.getElementById('copa-wager-status');
   
   if (data.phase === 'question') {
-    qContainer.style.display = 'block';
-    wagerGrid.style.display = 'none';
-    document.getElementById('copa-question-text').textContent = data.question?.question;
+    if (qContainer) qContainer.style.display = 'block';
+    if (wagerGrid) wagerGrid.style.display = 'none';
+    safeText('copa-question-text', data.question?.question);
     const opts = document.getElementById('copa-options');
-    opts.innerHTML = data.question?.options.map(opt => `
-      <div class="option-card glass-panel">
-        <div class="option-label">${opt}</div>
-      </div>
-    `).join('');
+    if (opts && data.question?.options) {
+      opts.innerHTML = data.question.options.map(opt => `
+        <div class="option-card glass-panel">
+          <div class="option-label">${escapeHTML(opt)}</div>
+        </div>
+      `).join('');
+    }
   } else {
-    qContainer.style.display = 'none';
-    wagerGrid.style.display = 'flex';
-    // Optionally render house scores/wager status here
+    if (qContainer) qContainer.style.display = 'none';
+    if (wagerGrid) wagerGrid.style.display = 'flex';
   }
 }
 
 function renderPatronusResults(data) {
   showView('view-results');
-  document.getElementById('correct-answer').textContent = "Ranking de Patronus";
-  document.getElementById('narrator-comment').textContent = `"${data.results.narrator}"`;
+  safeText('correct-answer', "Ranking de Patronus");
+  safeText('narrator-comment', data.results?.narrator ? `"${data.results.narrator}"` : '');
   
   const list = document.getElementById('results-list');
+  if (!list || !data.results?.ranking) return;
   list.innerHTML = '';
   data.results.ranking.forEach(res => {
     const card = document.createElement('div');
     card.className = 'result-player-card glass-panel';
-    card.innerHTML = `<div class="player-name">${res.playerName} (${res.house})</div><div class="result-status status-correct">${res.votes} votos</div><div class="points-gain">${res.text}</div>`;
+    card.innerHTML = `<div class="player-name">${escapeHTML(res.playerName)} (${escapeHTML(res.house)})</div><div class="result-status status-correct">${res.votes || 0} votos</div><div class="points-gain">${escapeHTML(res.text)}</div>`;
     list.appendChild(card);
   });
 }
 
 function renderCopaResults(data) {
   showView('view-results');
-  document.getElementById('correct-answer').textContent = data.results.correctAnswer;
-  document.getElementById('narrator-comment').textContent = `"${data.results.explanation}" - ${data.results.narrator}`;
+  safeText('correct-answer', data.results?.correctAnswer);
+  safeText('narrator-comment', data.results ? `"${data.results.explanation}" - ${data.results.narrator}` : '');
   
   const list = document.getElementById('results-list');
+  if (!list || !data.results?.ranking) return;
   list.innerHTML = '';
   data.results.ranking.forEach(res => {
     const card = document.createElement('div');
     card.className = 'result-player-card glass-panel';
-    card.innerHTML = `<div class="player-name">${res.name}</div><div class="result-status ${res.correct?'status-correct':'status-wrong'}">${res.correct?'¡ACERTÓ!':'FALLÓ'}</div><div class="points-gain">${res.correct?'+':''}${res.points} (Apostó ${res.wager})</div>`;
+    card.innerHTML = `<div class="player-name">${escapeHTML(res.name)}</div><div class="result-status ${res.correct?'status-correct':'status-wrong'}">${res.correct?'¡ACERTÓ!':'FALLÓ'}</div><div class="points-gain">${res.correct?'+':''}${res.points} (Apostó ${res.wager})</div>`;
     list.appendChild(card);
   });
 }
@@ -346,14 +365,15 @@ function renderCalderoResults(data) {
     list.appendChild(card);
   });
 }
+function renderSombreroView(data) {
   if (data.phase === 'round_results' || data.phase === 'final_results') {
     renderSombreroResults(data);
     return;
   }
   showView('view-sombrero');
-  document.getElementById('hat-phrase').textContent = data.prompt ? data.prompt.text : "Preparando sentencia...";
-  document.getElementById('vote-count').textContent = data.answerCount;
-  document.getElementById('total-voters').textContent = data.totalPlayers;
+  safeText('hat-phrase', data.prompt ? data.prompt.text : "Preparando sentencia...");
+  safeText('vote-count', data.answerCount || 0);
+  safeText('total-voters', data.totalPlayers || 0);
 }
 
 function renderPocionesView(data) {
@@ -548,6 +568,11 @@ function renderResultsView(data) {
     resultsContainer.appendChild(card);
   });
 }
+
+socket.on('scoreboard_state', (data) => {
+  console.log('Scoreboard update:', data);
+  // Optional: update a permanent scoreboard sidebar if it exists
+});
 
 socket.on('error_message', (msg) => {
   alert(msg);
