@@ -176,49 +176,78 @@ STORY_CATALOG: Dict[str, Dict[str, Any]] = {
 
 
 def list_stories() -> List[Dict[str, Any]]:
-    """Devuelve un resumen enriquecido para mostrar cartas modernas en la TV."""
-    # Intentamos importar el catálogo de juegos de forma segura
+    """Devuelve un resumen seguro y enriquecido para mostrar en host/celular/TV."""
     try:
         from api.game_catalog import GAME_CATALOG
-    except ImportError:
-        try:
-            from game_catalog import GAME_CATALOG
-        except ImportError:
-            GAME_CATALOG = {}
+    except Exception:
+        GAME_CATALOG = {}
 
-    try:
-        return [{
-            "story_id": "debug_story",
-            "title": "Debug Story",
-            "tone": "debug",
-            "description": "If you see this, the API is working but the logic was too complex.",
-            "steps_count": 1,
-            "format": "Debug",
-            "estimated_minutes": 1,
-            "trivia_blocks_count": 1,
-            "trivia_questions_count": 1,
-            "random_minigame_slots": 0,
-            "includes_final": False,
-            "available_minigame_names": ["Debug Game"],
-            "minigame_policy": "Debug policy"
-        }]
-    except Exception as e:
-        import traceback
-        return [{
-            "story_id": "error_interno",
-            "title": f"Error del Servidor: {type(e).__name__}",
-            "tone": "error",
-            "description": str(e) + " | " + traceback.format_exc(),
-            "steps_count": 0,
-            "format": "Error",
-            "estimated_minutes": 0,
-            "trivia_blocks_count": 0,
-            "trivia_questions_count": 0,
-            "random_minigame_slots": 0,
-            "includes_final": False,
-            "available_minigame_names": [],
-            "minigame_policy": "Ocurrió un error en el backend."
-        }]
+    stories = []
+
+    for story_id, story in STORY_CATALOG.items():
+        steps = story.get("steps", [])
+
+        trivia_blocks = [
+            step for step in steps
+            if step.get("type") == "trivia_block"
+        ]
+
+        minigame_steps = [
+            step for step in steps
+            if step.get("type") == "minigame_random"
+        ]
+
+        includes_final = any(
+            step.get("type") == "copa_final"
+            for step in steps
+        )
+
+        available_minigames = []
+
+        for step in minigame_steps:
+            pool = step.get("pool") or STORY_MINIGAME_POOL
+
+            for game_id in pool:
+                if game_id not in available_minigames:
+                    available_minigames.append(game_id)
+
+        available_minigame_names = []
+
+        for game_id in available_minigames:
+            game = GAME_CATALOG.get(game_id, {})
+            available_minigame_names.append(
+                game.get("short_name")
+                or game.get("name")
+                or game_id.replace("_", " ").title()
+            )
+
+        trivia_questions = sum(
+            int(step.get("questions") or 0)
+            for step in trivia_blocks
+        )
+
+        stories.append({
+            "story_id": story_id,
+            "title": story.get("title", "Historia mágica"),
+            "tone": story.get("tone", "aventura mágica"),
+            "description": story.get("description", ""),
+            "steps": len(steps),
+            "format": "Historia guiada con trivia, minijuegos sorpresa y Copa Final",
+            "estimated_minutes": "18–28 min",
+            "trivia_blocks": len(trivia_blocks),
+            "trivia_questions": trivia_questions,
+            "random_minigame_slots": len(minigame_steps),
+            "includes_final": includes_final,
+            "available_minigames": available_minigames,
+            "available_minigame_names": available_minigame_names,
+            "minigame_policy": (
+                "No se juegan todos los minijuegos en una sola partida. "
+                "La historia combina trivia con pruebas sorpresa elegidas del catálogo "
+                "para mantener variedad y evitar repetición."
+            ),
+        })
+
+    return stories
 
 
 def get_story(story_id: str) -> Dict[str, Any]:
