@@ -11,6 +11,7 @@ interface ArtesState {
   durationMs: number;
   results: any | null;
   usedIds: string[];
+  playerCount: number;
 }
 
 export class ArtesRidiculas implements GameModule {
@@ -18,15 +19,17 @@ export class ArtesRidiculas implements GameModule {
   name = 'Defensa Contra las Artes Ridículas';
 
   init(players: Player[]): ArtesState {
+    const firstThreat = THREAT_POOL.filter(t => t.difficulty === 'facil')[Math.floor(Math.random() * THREAT_POOL.filter(t => t.difficulty === 'facil').length)];
     return {
-      roundNumber: 0,
+      roundNumber: 1,
       totalRounds: 3,
-      currentThreat: null,
+      currentThreat: firstThreat,
       answeredClients: new Map(),
-      startedAt: 0,
+      startedAt: Date.now(),
       durationMs: 15000,
       results: null,
-      usedIds: []
+      usedIds: [firstThreat.id],
+      playerCount: players.length
     };
   }
 
@@ -39,10 +42,11 @@ export class ArtesRidiculas implements GameModule {
       totalRounds: state.totalRounds,
       category: state.currentThreat?.category,
       question: state.currentThreat?.question,
-      options: state.currentThreat?.options,
+      options: state.currentThreat?.options || [],
       durationMs: state.durationMs,
       startedAt: state.startedAt,
-      answerCount: state.answeredClients.size
+      answerCount: state.answeredClients.size,
+      totalPlayers: state.playerCount
     };
   }
 
@@ -61,7 +65,18 @@ export class ArtesRidiculas implements GameModule {
     if (state.answeredClients.has(player.clientId)) return { state };
 
     const elapsedMs = Date.now() - state.startedAt;
-    state.answeredClients.set(player.clientId, { answer: action.answer, elapsedMs });
+    
+    const rawAnswer = action.answer;
+    let normalizedAnswer = rawAnswer;
+
+    const labels = ['A', 'B', 'C', 'D'];
+    const labelIndex = labels.indexOf(rawAnswer);
+
+    if (labelIndex >= 0 && state.currentThreat?.options[labelIndex]) {
+      normalizedAnswer = state.currentThreat.options[labelIndex];
+    }
+
+    state.answeredClients.set(player.clientId, { answer: normalizedAnswer, elapsedMs });
 
     return {
       state,
@@ -71,10 +86,11 @@ export class ArtesRidiculas implements GameModule {
 
   handleHostAction(state: ArtesState, action: string): GameUpdateResult {
     if (action === 'next') {
-      if (state.results || state.roundNumber === 0) {
-        return this.startNextRound(state);
-      } else {
+      if (!state.results && state.currentThreat) {
         return this.resolveRound(state);
+      }
+      if (state.results) {
+        return this.startNextRound(state);
       }
     }
     return { state };

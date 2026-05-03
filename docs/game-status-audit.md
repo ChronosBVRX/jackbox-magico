@@ -4,8 +4,8 @@ Este documento rastrea el estado de integración y estabilidad de cada minijuego
 
 | ID | Nombre | Catalog | Factory | TV View | Móvil View | Estado | Notas |
 |:---|:---|:---:|:---:|:---:|:---:|:---:|:---|
-| trivia_magica | Trivia Mágica | ✅ | ✅ | ✅ | ✅ | OK | Estable. |
-| artes_ridiculas | Artes Ridículas | ✅ | ✅ | ✅ | ✅ | OK | Comparte lógica con Trivia. |
+| trivia_magica | Trivia Mágica | ✅ | ✅ | ✅ | ✅ | OK | Fix inicialización y mapeo A/B/C/D aplicado. |
+| artes_ridiculas | Artes Ridículas | ✅ | ✅ | ✅ | ✅ | OK | Fix inicialización y mapeo A/B/C/D aplicado. |
 | atrapa_snitch | Atrapa la Snitch | ✅ | ✅ | ✅ | ✅ | Beta | Requiere probar latencia. |
 | duelo_hechizos | Duelo de Hechizos | ✅ | ✅ | ✅ | ✅ | OK | Validado con 2 jugadores. |
 | sombrero_burlon | Sombrero Burlón | ✅ | ✅ | ✅ | ✅ | OK | Fix de renderizado aplicado. |
@@ -30,3 +30,5 @@ Este documento rastrea el estado de integración y estabilidad de cada minijuego
 - `pointEvents` -> `scoreboard_state`: ✅
 - `ReferenceError` Sombrero: ✅ (Arreglado)
 - `showView` vs `showMobileView`: ✅ (Arreglado)
+- `Trivia/Artes` start round: ✅ (Arreglado)
+- `A/B/C/D` Mapping: ✅ (Implementado)

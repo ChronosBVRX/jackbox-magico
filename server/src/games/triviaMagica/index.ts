@@ -12,6 +12,7 @@ interface TriviaState {
   startedAt: number;
   durationMs: number;
   results: any | null;
+  playerCount: number;
 }
 
 export class TriviaMagica implements GameModule {
@@ -19,15 +20,17 @@ export class TriviaMagica implements GameModule {
   name = 'Trivia del Mundo Mágico';
 
   init(players: Player[]): TriviaState {
+    const firstQuestion = triviaQuestions[Math.floor(Math.random() * triviaQuestions.length)];
     return {
-      roundNumber: 0,
-      totalRounds: 5, // Reduced for testing
-      currentQuestion: null,
+      roundNumber: 1,
+      totalRounds: 5,
+      currentQuestion: firstQuestion,
       answeredClients: new Set(),
       roundAnswers: [],
-      startedAt: 0,
+      startedAt: Date.now(),
       durationMs: 20000,
-      results: null
+      results: null,
+      playerCount: players.length
     };
   }
 
@@ -40,10 +43,11 @@ export class TriviaMagica implements GameModule {
       totalRounds: state.totalRounds,
       category: state.currentQuestion?.category,
       question: state.currentQuestion?.question,
-      options: state.currentQuestion?.options,
+      options: state.currentQuestion?.options || [],
       durationMs: state.durationMs,
       startedAt: state.startedAt,
-      answerCount: state.answeredClients.size
+      answerCount: state.answeredClients.size,
+      totalPlayers: state.playerCount
     };
   }
 
@@ -62,8 +66,19 @@ export class TriviaMagica implements GameModule {
     if (state.answeredClients.has(player.clientId)) return { state };
 
     const elapsedMs = Date.now() - state.startedAt;
+    
+    const rawAnswer = action.answer;
+    let normalizedAnswer = rawAnswer;
+
+    const labels = ['A', 'B', 'C', 'D'];
+    const labelIndex = labels.indexOf(rawAnswer);
+
+    if (labelIndex >= 0 && state.currentQuestion?.options[labelIndex]) {
+      normalizedAnswer = state.currentQuestion.options[labelIndex];
+    }
+
     state.answeredClients.add(player.clientId);
-    state.roundAnswers.push({ clientId: player.clientId, answer: action.answer, elapsedMs });
+    state.roundAnswers.push({ clientId: player.clientId, answer: normalizedAnswer, elapsedMs });
 
     return {
       state,
@@ -73,10 +88,11 @@ export class TriviaMagica implements GameModule {
 
   handleHostAction(state: TriviaState, action: string): GameUpdateResult {
     if (action === 'next') {
-      if (state.results || state.roundNumber === 0) {
-        return this.startNextRound(state);
-      } else {
+      if (!state.results && state.currentQuestion) {
         return this.resolveRound(state);
+      }
+      if (state.results) {
+        return this.startNextRound(state);
       }
     }
     return { state };

@@ -524,28 +524,42 @@ function renderDueloView(data) {
 
 function renderQuizView(data) {
   showView('view-trivia');
-  document.getElementById('trivia-category').textContent = data.category || 'Misterio';
-  document.getElementById('trivia-round').textContent = `Ronda ${data.roundNumber}/${data.totalRounds}`;
-  document.getElementById('trivia-question').textContent = data.question;
-  document.getElementById('trivia-answer-count').textContent = `${data.answerCount || 0} / ?`;
+  const options = Array.isArray(data.options) ? data.options : [];
+  
+  safeText('trivia-category', data.category || 'Preparando pregunta');
+  safeText('trivia-round', `Ronda ${data.roundNumber || 1}/${data.totalRounds || 5}`);
+  
+  if (!data.question || options.length === 0) {
+    safeText('trivia-question', 'Preparando pregunta mágica...');
+    safeHTML('trivia-options', '');
+    safeText('trivia-answer-count', `${data.answerCount || 0} / ${data.totalPlayers || '?'}`);
+    return;
+  }
+
+  safeText('trivia-question', data.question);
+  safeText('trivia-answer-count', `${data.answerCount || 0} / ${data.totalPlayers || '?'}`);
   
   const optionsContainer = document.getElementById('trivia-options');
-  optionsContainer.innerHTML = '';
-  const labels = ['A', 'B', 'C', 'D'];
-  data.options.forEach((opt, i) => {
-    const card = document.createElement('div');
-    card.className = 'option-card';
-    card.innerHTML = `<div class="option-label">${labels[i]}</div><div class="option-text">${opt}</div>`;
-    optionsContainer.appendChild(card);
-  });
+  if (optionsContainer) {
+    optionsContainer.innerHTML = '';
+    const labels = ['A', 'B', 'C', 'D'];
+    options.forEach((opt, i) => {
+      const card = document.createElement('div');
+      card.className = 'option-card';
+      card.innerHTML = `<div class="option-label">${labels[i]}</div><div class="option-text">${escapeHTML(opt)}</div>`;
+      optionsContainer.appendChild(card);
+    });
+  }
 
   const bar = document.getElementById('timer-bar');
-  bar.style.transition = 'none';
-  bar.style.width = '100%';
-  setTimeout(() => {
-    bar.style.transition = `width ${data.durationMs}ms linear`;
-    bar.style.width = '0%';
-  }, 100);
+  if (bar) {
+    bar.style.transition = 'none';
+    bar.style.width = '100%';
+    setTimeout(() => {
+      bar.style.transition = `width ${data.durationMs || 20000}ms linear`;
+      bar.style.width = '0%';
+    }, 100);
+  }
 }
 
 function renderResultsView(data) {
