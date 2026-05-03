@@ -1,4 +1,5 @@
 import { GameId } from '../games/base';
+export { GameId };
 
 export interface GameInfo {
   id: GameId;

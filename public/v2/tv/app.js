@@ -11,6 +11,7 @@ const btnStart = document.getElementById('btn-start');
 const btnNextRound = document.getElementById('btn-next-round');
 const viewQuiz = document.getElementById('view-trivia'); // We'll reuse this as a generic quiz view
 const viewResults = document.getElementById('view-results');
+const btnStoryLobby = document.getElementById('btn-story-lobby');
 
 let currentRoom = null;
 let currentGameId = null;
@@ -57,6 +58,33 @@ btnNextRound.addEventListener('click', () => {
   socket.emit('tv_next_round');
 });
 
+if (btnStoryLobby) {
+  btnStoryLobby.addEventListener('click', () => {
+    renderStorySelect();
+    showView('view-story-select');
+  });
+}
+
+document.getElementById('btn-cancel-story').onclick = () => {
+  showView('view-lobby');
+};
+
+document.getElementById('btn-story-next-dialogue').onclick = () => {
+  socket.emit('tv_story_next');
+};
+
+document.getElementById('btn-story-start-game').onclick = () => {
+  socket.emit('tv_story_next');
+};
+
+document.getElementById('btn-story-next-score').onclick = () => {
+  socket.emit('tv_story_next');
+};
+
+document.getElementById('btn-story-end').onclick = () => {
+  socket.emit('tv_story_next');
+};
+
 socket.on('game_started', (gameId) => {
   currentGameId = gameId;
 });
@@ -90,10 +118,11 @@ socket.on('room_state', (state) => {
     if (state.players.length > 0) {
       statusText.textContent = `${state.players.length} mago(s) listo(s)`;
       btnStart.style.display = 'inline-block';
-      // If we want to test Artes Ridículas, we could add another button or toggle here
+      btnStoryLobby.style.display = 'inline-block';
     } else {
       statusText.textContent = 'Esperando jugadores...';
       btnStart.style.display = 'none';
+      btnStoryLobby.style.display = 'none';
     }
   }
 });
@@ -116,6 +145,11 @@ function renderPlayers(players) {
 
 // GENERIC GAME STATE HANDLING
 socket.on('game_state', (data) => {
+  if (data.phase === 'story_step') {
+    renderStoryStep(data);
+    return;
+  }
+  
   if (currentGameId === 'trivia_magica' || currentGameId === 'artes_ridiculas') {
     if (data.phase === 'question' || data.phase === 'threat') renderQuizView(data);
     else if (data.phase === 'results') renderResultsView(data);
@@ -142,6 +176,190 @@ socket.on('game_state', (data) => {
     renderCalderoView(data);
   }
 });
+
+// Story Mode Renderers
+const STORY_CATALOG_FRONT = [
+    { id: 'copa_casas_clasica', title: 'Copa de las Casas Clásica', desc: 'Una experiencia balanceada para iniciar a cualquier grupo.', min: 35, players: '2-8', diff: 'Normal' },
+    { id: 'noche_en_el_castillo', title: 'Noche en el Castillo', desc: 'Una historia misteriosa explorando secretos.', min: 40, players: '3-8', diff: 'Normal' },
+    { id: 'torneo_magico_relampago', title: 'Torneo Mágico Relámpago', desc: 'Versión rápida e intensa para acción inmediata.', min: 20, players: '2-8', diff: 'Familiar' }
+];
+
+function renderStorySelect() {
+    const list = document.getElementById('story-select-list');
+    list.innerHTML = '';
+    STORY_CATALOG_FRONT.forEach(story => {
+        const card = document.createElement('div');
+        card.className = 'story-card glass-panel';
+        card.innerHTML = `
+            <h2>${story.title}</h2>
+            <p>${story.desc}</p>
+            <div class="story-meta">
+                <span>⏱️ ${story.min} min</span>
+                <span>👥 ${story.players}</span>
+                <span>⭐ ${story.diff}</span>
+            </div>
+            <button class="btn-start-premium" style="margin-top: 1rem; font-size: 1rem; padding: 1rem;">Elegir Historia</button>
+        `;
+        card.onclick = () => {
+            socket.emit('tv_select_story', story.id);
+        };
+        list.appendChild(card);
+    });
+}
+
+function renderStoryStep(data) {
+    if (data.type === 'dialogue') {
+        renderStoryDialogue(data);
+        showView('view-story-dialogue');
+    } else if (data.type === 'instructions') {
+        renderStoryInstructions(data);
+        showView('view-story-instructions');
+    } else if (data.type === 'scoreboard') {
+        renderStoryScoreboard(data);
+        showView('view-story-scoreboard');
+    } else if (data.type === 'story_complete') {
+        renderStoryWinner(data);
+        showView('view-story-finished');
+    }
+}
+
+function renderStoryDialogue(data) {
+    safeText('story-dialogue-title', data.title);
+    safeText('story-dialogue-subtitle', data.subtitle || '');
+    const linesContainer = document.getElementById('story-dialogue-lines');
+    linesContainer.innerHTML = '';
+    if (data.lines) {
+        data.lines.forEach((line, i) => {
+            const p = document.createElement('p');
+            p.textContent = line;
+            p.style.animationDelay = `${i * 1.5}s`;
+            linesContainer.appendChild(p);
+        });
+    }
+    const visual = document.getElementById('story-visual');
+    const visualMap = {
+        'great_hall_intro': '🕯️',
+        'sorting_hat': '🎩',
+        'potions_class': '🧪',
+        'moving_castle': '🏰',
+        'portrait_gallery': '🖼️',
+        'duel_arena': '🪄',
+        'final_before': '🏆',
+        'final_cup': '✨',
+        'castle_night': '🌙',
+        'haunted_gallery': '👻',
+        'ridiculous_threat': '🤡',
+        'hidden_cauldron': '🍯',
+        'glowing_runes': '📜',
+        'patronus_light': '🦌',
+        'final_clue': '🔍',
+        'lightning_tournament': '⚡'
+    };
+    visual.textContent = visualMap[data.visual] || '✨';
+}
+
+function renderStoryInstructions(data) {
+    const instr = data.instructions;
+    if (!instr) return;
+    safeText('instr-title', instr.title);
+    safeText('instr-subtitle', instr.subtitle);
+    
+    const rulesList = document.getElementById('instr-rules');
+    rulesList.innerHTML = '';
+    instr.rules.forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = r;
+        rulesList.appendChild(li);
+    });
+
+    const tvList = document.getElementById('instr-tv');
+    tvList.innerHTML = '';
+    instr.tvInstructions.forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = r;
+        tvList.appendChild(li);
+    });
+
+    const mobileList = document.getElementById('instr-mobile');
+    mobileList.innerHTML = '';
+    instr.mobileInstructions.forEach(r => {
+        const li = document.createElement('li');
+        li.textContent = r;
+        mobileList.appendChild(li);
+    });
+
+    safeText('instr-scoring', instr.scoring);
+    document.getElementById('btn-story-start-game').textContent = instr.startButton || 'Comenzar Prueba';
+}
+
+function renderStoryScoreboard(data) {
+    const sb = data.scoreboard;
+    if (!sb) return;
+    safeText('story-score-title', data.title || 'Puntuación de la Copa');
+    safeText('story-score-subtitle', data.subtitle || 'La Copa está observando');
+    safeText('story-score-comment', sb.randomLine || '');
+
+    const houseList = document.getElementById('story-house-list');
+    houseList.innerHTML = '';
+    
+    const maxPoints = Math.max(...sb.houses.map(h => h.points), 1);
+    
+    sb.houses.sort((a,b) => b.points - a.points).forEach(house => {
+        const row = document.createElement('div');
+        row.className = 'house-bar-row';
+        const percent = (house.points / maxPoints) * 100;
+        const colorMap = {
+            'Gryffindor': 'var(--house-gryffindor)',
+            'Slytherin': 'var(--house-slytherin)',
+            'Ravenclaw': 'var(--house-ravenclaw)',
+            'Hufflepuff': 'var(--house-hufflepuff)'
+        };
+        row.innerHTML = `
+            <div class="house-label">${house.house}</div>
+            <div class="house-bar-bg">
+                <div class="house-bar-fill" style="width: ${percent}%; background: ${colorMap[house.house]}"></div>
+            </div>
+            <div class="house-points">${house.points}</div>
+        `;
+        houseList.appendChild(row);
+    });
+
+    const playerList = document.getElementById('story-player-list');
+    playerList.innerHTML = '<h3 style="margin-bottom:1rem; text-align:center; color: var(--color-accent)">Top Magos</h3>';
+    sb.players.slice(0, 5).forEach(p => {
+        const div = document.createElement('div');
+        div.style.display = 'flex';
+        div.style.justifyContent = 'space-between';
+        div.style.padding = '0.5rem';
+        div.style.borderBottom = '1px solid rgba(255,255,255,0.05)';
+        div.innerHTML = `<span>${p.name}</span> <span>${p.points}</span>`;
+        playerList.appendChild(div);
+    });
+}
+
+function renderStoryWinner(data) {
+    if (!data.winner) return;
+    safeText('story-winner-name', data.winner.house);
+    safeText('story-winner-points', `${data.winner.points} puntos`);
+    safeText('story-final-comment', data.finalLine || '');
+
+    const colorMap = {
+        'Gryffindor': 'var(--house-gryffindor)',
+        'Slytherin': 'var(--house-slytherin)',
+        'Ravenclaw': 'var(--house-ravenclaw)',
+        'Hufflepuff': 'var(--house-hufflepuff)'
+    };
+    document.getElementById('story-winner-card').style.borderColor = colorMap[data.winner.house];
+
+    const ranking = document.getElementById('story-final-list');
+    ranking.innerHTML = '';
+    data.ranking.slice(1).forEach(house => {
+        const item = document.createElement('div');
+        item.className = 'final-rank-item';
+        item.innerHTML = `<strong>${house.house}</strong>: ${house.points}`;
+        ranking.appendChild(item);
+    });
+}
 
 function renderPatronusView(data) {
   if (data.phase === 'results') {

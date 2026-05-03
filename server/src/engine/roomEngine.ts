@@ -1,4 +1,5 @@
 import { RoomState, Player } from '../types/events';
+import { StoryState } from '../story/storyTypes';
 
 export class RoomEngine {
   private rooms: Map<string, RoomState> = new Map();
@@ -136,12 +137,18 @@ export class RoomEngine {
     }));
   }
 
+  setStoryState(roomCode: string, state: StoryState | undefined) {
+    const room = this.getRoom(roomCode);
+    if (room) room.storyState = state;
+  }
+
   resetRoomToLobby(roomCode: string) {
     const room = this.getRoom(roomCode);
     if (room) {
       room.status = 'lobby';
       room.currentGameId = null;
       room.phase = 'lobby';
+      room.storyState = undefined;
     }
   }
 

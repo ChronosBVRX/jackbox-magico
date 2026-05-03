@@ -9,6 +9,10 @@ import {
 import { roomEngine } from '../engine/roomEngine';
 import { createGameModule } from '../games/gameFactory';
 import { GameModule } from '../games/base';
+import { storyEngine } from '../story/storyEngine';
+import { STORY_CATALOG } from '../story/storyCatalog';
+import { INSTRUCTION_CATALOG } from '../story/instructionCatalog';
+import { SCOREBOARD_LINES, TRIVIA_TRANSITION_LINES, MINIGAME_TRANSITION_LINES, FINAL_WINNER_LINES } from '../story/storyScreenCopy';
 
 export function setupSocketServer(httpServer: HttpServer) {
   const io = new Server<
@@ -90,6 +94,60 @@ export function setupSocketServer(httpServer: HttpServer) {
       updateGameClients(roomCode);
     });
 
+    socket.on('tv_select_story', (storyId) => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+
+      const storyState = storyEngine.initStory(storyId);
+      if (!storyState) return;
+
+      roomEngine.setRoomStatus(roomCode, 'story');
+      roomEngine.setStoryState(roomCode, storyState);
+      
+      updateGameClients(roomCode);
+    });
+
+    socket.on('tv_story_next', () => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+
+      const room = roomEngine.getRoom(roomCode);
+      if (!room || !room.storyState) return;
+
+      const step = storyEngine.getCurrentStep(room.storyState);
+      if (!step) return;
+
+      // Handle transition based on current step
+      if (step.type === 'instructions' || step.type === 'trivia_block' || step.type === 'fixed_minigame' || step.type === 'minigame_random' || step.type === 'copa_final') {
+        const gameId = room.storyState.selectedMinigame;
+        if (gameId) {
+          const module = createGameModule(gameId as any);
+          if (module) {
+            const state = module.init(room.players);
+            activeGames.set(roomCode, { module, state });
+            roomEngine.setRoomStatus(roomCode, 'playing');
+            roomEngine.setCurrentGameId(roomCode, gameId);
+            io.to(roomCode).emit('game_started', gameId);
+            updateGameClients(roomCode);
+            return;
+          }
+        }
+      }
+
+      // If story complete, reset
+      if (room.storyState.storyCompleted) {
+        roomEngine.resetRoomToLobby(roomCode);
+        const updated = roomEngine.getRoom(roomCode);
+        if (updated) io.to(roomCode).emit('room_state', updated);
+        return;
+      }
+
+      // Move to next step
+      const nextState = storyEngine.nextStep(room.storyState);
+      roomEngine.setStoryState(roomCode, nextState);
+      updateGameClients(roomCode);
+    });
+
     socket.on('player_action', (data) => {
       handlePlayerInteraction(data);
     });
@@ -153,15 +211,18 @@ export function setupSocketServer(httpServer: HttpServer) {
 
         if (result.finished) {
           activeGames.delete(roomCode);
-          roomEngine.resetRoomToLobby(roomCode);
-          
           const room = roomEngine.getRoom(roomCode);
-          if (room) io.to(roomCode).emit('room_state', room);
           
-          io.to(roomCode).emit('scoreboard_state' as any, {
-            players: roomEngine.getScoreboard(roomCode),
-            houses: roomEngine.getHouseScoreboard(roomCode)
-          });
+          if (room?.status === 'playing' && room.storyState) {
+            // Story mode: return to story engine
+            roomEngine.setRoomStatus(roomCode, 'story');
+            roomEngine.setCurrentGameId(roomCode, null);
+            updateGameClients(roomCode);
+          } else {
+            roomEngine.resetRoomToLobby(roomCode);
+            const r = roomEngine.getRoom(roomCode);
+            if (r) io.to(roomCode).emit('room_state', r);
+          }
         } else {
           updateGameClients(roomCode);
         }
@@ -169,11 +230,57 @@ export function setupSocketServer(httpServer: HttpServer) {
     });
 
     function updateGameClients(roomCode: string) {
-      const game = activeGames.get(roomCode);
-      if (!game) return;
-
       const room = roomEngine.getRoom(roomCode);
       if (!room) return;
+
+      if (room.status === 'story' && room.storyState) {
+        const step = storyEngine.getCurrentStep(room.storyState);
+        if (step) {
+          const tvData: any = { ...step };
+          
+          // Enrich data
+          if (step.type === 'instructions' && step.instructionGameId) {
+            tvData.instructions = INSTRUCTION_CATALOG[step.instructionGameId];
+          }
+          if (step.type === 'scoreboard') {
+            tvData.scoreboard = {
+              players: roomEngine.getScoreboard(roomCode),
+              houses: roomEngine.getHouseScoreboard(roomCode),
+              randomLine: SCOREBOARD_LINES[Math.floor(Math.random() * SCOREBOARD_LINES.length)]
+            };
+          }
+          if (step.type === 'story_complete') {
+             const houses = roomEngine.getHouseScoreboard(roomCode).sort((a,b) => b.points - a.points);
+             tvData.winner = houses[0];
+             tvData.ranking = houses;
+             tvData.finalLine = FINAL_WINNER_LINES[Math.floor(Math.random() * FINAL_WINNER_LINES.length)];
+          }
+
+          io.to(roomCode).emit('game_state' as any, { phase: 'story_step', ...tvData });
+          
+          room.players.forEach(p => {
+             let mobilePhase = 'story_wait';
+             const mobileData: any = { phase: mobilePhase };
+             if (step.type === 'instructions' && step.instructionGameId) {
+                 mobileData.phase = 'story_instructions';
+                 mobileData.instructions = INSTRUCTION_CATALOG[step.instructionGameId];
+             }
+             if (step.type === 'scoreboard') {
+                 mobileData.phase = 'story_personal_score';
+                 mobileData.points = p.points;
+             }
+             io.to(p.clientId).emit('game_player_state' as any, mobileData);
+          });
+        }
+        return;
+      }
+
+      const game = activeGames.get(roomCode);
+      if (!game) {
+        // If not playing, send room state
+        io.to(roomCode).emit('room_state', room);
+        return;
+      }
 
       // TV View
       io.to(roomCode).emit('game_state' as any, game.module.getTvState(game.state));

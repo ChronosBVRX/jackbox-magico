@@ -1,3 +1,5 @@
+import { StoryState } from '../story/storyTypes';
+
 export interface Player {
   clientId: string;
   name: string;
@@ -10,13 +12,14 @@ export interface Player {
 
 export interface RoomState {
   roomCode: string;
-  status: 'lobby' | 'playing' | 'results' | 'final_results';
+  status: 'lobby' | 'playing' | 'story' | 'results' | 'final_results';
   players: Player[];
   currentGameId: string | null;
   phase: string;
   durationMs: number;
   startedAt: number | null;
   serverTime: number;
+  storyState?: StoryState;
 }
 
 export interface ServerToClientEvents {
@@ -45,6 +48,8 @@ export interface ClientToServerEvents {
     gender: 'wizard' | 'witch';
   }) => void;
   tv_start_game: (gameId: string) => void;
+  tv_select_story: (storyId: string) => void;
+  tv_story_next: () => void;
   answer_submit: (data: { answer: string }) => void;
   player_action: (data: any) => void;
   tv_next_round: () => void;

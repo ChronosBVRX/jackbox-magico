@@ -151,6 +151,21 @@ document.getElementById('btn-pociones-clear').addEventListener('click', () => {
 
 // GENERIC GAME PLAYER STATE
 socket.on('game_player_state', (data) => {
+  if (data.phase === 'story_wait') {
+    showMobileView('story-wait-screen');
+    return;
+  }
+  if (data.phase === 'story_instructions') {
+    renderStoryInstructionsMobile(data);
+    showMobileView('story-instructions-mobile');
+    return;
+  }
+  if (data.phase === 'story_personal_score') {
+    renderStoryScoreMobile(data);
+    showMobileView('story-personal-score');
+    return;
+  }
+
   if (data.phase === 'question' || data.phase === 'threat') {
     if (data.alreadyAnswered) showMobileView('answer-sent');
     else renderTriviaInput(data);
@@ -569,3 +584,22 @@ socket.on('answer_ack', (data) => {
 });
 
 socket.on('error_message', (msg) => alert(msg));
+
+function renderStoryInstructionsMobile(data) {
+    const instr = data.instructions;
+    if (!instr) return;
+    safeText('story-instr-title-mobile', instr.title);
+    safeText('story-instr-subtitle-mobile', instr.subtitle);
+    const list = document.getElementById('story-instr-rules-mobile');
+    list.innerHTML = '';
+    instr.rules.forEach(r => {
+        const li = document.createElement('li');
+        li.style.marginBottom = '0.5rem';
+        li.textContent = '✦ ' + r;
+        list.appendChild(li);
+    });
+}
+
+function renderStoryScoreMobile(data) {
+    safeText('story-personal-points', data.points || 0);
+}
