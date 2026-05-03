@@ -559,15 +559,16 @@ function iniciarRadarMovil() {
           return;
         }
 
-        if (phase === "duelo") {
-          renderDuelMobile(state);
-          updateMobileDuelTimer(state);
-          return;
-        }
-
-        if (phase === "duelo_clash") {
-          renderDuelClashMobile(state);
-          updateMobileDuelClashTimer(state);
+        if (phase === "duelo" || phase === "duelo_clash") {
+          if (window.DueloMobile?.render) {
+            window.DueloMobile.render(state);
+          } else if (phase === "duelo") {
+            renderDuelMobile(state);
+            updateMobileDuelTimer(state);
+          } else {
+            renderDuelClashMobile(state);
+            updateMobileDuelClashTimer(state);
+          }
           return;
         }
 

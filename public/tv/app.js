@@ -1208,6 +1208,13 @@ function renderPlaying(data) {
   const key = getRoundKey(state);
 
   showScreen("view-game");
+ 
+  if (state.phase === "duelo" || state.phase === "duelo_clash") {
+    if (window.DueloTv?.render) {
+      window.DueloTv.render(state, players);
+      return;
+    }
+  }
 
   if (state.phase === "atrapa_snitch") {
     if (typeof window.renderSnitchTv === "function") {
@@ -1475,6 +1482,25 @@ function renderResults(data) {
 
   if (phase === "results_atrapa_snitch") {
     renderSnitchResults(state, players);
+    return;
+  }
+
+  if (phase === "results_duelo") {
+    const title = document.getElementById("titulo-resultados");
+    const correct = document.getElementById("tv-correcta");
+    const explanation = document.getElementById("tv-explicacion");
+    const extra = document.getElementById("tv-extra-results");
+    const scores = document.getElementById("tv-marcadores");
+
+    if (title) title.innerText = "Resultado del Duelo";
+    if (correct) correct.innerText = "";
+    if (explanation) explanation.innerText = "";
+    if (extra && window.DueloTv?.renderResults) {
+      window.DueloTv.renderResults(state, extra);
+    } else {
+      renderGenericResults(state, players);
+    }
+    if (scores) scores.innerHTML = renderScoreGrid(players);
     return;
   }
 

@@ -74,7 +74,7 @@ POINTS_FAST = 30
 POINTS_CLASH_WIN = 80
 POINTS_TIMEOUT = -30
 
-DUEL_SECONDS = 5
+DUEL_SECONDS = 7
 CLASH_SECONDS = 5
 
 
@@ -288,23 +288,30 @@ def submit_spell_answer(state, player_name, answer, client_elapsed_ms=None):
         spell_b = answers[duelists[1]]["spell"]
 
         if spell_a == spell_b:
-            state["phase"] = "duelo_clash"
-            state["question"] = "¡Choque de varitas! Presiona tan rápido como puedas durante 5 segundos."
-            state["narrator"] = "¡Choque de varitas! Esto se va a resolver a punta de terquedad mágica."
-            state["clash"] = {
-                "started_at": _now(),
-                "duration_seconds": CLASH_SECONDS,
-                "taps": {
-                    duelists[0]: 0,
-                    duelists[1]: 0,
-                },
-            }
+            _start_clash(state, duelists)
 
     return {
         "state": state,
         "accepted": True,
         "message": "Hechizo guardado.",
     }
+
+
+def _start_clash(state, duelists):
+    state["phase"] = "duelo_clash"
+    state["question"] = "¡Choque de varitas! Presiona tan rápido como puedas durante 5 segundos."
+    state["narrator"] = "¡Choque de varitas! Esto se va a resolver a punta de terquedad mágica."
+    state["started_at"] = _now()
+    state["duration_seconds"] = CLASH_SECONDS
+    state["clash"] = {
+        "started_at": state["started_at"],
+        "duration_seconds": CLASH_SECONDS,
+        "taps": {
+            duelists[0]: 0,
+            duelists[1]: 0,
+        },
+    }
+    return state
 
 
 def submit_clash_tap(state, player_name):
@@ -425,17 +432,7 @@ def resolve_for_reveal(state):
             spell_2 = answers[p2]["spell"]
 
             if spell_1 == spell_2:
-                state["phase"] = "duelo_clash"
-                state["question"] = "¡Choque de varitas! Presiona tan rápido como puedas durante 5 segundos."
-                state["narrator"] = "¡Choque de varitas! Dos magos igual de tercos, justo lo que necesitaba la clase."
-                state["clash"] = {
-                    "started_at": _now(),
-                    "duration_seconds": CLASH_SECONDS,
-                    "taps": {
-                        p1: 0,
-                        p2: 0,
-                    },
-                }
+                _start_clash(state, [p1, p2])
                 return state, [], False
 
             winner_key = _spell_winner(spell_1, spell_2)
