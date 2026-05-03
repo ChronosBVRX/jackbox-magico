@@ -8,6 +8,7 @@ El objetivo de esta fase es conectar el modo Historia con salas reales de Supaba
 sin tocar todavía la lógica existente de `/api/player`, `/api/room` o trivia.
 """
 
+from __future__ import annotations
 import random
 import string
 from copy import deepcopy
@@ -486,10 +487,18 @@ async def story_health():
 
 @router.get("/catalog")
 async def story_catalog():
-    return {
-        "stories": list_stories(),
-        "minigame_pool": STORY_MINIGAME_POOL,
-    }
+    try:
+        return {
+            "stories": list_stories(),
+            "minigame_pool": STORY_MINIGAME_POOL,
+        }
+    except Exception as e:
+        import traceback
+        return {
+            "error": str(e),
+            "traceback": traceback.format_exc(),
+            "stories": []
+        }
 
 
 @router.post("/start")
