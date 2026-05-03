@@ -151,8 +151,85 @@ socket.on('game_player_state', (data) => {
     else renderPocionesInput(data);
   } else if (data.phase === 'results') {
     showMobileView('wait-screen');
+  } else if (currentGameId === 'mapa_travieso') {
+    renderMapaInput(data);
+  } else if (currentGameId === 'caldero_mentiroso') {
+    renderCalderoInput(data);
   }
 });
+
+function renderMapaInput(data) {
+  if (data.alreadyAnswered) {
+    showView('answer-sent');
+    return;
+  }
+  if (data.phase === 'observe') {
+    showView('wait-lobby');
+    document.getElementById('wait-text').textContent = 'Observa el Mapa en la TV...';
+  } else if (data.phase === 'answer') {
+    showView('mapa-input');
+    const container = document.getElementById('mapa-zones');
+    container.innerHTML = '';
+    data.options.forEach(zone => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-target';
+      btn.textContent = zone.name;
+      btn.onclick = () => {
+        socket.emit('player_action', { type: 'map_answer', zoneId: zone.id });
+        showView('answer-sent');
+      };
+      container.appendChild(btn);
+    });
+  } else {
+    showView('wait-lobby');
+  }
+}
+
+function renderCalderoInput(data) {
+  if (data.alreadyActed) {
+    showView('answer-sent');
+    return;
+  }
+  showView('caldero-input');
+  const ing = data.myIngredient;
+  document.getElementById('ing-emoji').textContent = ing.emoji;
+  document.getElementById('ing-name').textContent = ing.name;
+  document.getElementById('ing-desc').textContent = ing.description;
+  
+  // Color the card
+  const card = document.getElementById('ingredient-card');
+  const colors = { good: '#10b981', bad: '#ef4444', explosive: '#dc2626', gold: '#f59e0b' };
+  card.style.borderTopColor = colors[ing.type] || 'var(--color-accent)';
+
+  document.getElementById('caldero-actions').style.display = 'grid';
+  document.getElementById('accuse-targets').style.display = 'none';
+
+  document.getElementById('btn-caldero-add').onclick = () => {
+    socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'add' } });
+  };
+  document.getElementById('btn-caldero-discard').onclick = () => {
+    socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'discard' } });
+  };
+  document.getElementById('btn-caldero-accuse').onclick = () => {
+    document.getElementById('caldero-actions').style.display = 'none';
+    document.getElementById('accuse-targets').style.display = 'block';
+    const grid = document.getElementById('accuse-grid');
+    grid.innerHTML = '';
+    data.players.forEach(p => {
+      const btn = document.createElement('button');
+      btn.className = 'btn-target';
+      btn.innerHTML = `<span>${p.name}</span><small>${p.house}</small>`;
+      btn.onclick = () => {
+        socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'accuse', targetClientId: p.clientId } });
+      };
+      grid.appendChild(btn);
+    });
+  };
+  document.getElementById('btn-accuse-back').onclick = () => {
+    document.getElementById('caldero-actions').style.display = 'grid';
+    document.getElementById('accuse-targets').style.display = 'none';
+  };
+}
 
 function renderSombreroVoting(data) {
     showMobileView('sombrero-input');

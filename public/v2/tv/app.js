@@ -111,10 +111,83 @@ socket.on('game_state', (data) => {
     renderSombreroView(data);
   } else if (currentGameId === 'clase_pociones') {
     renderPocionesView(data);
+  } else if (currentGameId === 'mapa_travieso') {
+    renderMapaView(data);
+  } else if (currentGameId === 'caldero_mentiroso') {
+    renderCalderoView(data);
   }
 });
 
-function renderSombreroView(data) {
+function renderMapaView(data) {
+  if (data.phase === 'results') {
+    renderMapaResults(data);
+    return;
+  }
+  showView('view-mapa');
+  const canvas = document.getElementById('map-canvas');
+  const status = document.getElementById('mapa-status');
+  
+  if (data.phase === 'observe') {
+    status.textContent = 'Observa el Mapa...';
+    canvas.innerHTML = '';
+    data.mapLayout.forEach(loc => {
+      const dot = document.createElement('div');
+      dot.className = 'map-point';
+      dot.style.left = loc.zone.x + '%';
+      dot.style.top = loc.zone.y + '%';
+      dot.innerHTML = `<span class="map-item-visual">${loc.item.emoji}</span><span class="map-label">${loc.zone.name}</span>`;
+      canvas.appendChild(dot);
+    });
+  } else {
+    status.textContent = data.target?.question || '¿Dónde estaba?';
+    canvas.innerHTML = '<div style="width:100%; height:100%; background:rgba(0,0,0,0.2); filter:blur(10px)"></div>';
+  }
+}
+
+function renderCalderoView(data) {
+  if (data.phase === 'results') {
+    renderCalderoResults(data);
+    return;
+  }
+  showView('view-caldero');
+  document.getElementById('action-count').textContent = data.actionCount;
+  document.getElementById('total-actions').textContent = data.totalPlayers;
+  
+  const log = document.getElementById('caldero-log');
+  log.innerHTML = data.publicLog.map(entry => `<div class="log-entry">${entry.text}</div>`).join('');
+  log.scrollTop = log.scrollHeight;
+}
+
+function renderMapaResults(data) {
+  showView('view-results');
+  const correct = data.results.correctZone;
+  document.getElementById('correct-answer').textContent = correct ? correct.name : '---';
+  document.getElementById('narrator-comment').textContent = data.results.narrator;
+  
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  data.results.ranking.forEach(res => {
+    const card = document.createElement('div');
+    card.className = 'result-player-card glass-panel';
+    card.innerHTML = `<div class="player-name">${res.name}</div><div class="result-status ${res.correct?'status-correct':'status-wrong'}">${res.correct?'ACIERTO':'FALLO'}</div><div class="points-gain">+${res.points}</div>`;
+    list.appendChild(card);
+  });
+}
+
+function renderCalderoResults(data) {
+  showView('view-results');
+  document.getElementById('correct-answer').textContent = data.results.exploded ? '¡EXPLOSIÓN!' : 'Poción Estable';
+  document.getElementById('narrator-comment').textContent = data.results.narrator;
+  
+  const list = document.getElementById('results-list');
+  list.innerHTML = '';
+  data.results.ranking.forEach(res => {
+    const card = document.createElement('div');
+    card.className = 'result-player-card glass-panel';
+    card.innerHTML = `<div class="player-name">${res.name}</div><div style="font-size:0.7rem; opacity:0.6">${res.reasons.join(', ')}</div><div class="points-gain">+${res.points}</div>`;
+    list.appendChild(card);
+  });
+}
   if (data.phase === 'round_results' || data.phase === 'final_results') {
     renderSombreroResults(data);
     return;

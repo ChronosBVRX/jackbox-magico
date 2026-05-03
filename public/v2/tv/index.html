@@ -17,7 +17,6 @@
 
   <div class="tv-layout" id="view-lobby" style="display: none;">
     <!-- Header -->
-    <header class="header">
       <div class="title-group">
         <h1 class="text-gradient-gold">Jackbox Mágico</h1>
         <p>Copa de las Casas</p>
@@ -90,7 +89,37 @@
     </footer>
   </div>
 
-  <!-- Results Screen -->
+  <!-- Mapa Travieso Screen -->
+  <div class="tv-layout" id="view-mapa" style="display: none;">
+    <header class="header">
+        <div class="title-group">
+          <h1 class="text-gradient-gold">El Mapa Travieso</h1>
+          <p id="mapa-status">Observa con atención...</p>
+        </div>
+    </header>
+    <div class="map-pergamino">
+        <div id="map-canvas" class="map-canvas"></div>
+    </div>
+  </div>
+
+  <!-- Caldero Mentiroso Screen -->
+  <div class="tv-layout" id="view-caldero" style="display: none;">
+    <header class="header">
+        <div class="title-group">
+          <h1 class="text-gradient-gold">El Caldero Mentiroso</h1>
+          <p id="caldero-status">Burbujeando secretos...</p>
+        </div>
+    </header>
+    <div class="caldero-visual">
+        <div class="cauldron-main">🧪</div>
+        <div id="caldero-log" class="glass-panel caldero-log"></div>
+    </div>
+    <div class="vote-meter glass-panel">
+        Acciones: <span id="action-count">0</span> / <span id="total-actions">0</span>
+    </div>
+  </div>
+
+      <!-- Results View -->
   <div class="tv-layout" id="view-results" style="display: none;">
     <header class="header">
       <div class="title-group">

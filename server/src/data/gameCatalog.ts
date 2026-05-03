@@ -132,7 +132,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'mapa_travieso',
     name: 'El Mapa Travieso',
     shortName: 'Mapa',
-    status: 'dev',
+    status: 'beta',
     mode: 'quiz',
     description: 'Observa el mapa y recuerda la ubicación de los objetos ocultos.',
     rules: [
@@ -144,7 +144,7 @@ export const GAME_CATALOG: GameInfo[] = [
     durationSeconds: 15,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   },
   {
     id: 'retratos_chismosos',
@@ -186,7 +186,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'caldero_mentiroso',
     name: 'El Caldero Mentiroso',
     shortName: 'Caldero',
-    status: 'dev',
+    status: 'beta',
     mode: 'strategy',
     description: 'Sabotaje y engaño. Mantén la poción estable o hazla explotar en secreto.',
     rules: [
@@ -198,7 +198,7 @@ export const GAME_CATALOG: GameInfo[] = [
     durationSeconds: 60,
     maxPlayers: 8,
     maxPerHouse: 2,
-    enabled: false
+    enabled: true
   },
   {
     id: 'patronus_personalizado',

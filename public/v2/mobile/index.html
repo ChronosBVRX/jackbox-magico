@@ -115,6 +115,42 @@
       </div>
     </div>
 
+      <!-- Mapa Travieso -->
+      <div id="mapa-input" class="game-view" style="display:none">
+        <h2 id="mapa-question" class="title-text">¿Dónde estaba?</h2>
+        <div id="mapa-zones" class="sombrero-grid"></div>
+      </div>
+
+      <!-- Caldero Mentiroso -->
+      <div id="caldero-input" class="game-view" style="display:none">
+        <div id="ingredient-card" class="glass-panel" style="padding:1.5rem; margin-bottom:1.5rem; border-top: 5px solid var(--color-accent);">
+          <div id="ing-emoji" style="font-size:3rem">🌿</div>
+          <h3 id="ing-name">Ingrediente</h3>
+          <p id="ing-desc" style="font-size:0.8rem; opacity:0.8"></p>
+        </div>
+        
+        <div id="caldero-actions" class="sombrero-grid">
+          <button id="btn-caldero-add" class="btn-target" style="border-left: 5px solid #10b981">
+            <span>Meter al Caldero</span>
+            <small style="opacity:0.6">Efecto en poción</small>
+          </button>
+          <button id="btn-caldero-discard" class="btn-target" style="border-left: 5px solid #6b7280">
+            <span>Descartar</span>
+            <small style="opacity:0.6">No pasa nada</small>
+          </button>
+          <button id="btn-caldero-accuse" class="btn-target" style="border-left: 5px solid #ef4444">
+            <span>Acusar a alguien</span>
+            <small style="opacity:0.6">Si metió algo malo</small>
+          </button>
+        </div>
+
+        <div id="accuse-targets" style="display:none; margin-top:1.5rem;">
+          <h4 style="margin-bottom:0.5rem">¿A quién acusas?</h4>
+          <div id="accuse-grid" class="sombrero-grid"></div>
+          <button id="btn-accuse-back" class="btn-target" style="margin-top:1rem; opacity:0.5">Volver</button>
+        </div>
+      </div>
+
     <!-- Answer Sent Feedback -->
     <div class="wait-screen glass-panel" id="answer-sent" style="display: none;">
       <div class="wand-icon">✅</div>
