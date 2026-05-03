@@ -203,6 +203,8 @@ socket.on('game_player_state', (data) => {
   }
 });
 
+let mobileTimerInterval = null;
+
 function renderTriviaInput(data) {
     showMobileView('trivia-input');
     safeText('trivia-question-mobile', data.question || '...');
@@ -228,18 +230,28 @@ function renderTriviaInput(data) {
 
     // Timer Sync
     const bar = document.getElementById('trivia-timer-mobile');
+    const countEl = document.getElementById('trivia-timer-mobile-count');
+    
+    if (mobileTimerInterval) clearInterval(mobileTimerInterval);
+
     if (bar && data.startedAt && data.durationMs) {
-        const elapsed = Date.now() - data.startedAt;
-        const remaining = Math.max(0, data.durationMs - elapsed);
-        const percent = (remaining / data.durationMs) * 100;
-        
-        bar.style.transition = 'none';
-        bar.style.width = `${percent}%`;
-        
-        setTimeout(() => {
-            bar.style.transition = `width ${remaining}ms linear`;
-            bar.style.width = '0%';
-        }, 50);
+        const updateTimer = () => {
+            const elapsed = Date.now() - data.startedAt;
+            const remaining = Math.max(0, data.durationMs - elapsed);
+            const percent = (remaining / data.durationMs) * 100;
+            const seconds = Math.ceil(remaining / 1000);
+            
+            bar.style.transition = 'none';
+            bar.style.width = `${percent}%`;
+            if (countEl) countEl.textContent = seconds;
+
+            if (remaining <= 0) {
+                clearInterval(mobileTimerInterval);
+            }
+        };
+
+        updateTimer();
+        mobileTimerInterval = setInterval(updateTimer, 100);
     }
 }
 

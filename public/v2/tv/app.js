@@ -14,6 +14,8 @@ const viewResults = document.getElementById('view-results');
 
 let currentRoom = null;
 let currentGameId = null;
+let tvTimerInterval = null;
+let autoNextTriggered = false;
 
 // Helper to switch views
 function showView(viewId) {
@@ -552,13 +554,32 @@ function renderQuizView(data) {
   }
 
   const bar = document.getElementById('timer-bar');
-  if (bar) {
-    bar.style.transition = 'none';
-    bar.style.width = '100%';
-    setTimeout(() => {
-      bar.style.transition = `width ${data.durationMs || 20000}ms linear`;
-      bar.style.width = '0%';
-    }, 100);
+  const countEl = document.getElementById('tv-timer-count');
+  
+  if (tvTimerInterval) clearInterval(tvTimerInterval);
+  autoNextTriggered = false;
+
+  if (bar && data.startedAt && data.durationMs) {
+    const updateTimer = () => {
+      const elapsed = Date.now() - data.startedAt;
+      const remaining = Math.max(0, data.durationMs - elapsed);
+      const percent = (remaining / data.durationMs) * 100;
+      const seconds = Math.ceil(remaining / 1000);
+      
+      bar.style.transition = 'none';
+      bar.style.width = `${percent}%`;
+      if (countEl) countEl.textContent = seconds;
+
+      if (remaining <= 0 && !autoNextTriggered) {
+        autoNextTriggered = true;
+        clearInterval(tvTimerInterval);
+        console.log('Timer finished, auto-resolving...');
+        socket.emit('tv_next_round');
+      }
+    };
+
+    updateTimer();
+    tvTimerInterval = setInterval(updateTimer, 100);
   }
 }
 

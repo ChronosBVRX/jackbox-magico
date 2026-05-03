@@ -80,8 +80,11 @@
         <h1 class="text-gradient-gold" id="trivia-category">Categoría</h1>
         <p id="trivia-round">Ronda 1/10</p>
       </div>
-      <div class="timer-container glass-panel">
-        <div class="timer-bar" id="timer-bar"></div>
+      <div class="timer-container glass-panel" style="display: flex; align-items: center; gap: 1.5rem; padding: 0 1.5rem; height: 60px;">
+        <div id="tv-timer-count" style="font-family: var(--font-title); font-size: 2.5rem; color: var(--color-accent); min-width: 4rem; text-align: center;">20</div>
+        <div style="flex: 1; height: 12px; background: rgba(255,255,255,0.1); border-radius: 10px; overflow: hidden; border: 1px solid rgba(255,255,255,0.2);">
+          <div class="timer-bar" id="timer-bar" style="width: 100%; height: 100%; background: var(--color-accent);"></div>
+        </div>
       </div>
     </header>
 
