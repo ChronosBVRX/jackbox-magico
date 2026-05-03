@@ -18,6 +18,10 @@ app.use(express.json());
 const publicPath = path.join(process.cwd(), 'public');
 app.use(express.static(publicPath));
 
+// Servir catálogos de datos (V1 compatibility)
+const dataPath = path.join(process.cwd(), 'data');
+app.use('/data', express.static(dataPath));
+
 // Redirecciones automáticas a la V2
 app.get('/', (req, res) => res.redirect('/v2/tv/'));
 app.get('/tv', (req, res) => res.redirect('/v2/tv/'));

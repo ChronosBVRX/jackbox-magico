@@ -58,19 +58,32 @@ window.VoiceManagerV2 = (function() {
 
     async function init() {
         if (isLoaded) return;
-        try {
-            const [mainRes, extraRes, instrRes] = await Promise.all([
-                fetch('/data/voice_lines.json').then(r => r.json()),
-                fetch('/data/voice_lines_extra.json').then(r => r.json()),
-                fetch('/data/game_instruction_audio_map.json').then(r => r.json())
-            ]);
-            voiceCatalog = [...mainRes, ...extraRes];
-            instructionMap = instrRes;
-            isLoaded = true;
-            console.log("VoiceManagerV2: Catálogos cargados correctamente.");
-        } catch (err) {
-            console.error("VoiceManagerV2: Error al cargar catálogos", err);
+        
+        const catalogs = [
+            { key: 'main', url: '/data/voice_lines.json' },
+            { key: 'extra', url: '/data/voice_lines_extra.json' },
+            { key: 'instr', url: '/data/game_instruction_audio_map.json' }
+        ];
+
+        for (const cat of catalogs) {
+            try {
+                const res = await fetch(cat.url);
+                if (!res.ok) throw new Error(`Status ${res.status}`);
+                const data = await res.json();
+                
+                if (cat.key === 'instr') {
+                    instructionMap = data;
+                } else {
+                    voiceCatalog = [...voiceCatalog, ...data];
+                }
+                console.log(`VoiceManagerV2: Cargado ${cat.url}`);
+            } catch (err) {
+                console.warn(`VoiceManagerV2: No se pudo cargar ${cat.url}`, err);
+            }
         }
+
+        isLoaded = true;
+        console.log(`VoiceManagerV2: Inicialización completa. Líneas cargadas: ${voiceCatalog.length}`);
     }
 
     function unlock() {
