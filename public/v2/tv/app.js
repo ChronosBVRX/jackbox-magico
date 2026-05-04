@@ -155,12 +155,14 @@ const SelectionManager = {
 // Update showView
 function showView(viewId) {
   // Ocultar todas las vistas principales
-  document.querySelectorAll('.tv-layout, .init-screen, .selection-section').forEach(v => v.style.display = 'none');
+  document.querySelectorAll('.tv-layout, .init-screen, .selection-section, #view-loading').forEach(v => {
+    v.style.display = 'none';
+  });
   
   const target = document.getElementById(viewId);
   if (target) {
-    if (viewId === 'view-init') target.style.display = 'block';
-    else if (viewId === 'view-selection') target.style.display = 'flex';
+    if (viewId === 'view-init') target.style.display = 'flex';
+    else if (viewId === 'view-selection' || viewId === 'view-loading') target.style.display = 'flex';
     else target.style.display = 'grid';
   }
 }
