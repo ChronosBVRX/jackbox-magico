@@ -181,15 +181,18 @@ function safeHTML(id, value) {
   if (el) el.innerHTML = value ?? '';
 }
 
-btnCreate.addEventListener('click', () => {
-  if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
-  socket.emit('tv_create_room');
-});
+if (btnCreate) {
+  btnCreate.addEventListener('click', () => {
+    if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
+    socket.emit('tv_create_room');
+  });
+}
 
-
-btnNextRound.addEventListener('click', () => {
-  socket.emit('tv_next_round');
-});
+if (btnNextRound) {
+  btnNextRound.addEventListener('click', () => {
+    socket.emit('tv_next_round');
+  });
+}
 
 const btnSelectAdventure = document.getElementById('btn-select-adventure');
 if (btnSelectAdventure) {
@@ -199,25 +202,30 @@ if (btnSelectAdventure) {
   });
 }
 
-document.getElementById('btn-cancel-story').onclick = () => {
-  showView('view-lobby');
+const safeSetClick = (id, fn) => {
+    const el = document.getElementById(id);
+    if (el) el.onclick = fn;
 };
 
-document.getElementById('btn-story-next-dialogue').onclick = () => {
-  socket.emit('tv_story_next');
-};
+safeSetClick('btn-cancel-story', () => {
+    showView('view-lobby');
+});
 
-document.getElementById('btn-story-start-game').onclick = () => {
-  socket.emit('tv_story_next');
-};
+safeSetClick('btn-story-next-dialogue', () => {
+    socket.emit('tv_story_next');
+});
 
-document.getElementById('btn-story-next-score').onclick = () => {
-  socket.emit('tv_story_next');
-};
+safeSetClick('btn-story-start-game', () => {
+    socket.emit('tv_story_next');
+});
 
-document.getElementById('btn-story-end').onclick = () => {
-  socket.emit('tv_story_next');
-};
+safeSetClick('btn-story-next-score', () => {
+    socket.emit('tv_story_next');
+});
+
+safeSetClick('btn-story-end', () => {
+    socket.emit('tv_story_next');
+});
 
 // Voice Control UI Listeners
 const btnVoiceToggle = document.getElementById('btn-voice-toggle');
