@@ -8,6 +8,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         await window.VoiceManagerV2.init();
         showLoadingScreen('Cargando historias mágicas...', 60);
     }
+
+    if (window.MusicManager) {
+        window.MusicManager.init('/assets/audio/fondo-tv.mp3');
+    }
     
     // Simulate some extra loading for that "Premium" feel
     setTimeout(() => {
@@ -118,7 +122,7 @@ const SelectionManager = {
 
     updateScroll() {
         const track = document.getElementById('selection-carousel');
-        const offset = this.currentIndex * (280 + 40); // card width + gap
+        const offset = this.currentIndex * (320 + 40); // card width (320) + gap (40)
         track.style.transform = `translateX(-${offset}px)`;
         
         document.querySelectorAll('.selection-card').forEach((card, i) => {
@@ -234,6 +238,7 @@ window.addEventListener('keydown', (e) => {
             SelectionManager.navigate('right');
             break;
         case 'Enter':
+            if (window.MusicManager) window.MusicManager.play();
             SelectionManager.select();
             break;
         case 'Escape':
@@ -296,6 +301,7 @@ const btnShowSelection = document.getElementById('btn-show-selection');
 if (btnShowSelection) {
     btnShowSelection.onclick = () => {
         if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
+        if (window.MusicManager) window.MusicManager.play();
         SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
     };
 }
