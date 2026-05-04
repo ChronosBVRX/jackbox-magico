@@ -43,9 +43,41 @@ const SelectionManager = {
     active: false,
 
     init(stories, games) {
+        const filteredGames = games.filter(g => g.enabled && g.id !== 'copa_final' && g.id !== 'trivia_magica');
+        
+        const gameGroups = [
+            {
+                id: 'group_action',
+                title: 'Duelos y Acción',
+                desc: 'Pruebas de reflejos y rapidez. Incluye Snitch, Duelos y Artes Ridículas.',
+                type: 'group',
+                games: filteredGames.filter(g => ['atrapa_snitch', 'duelo_hechizos', 'artes_ridiculas'].includes(g.id)),
+                icon: '🪄',
+                min: 5, players: '2-8', diff: 'Media'
+            },
+            {
+                id: 'group_mystery',
+                title: 'Misterios del Castillo',
+                desc: 'Exploración y sigilo. Incluye Mapa Travieso, Retratos y Patronus.',
+                type: 'group',
+                games: filteredGames.filter(g => ['mapa_travieso', 'retratos_chismosos', 'patronus_personalizado'].includes(g.id)),
+                icon: '🖼️',
+                min: 5, players: '2-8', diff: 'Media'
+            },
+            {
+                id: 'group_knowledge',
+                title: 'Clases y Pociones',
+                desc: 'Pruebas de memoria y conocimiento. Incluye Pociones, Caldero y Hechizos.',
+                type: 'group',
+                games: filteredGames.filter(g => ['clase_pociones', 'caldero_mentiroso', 'hechizo_incompleto', 'sombrero_burlon'].includes(g.id)),
+                icon: '🧪',
+                min: 5, players: '2-8', diff: 'Media'
+            }
+        ];
+
         this.items = [
             ...stories.map(s => ({ ...s, type: 'story' })),
-            ...games.filter(g => g.enabled && g.id !== 'copa_final').map(g => ({ ...g, type: 'minigame' }))
+            ...gameGroups
         ];
         this.currentIndex = 0;
         this.render();
@@ -70,10 +102,14 @@ const SelectionManager = {
         this.items.forEach((item, i) => {
             const card = document.createElement('div');
             card.className = `selection-card ${i === this.currentIndex ? 'active' : ''}`;
+            const typeLabel = item.type === 'story' ? 'Historia' : (item.type === 'group' ? 'Categoría' : 'Minijuego');
+            const icon = item.icon || visualMap[item.id] || '✨';
+            const title = item.title || item.name || item.shortName;
+
             card.innerHTML = `
-                <div class="card-type">${item.type === 'story' ? 'Historia' : 'Minijuego'}</div>
-                <div class="card-icon">${visualMap[item.id] || '✨'}</div>
-                <h3>${item.shortName || item.shortTitle || item.name}</h3>
+                <div class="card-type">${typeLabel}</div>
+                <div class="card-icon">${icon}</div>
+                <h3>${title}</h3>
             `;
             track.appendChild(card);
         });
@@ -95,24 +131,40 @@ const SelectionManager = {
         const item = this.items[this.currentIndex];
         if (!item) return;
 
-        safeText('detail-title', item.name || item.title);
-        safeText('detail-desc', item.description);
-        safeText('detail-players', `👥 ${item.recommendedPlayers || `${item.maxPlayers} máx`}`);
-        safeText('detail-time', `⏱️ ${item.estimatedMinutes || item.durationSeconds || 20} min`);
-        safeText('detail-mode', `✨ ${item.mode || 'Historia'}`);
-        safeText('selection-category-label', item.type === 'story' ? 'Historias Mágicas' : 'Minijuegos Individuales');
+        safeText('detail-title', item.title || item.name);
+        safeText('detail-desc', item.desc || item.description);
+        safeText('detail-players', `👥 ${item.players || item.recommendedPlayers || `${item.maxPlayers} máx`}`);
+        safeText('detail-time', `⏱️ ${item.min || item.estimatedMinutes || 20} min`);
+        safeText('detail-mode', `✨ ${item.diff || item.mode || 'Historia'}`);
+        
+        let categoryLabel = 'Historias Mágicas';
+        if (item.type === 'group') categoryLabel = 'Pruebas por Categoría';
+        if (item.type === 'minigame') categoryLabel = 'Minijuegos Individuales';
+        safeText('selection-category-label', categoryLabel);
 
         const struct = document.getElementById('detail-structure');
         struct.innerHTML = '';
         
-        // If it's a story, show steps (simplified)
         if (item.steps) {
             item.steps.forEach(step => {
-                const icon = document.createElement('div');
-                icon.className = 'struct-step';
-                icon.setAttribute('data-label', step.title);
-                icon.textContent = step.type === 'fixed_minigame' || step.type === 'minigame_random' ? '🎮' : '📖';
-                struct.appendChild(icon);
+                const stepEl = document.createElement('div');
+                stepEl.className = 'struct-step-wrapper';
+                stepEl.innerHTML = `
+                    <div class="struct-step">${step.type === 'fixed_minigame' || step.type === 'minigame_random' || step.type === 'minigame' ? '🎮' : '📖'}</div>
+                    <span class="struct-label">${step.title}</span>
+                `;
+                struct.appendChild(stepEl);
+            });
+        } else if (item.games) {
+            // Show games in group
+            item.games.forEach(g => {
+                const stepEl = document.createElement('div');
+                stepEl.className = 'struct-step-wrapper';
+                stepEl.innerHTML = `
+                    <div class="struct-step">🎮</div>
+                    <span class="struct-label">${g.shortName || g.name}</span>
+                `;
+                struct.appendChild(stepEl);
             });
         }
     },
@@ -137,16 +189,21 @@ const SelectionManager = {
         
         if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
         
+        let finalItem = item;
+        if (item.type === 'group' && item.games.length > 0) {
+            // Pick random game from group
+            finalItem = item.games[Math.floor(Math.random() * item.games.length)];
+        }
+
         if (!currentRoom) {
-            // New Flow: Create room after selection
-            pendingGameSelection = item;
+            pendingGameSelection = finalItem;
             socket.emit('tv_create_room');
-            showLoadingScreen(`Preparando: ${item.name || item.title}...`, 40);
+            showLoadingScreen(`Preparando: ${finalItem.title || finalItem.name}...`, 40);
         } else {
-            if (item.type === 'story') {
-                socket.emit('tv_select_story', item.id);
+            if (finalItem.type === 'story') {
+                socket.emit('tv_select_story', finalItem.id);
             } else {
-                socket.emit('tv_start_game', item.id);
+                socket.emit('tv_start_game', finalItem.id);
             }
         }
     }

@@ -1215,32 +1215,32 @@ body {
   align-content: flex-start;
 }
 
+.struct-step-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.struct-label {
+  font-size: 0.7rem;
+  color: var(--color-accent);
+  font-family: var(--font-title);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  opacity: 0.8;
+}
+
 .struct-step {
-  width: 35px;
-  height: 35px;
+  width: 40px;
+  height: 40px;
   background: rgba(255,255,255,0.05);
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 8px;
+  border: 1px solid rgba(212,175,55,0.3);
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1rem;
-  position: relative;
-}
-
-.struct-step:hover::after {
-  content: attr(data-label);
-  position: absolute;
-  bottom: 120%;
-  left: 50%;
-  transform: translateX(-50%);
-  background: black;
-  color: white;
-  font-size: 0.7rem;
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
-  white-space: nowrap;
-  z-index: 100;
+  font-size: 1.1rem;
 }
 
 @keyframes slideUp {
