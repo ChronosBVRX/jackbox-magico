@@ -19,7 +19,7 @@ RAW_LINES = [
     ("lobby","luna","paciencia","Si el juego tarda un poquito, tal vez los nargles están mordiendo el router. Respiremos y esperemos.","Esperando jugadores"),
     ("lobby","sombrero","jugadores","Ya casi estamos. Solo falta que los últimos magos dejen de pelear con el navegador del celular.","Faltan jugadores"),
     ("lobby","mcgonagall","listos","Cuando todos estén dentro, comenzaremos. Y no, cambiarse de casa a mitad del juego no es una estrategia válida.","Antes de iniciar"),
-    ("lobby","dumbledore","comenzar","Que comience la noche. Recuerden: las respuestas correctas dan puntos; las respuestas dramáticas dan anécdotas.","Botón iniciar"),
+    ("rules","dumbledore","comenzar","Que comience la noche. Recuerden: las respuestas correctas dan puntos; las respuestas dramáticas dan anécdotas.","Reglas previas antes de iniciar","lobby_dumbledore_comenzar.mp3"),
     ("rules","mcgonagall","basicas","Reglas básicas: aparece una amenaza ridícula, tienes seis segundos para elegir la mejor defensa. Dudar demasiado también es una decisión… mala.","Reglas"),
     ("rules","dumbledore","puntos","Respuesta correcta: cien puntos. Respuesta rápida: treinta extra. Racha de tres: ochenta. Error: menos veinte y una lección de humildad.","Puntos"),
     ("rules","sombrero","humor","Si el modo humor está activo, la respuesta falsa más graciosa puede ganar veinte puntos. Porque en esta escuela hasta el caos tiene reglamento.","Modo humor"),
@@ -101,10 +101,12 @@ RAW_LINES = [
     ("explanation","sombrero","exp_graciosa","No era correcta, pero admito que tenía estilo. Y el estilo, aunque no salva vidas, salva reuniones.","Explicación"),
 ]
 
+
 def build_catalog() -> dict:
     voice_lines = []
-    for event, key, slug, text, usage in RAW_LINES:
-        audio_file = f"{event}_{key}_{slug}.mp3"
+    for raw_line in RAW_LINES:
+        event, key, slug, text, usage, *rest = raw_line
+        audio_file = rest[0] if rest else f"{event}_{key}_{slug}.mp3"
         voice_lines.append({
             "id": f"{event}.{key}.{slug}",
             "event": event,
@@ -117,13 +119,14 @@ def build_catalog() -> dict:
             "mood": "humor mágico en español latino",
         })
     return {
-        "version": "1.0.0",
+        "version": "1.0.1",
         "project": "jackbox-magico",
-        "description": "Catálogo central de referencias de audio para ElevenLabs.",
+        "description": "Catálogo central de referencias de audio para ElevenLabs. Las líneas se clasifican por contexto de frase, no por prefijo del archivo.",
         "safety_note": "Usa voces originales o inspiradas en arquetipos mágicos. Evita clonar voces reales sin autorización.",
         "characters": {k: {"display_name": v[0], "direction": v[1]} for k, v in CHARACTERS.items()},
         "voice_lines": voice_lines,
     }
+
 
 if __name__ == "__main__":
     output = Path(__file__).resolve().parents[1] / "data" / "voice_lines.json"
