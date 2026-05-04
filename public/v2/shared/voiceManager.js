@@ -56,6 +56,20 @@ window.VoiceManagerV2 = (function() {
         story_ready: "intro_general"
     };
 
+    const EVENT_OVERRIDES_BY_AUDIO_FILE = {
+        "boot_hermione_instruccion.mp3": "rules",
+        "lobby_dumbledore_comenzar.mp3": "rules",
+    };
+
+    const WINNER_AUDIO_BY_HOUSE = {
+        gryffindor: "winner_dumbledore_gryffindor.mp3",
+        slytherin: "winner_dumbledore_slytherin.mp3",
+        ravenclaw: "winner_dumbledore_ravenclaw.mp3",
+        hufflepuff: "winner_dumbledore_hufflepuff.mp3",
+        empate: "winner_sombrero_empate.mp3",
+        tie: "winner_sombrero_empate.mp3"
+    };
+
     async function init() {
         if (isLoaded) return;
         
@@ -76,7 +90,13 @@ window.VoiceManagerV2 = (function() {
                 } else {
                     const lines = data.voice_lines || data;
                     if (Array.isArray(lines)) {
-                        voiceCatalog = [...voiceCatalog, ...lines];
+                        // Reclassification based on audio file name (contextual fix)
+                        const cleanLines = lines.map(line => {
+                            const override = EVENT_OVERRIDES_BY_AUDIO_FILE[line.audio_file];
+                            if (override) return { ...line, event: override };
+                            return line;
+                        });
+                        voiceCatalog = [...voiceCatalog, ...cleanLines];
                     }
                 }
                 console.log(`VoiceManagerV2: Cargado ${cat.url}`);
@@ -99,6 +119,22 @@ window.VoiceManagerV2 = (function() {
     }
 
     function isVoiceEnabled() { return voiceEnabled && !isMuted; }
+
+    function isInstructionScreenVisible() {
+        // Check V2 IDs
+        const v2Instr = document.getElementById("view-story-instructions");
+        if (v2Instr && v2Instr.style.display !== 'none') return true;
+
+        // Check V1 IDs (legacy compatibility)
+        const v1Rules = document.getElementById("view-rules");
+        if (v1Rules && (v1Rules.classList.contains("visible") || v1Rules.style.display !== 'none')) return true;
+
+        // Check narrative phases if available
+        const phase = window.currentGameState?.phase || "";
+        if (phase === 'story_instructions' || phase === 'rules') return true;
+
+        return false;
+    }
 
     function toggleMute() {
         isMuted = !isMuted;
@@ -161,6 +197,13 @@ window.VoiceManagerV2 = (function() {
         if (!isVoiceEnabled() || !isLoaded) return;
         
         const normId = normalizeGameId(gameId);
+        
+        // Protection: intro_general ONLY in instructions screen
+        if (normId === 'intro_general' && !isInstructionScreenVisible()) {
+            console.log("VoiceManagerV2: intro_general bloqueado fuera de pantalla de instrucciones");
+            return;
+        }
+
         let path = null;
 
         // Try instruction map first
@@ -184,15 +227,19 @@ window.VoiceManagerV2 = (function() {
 
     function playWinnerVoice(house) {
         if (!isVoiceEnabled() || !isLoaded) return;
-        const h = (house || "").toLowerCase();
-        const lines = voiceCatalog.filter(l => l.event === 'winner' && l.audio_file.toLowerCase().includes(h));
+        const h = (house || "").toLowerCase().trim();
+        const audioFile = WINNER_AUDIO_BY_HOUSE[h];
         
-        if (lines.length > 0) {
-            const sel = lines[Math.floor(Math.random() * lines.length)];
-            addToQueue({ path: sel.asset_path || (VOICE_BASE + sel.audio_file), interrupt: true });
-        } else {
+        if (!audioFile) {
+            console.warn("VoiceManagerV2: No hay audio exacto para la casa", house);
             playEvent("winner", { interrupt: true });
+            return;
         }
+
+        const selected = voiceCatalog.find(l => l.event === 'winner' && l.audio_file === audioFile);
+        const path = selected ? (selected.asset_path || (VOICE_BASE + selected.audio_file)) : (VOICE_BASE + audioFile);
+        
+        addToQueue({ path, interrupt: true });
     }
 
     function playVoiceSlot(slotId, options = {}) {
