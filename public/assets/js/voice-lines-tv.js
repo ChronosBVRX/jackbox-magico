@@ -4,7 +4,10 @@
 
   const VOICE_ENABLED_KEY = "jackbox_magico_voice_enabled";
   const LEGACY_MUTE_KEY = "jackbox_magico_narrator_muted";
-  const CATALOG_URLS = ["/data/voice_lines.json", "/data/voice_lines_extra.json"];
+
+  // Se carga primero el catálogo extra para que pueda corregir/clasificar líneas
+  // del catálogo generado sin tocar ni mover archivos mp3.
+  const CATALOG_URLS = ["/data/voice_lines_extra.json", "/data/voice_lines.json"];
   const INSTRUCTION_MAP_URL = "/data/game_instruction_audio_map.json";
   const VOICE_BASE = "/assets/audio/voice_lines/";
 
@@ -26,6 +29,13 @@
     "system",
     "explanation",
   ]);
+
+  // Clasificación contextual por significado real de la frase.
+  // Importante: no renombra archivos ni cambia rutas; solo corrige el evento lógico.
+  const EVENT_OVERRIDES_BY_AUDIO_FILE = {
+    "boot_hermione_instruccion.mp3": "rules",
+    "lobby_dumbledore_comenzar.mp3": "rules",
+  };
 
   const DEFAULT_INSTRUCTION_VOICES = {
     intro_general: "assets/audio/voice_lines/00_intro_general_dumbledore.mp3",
@@ -85,6 +95,16 @@
     patronus_personalizado: "luna",
     copa_final: "dumbledore",
     cierre_ganador: "sombrero",
+  };
+
+  const WINNER_AUDIO_BY_HOUSE = {
+    gryffindor: "winner_dumbledore_gryffindor.mp3",
+    slytherin: "winner_dumbledore_slytherin.mp3",
+    ravenclaw: "winner_dumbledore_ravenclaw.mp3",
+    hufflepuff: "winner_dumbledore_hufflepuff.mp3",
+    empate: "winner_sombrero_empate.mp3",
+    tie: "winner_sombrero_empate.mp3",
+    draw: "winner_sombrero_empate.mp3",
   };
 
   let catalog = null;
@@ -182,6 +202,17 @@
     return res.json();
   }
 
+  function normalizeLineEvent(line) {
+    const audioFile = String(line?.audio_file || "").trim();
+    const override = EVENT_OVERRIDES_BY_AUDIO_FILE[audioFile];
+    if (!override) return line;
+    return {
+      ...line,
+      event: override,
+      usage: line?.usage && line.usage !== "Automated" ? line.usage : "Reclasificada por contexto de frase",
+    };
+  }
+
   function mergeCatalogs(catalogs) {
     const combined = {
       version: "combined",
@@ -190,14 +221,27 @@
     };
 
     const seenIds = new Set();
+    const seenAudioFiles = new Set();
 
     for (const item of catalogs) {
       if (!item) continue;
       Object.assign(combined.characters, item.characters || {});
-      for (const line of item.voice_lines || []) {
-        if (!line?.id || seenIds.has(line.id)) continue;
+
+      for (const rawLine of item.voice_lines || []) {
+        if (!rawLine?.id && !rawLine?.audio_file) continue;
+
+        const line = normalizeLineEvent(rawLine);
+        const idKey = String(line.id || "");
+        const audioKey = String(line.audio_file || "");
+
+        // Evita que una misma frase quede duplicada cuando aparece tanto en
+        // voice_lines_extra.json como en voice_lines.json con ids diferentes.
+        if (idKey && seenIds.has(idKey)) continue;
+        if (audioKey && seenAudioFiles.has(audioKey)) continue;
+
         combined.voice_lines.push(line);
-        seenIds.add(line.id);
+        if (idKey) seenIds.add(idKey);
+        if (audioKey) seenAudioFiles.add(audioKey);
       }
     }
 
@@ -401,47 +445,35 @@
 
   async function playWinnerVoice(houseName) {
     if (!isVoiceEnabled()) return false;
-    const house = String(houseName || "").toLowerCase();
-    
+
+    const house = String(houseName || "")
+      .trim()
+      .toLowerCase();
+
+    const audioFile = WINNER_AUDIO_BY_HOUSE[house];
+    if (!audioFile) {
+      log("winner_house_not_supported", { houseName });
+      return false;
+    }
+
     await loadCatalog();
     const lines = catalog?.voice_lines || [];
-    
-    // El empate tiene su propia lógica
-    if (house === "empate") {
-      const tieLine = lines.find(line => line.id === "winner.sombrero.empate" || line.audio_file.includes("empate"));
-      if (tieLine) {
-        const paths = candidatePaths(tieLine);
-        return enqueuePlayback(paths[0], 1.0, { clearQueue: true });
-      }
-      return playVoiceLine("winner", { voice_key: "sombrero", clearQueue: true });
-    }
+    const selected = lines.find((line) => line.event === "winner" && line.audio_file === audioFile);
+    const path = selected ? candidatePaths(selected)[0] : `${VOICE_BASE}${audioFile}`;
 
-    // Buscar la línea de Dumbledore para la casa específica
-    const selected = lines.find(line => 
-      line.event === "winner" && 
-      line.voice_key === "dumbledore" &&
-      line.audio_file.toLowerCase().includes(house)
-    );
-    
-    if (!selected) {
-      log("winner_house_not_found", { house });
-      return playVoiceLine("winner", { clearQueue: true });
-    }
+    if (!path) return false;
 
-    const paths = candidatePaths(selected);
-    if (!paths.length) return false;
-
-    log("playing_winner_house", { house, path: paths[0] });
-    return enqueuePlayback(paths[0], 1.0, { clearQueue: true });
+    log("playing_winner_exact_audio", { house, audioFile, path });
+    return enqueuePlayback(path, 1.0, { clearQueue: true });
   }
 
   async function playAudioFile(path, options = {}) {
     if (!isVoiceEnabled()) return false;
     const fullPath = normalizeInstructionPath(path);
     if (!fullPath) return false;
-    
-    return enqueuePlayback(fullPath, options.volume ?? 1.0, { 
-      clearQueue: Boolean(options.clearQueue || options.interrupt) 
+
+    return enqueuePlayback(fullPath, options.volume ?? 1.0, {
+      clearQueue: Boolean(options.clearQueue || options.interrupt),
     });
   }
 
@@ -524,30 +556,25 @@
     return GAME_ID_ALIASES[raw] || raw;
   }
 
-  // Protección: las voces de instrucciones solo suenan cuando la TV
-  // muestra una pantalla narrativa (reglas, intro, instrucciones de minijuego).
-  // Esto evita que suenen durante trivia activa, resultados o lobby.
   function isInstructionScreenVisible() {
-    // Pantalla de reglas clásica (elemento DOM)
     const rulesView = document.getElementById("view-rules");
     if (rulesView && rulesView.classList.contains("visible")) return true;
 
-    // Leer la fase actual desde el estado global expuesto por tv/app.js
     const narrativePhases = new Set([
-      "rules", "scene_intro", "scene_rules", "scene_instructions",
+      "rules",
+      "scene_intro",
+      "scene_rules",
+      "scene_instructions",
     ]);
+
     try {
-      const phase =
-        window.currentGameState?.phase ||
-        window.lastKnownPhase ||
-        "";
+      const phase = window.currentGameState?.phase || window.lastKnownPhase || "";
       if (narrativePhases.has(phase)) return true;
     } catch (_) {}
 
     return false;
   }
 
-  // Alias para compatibilidad con código anterior que usaba isRulesScreenVisible
   const isRulesScreenVisible = isInstructionScreenVisible;
 
   async function playInstructionVoice(gameId, roundId = "1", forceRepeat = false) {
@@ -557,8 +584,6 @@
       const normalizedId = normalizeGameId(gameId);
       if (!normalizedId) return false;
 
-      // BLOQUEO DE SEGURIDAD: intro_general solo puede sonar en pantallas narrativas
-      // No debe sonar durante trivia, resultados, lobby ni cada polling.
       if (normalizedId === "intro_general" && !isInstructionScreenVisible()) {
         log("intro_general_blocked_outside_instruction_screen", { gameId, roundId });
         return false;
@@ -623,7 +648,6 @@
           log("repeat_blocked_voice_disabled");
           return;
         }
-        // Permitir repetir en cualquier pantalla de instrucciones narrativas
         if (!isInstructionScreenVisible()) {
           log("repeat_blocked_not_in_instruction_screen");
           return;
@@ -666,7 +690,7 @@
     return playVoiceLine(eventName, {
       ...options,
       force: true,
-      clearQueue: true
+      clearQueue: true,
     });
   }
 
@@ -683,6 +707,7 @@
     isMuted: () => !isVoiceEnabled(),
     isVoiceEnabled,
     setVoiceEnabled,
+    updateVoiceControls,
     loadCatalog,
     loadInstructionMap,
     unlock,
@@ -694,5 +719,7 @@
       stopCurrentAudio();
     },
     getLastInstructionKey: () => lastInstructionPlayed,
+    isRulesScreenVisible,
+    isInstructionScreenVisible,
   };
 })();
