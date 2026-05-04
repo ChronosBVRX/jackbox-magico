@@ -192,13 +192,46 @@ const SelectionManager = {
         const item = this.items[this.currentIndex];
         
         if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
+        if (window.MusicManager) window.MusicManager.play();
         
-        let finalItem = item;
-        if (item.type === 'group' && item.games.length > 0) {
-            // Pick random game from group
-            finalItem = item.games[Math.floor(Math.random() * item.games.length)];
+        this.showPreamble(item);
+    },
+
+    showPreamble(item) {
+        this.selectedItem = item;
+        safeText('preamble-title', item.title || item.name);
+        safeText('preamble-desc', item.desc || item.description);
+        safeText('preamble-type-label', item.type === 'story' ? 'Historia Premium' : 'Categoría de Minijuegos');
+        
+        const list = document.getElementById('preamble-minigames-list');
+        list.innerHTML = '';
+        
+        let games = [];
+        if (item.steps) {
+            games = item.steps.filter(s => s.type === 'minigame' || s.type === 'fixed_minigame');
+        } else if (item.games) {
+            games = item.games;
         }
 
+        safeText('preamble-game-count', games.length);
+
+        games.forEach((g, i) => {
+            const div = document.createElement('div');
+            div.className = 'preamble-game-item';
+            div.style.animationDelay = `${i * 0.1}s`;
+            const icon = g.icon || '🎮';
+            const name = g.title || g.name || g.shortName;
+            div.innerHTML = `<span class="icon">${icon}</span> <span class="name">${name}</span>`;
+            list.appendChild(div);
+        });
+
+        showView('view-preamble');
+    },
+
+    confirmSelection() {
+        if (!this.selectedItem) return;
+        const finalItem = this.selectedItem;
+        
         if (!currentRoom) {
             pendingGameSelection = finalItem;
             socket.emit('tv_create_room');
@@ -336,6 +369,14 @@ safeSetClick('btn-cancel-story', () => {
     showView('view-lobby');
 });
 
+safeSetClick('btn-preamble-back', () => {
+    showView('view-selection');
+});
+
+safeSetClick('btn-preamble-confirm', () => {
+    SelectionManager.confirmSelection();
+});
+
 safeSetClick('btn-story-next-dialogue', () => {
     socket.emit('tv_story_next');
 });
@@ -444,14 +485,27 @@ socket.on('room_state', (state) => {
   if (state.status === 'lobby') {
     showView('view-lobby');
     renderPlayers(state.players);
-    playerCount.textContent = `${state.players.length} / 8 Jugadores`;
+    
+    const count = state.players.length;
+    playerCount.textContent = `${count} / 8 Jugadores`;
     
     const actions = document.getElementById('lobby-actions');
-    if (state.players.length >= 1) {
-      statusText.textContent = `${state.players.length} mago(s) listo(s)`;
+    const btnStart = document.getElementById('btn-start');
+
+    if (count >= 1) {
+      statusText.textContent = count < 4 ? `Faltan ${4 - count} magos para comenzar` : `${count} magos listos`;
       if (actions) actions.style.display = 'flex';
+      
+      if (btnStart) {
+        btnStart.style.display = count >= 4 ? 'block' : 'none';
+        if (count < 4) {
+          btnStart.classList.add('disabled'); // Optional styling
+        } else {
+          btnStart.classList.remove('disabled');
+        }
+      }
     } else {
-      statusText.textContent = 'Esperando jugadores...';
+      statusText.textContent = 'Esperando jugadores (Mín. 4)...';
       if (actions) actions.style.display = 'none';
     }
   }

@@ -1292,6 +1292,97 @@ body {
   width: 100%;
 }
 
+/* Preamble View Styles */
+.preamble-main {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100%;
+}
+
+.preamble-content {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4rem;
+    padding: 4rem;
+    max-width: 1200px;
+    width: 90%;
+}
+
+.preamble-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.preamble-stats {
+    display: flex;
+    gap: 3rem;
+    margin-top: 2rem;
+}
+
+.stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: rgba(255,255,255,0.05);
+    padding: 1.5rem 2.5rem;
+    border-radius: 1.5rem;
+    border: 1px solid var(--glass-border);
+}
+
+.stat-value {
+    font-size: 3.5rem;
+    font-weight: 800;
+    font-family: var(--font-title);
+    color: var(--color-accent);
+}
+
+.stat-label {
+    font-size: 0.9rem;
+    color: var(--color-text-dim);
+    text-transform: uppercase;
+    letter-spacing: 2px;
+}
+
+.preamble-list-section h3 {
+    font-family: var(--font-title);
+    color: var(--color-accent);
+    margin-bottom: 2rem;
+    font-size: 1.8rem;
+}
+
+.preamble-grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 1.5rem;
+}
+
+.preamble-game-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255,255,255,0.03);
+    border-radius: 1rem;
+    border: 1px solid rgba(255,255,255,0.05);
+    animation: fadeIn 0.5s ease-out backwards;
+}
+
+.preamble-game-item .icon {
+    font-size: 2rem;
+}
+
+.preamble-game-item .name {
+    font-weight: 600;
+    font-size: 1.1rem;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
 .btn-select-adventure {
   background: linear-gradient(135deg, #8b5cf6 0%, #6d28d9 100%);
   padding: 1.2rem 3rem;

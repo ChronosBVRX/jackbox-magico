@@ -293,6 +293,7 @@
   </div>
 
   <!-- Selection Carousel View (Premium) -->
+  <!-- Selection Carousel View (Premium) -->
   <div class="tv-layout" id="view-selection" style="display: none;">
     <header class="header">
         <div class="title-group">
@@ -335,6 +336,46 @@
             <span style="color:var(--color-accent)">[OK]</span> CONFIRMAR
         </p>
         <div style="width: 100px;"></div> <!-- Spacer to keep text centered -->
+    </footer>
+  </div>
+
+  <!-- Preamble View (Before room creation) -->
+  <div class="tv-layout" id="view-preamble" style="display: none;">
+    <header class="header">
+        <div class="title-group">
+            <h1 class="text-gradient-gold" id="preamble-title">Preparando Aventura</h1>
+            <p id="preamble-type-label">Detalles del Modo</p>
+        </div>
+    </header>
+    
+    <main class="preamble-main">
+        <div class="preamble-content glass-panel">
+            <div class="preamble-info">
+                <p id="preamble-desc" class="narrative-text" style="font-size: 1.5rem;"></p>
+                <div class="preamble-stats">
+                    <div class="stat-item">
+                        <span class="stat-value" id="preamble-game-count">0</span>
+                        <span class="stat-label">Minijuegos</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-value" id="preamble-player-req">4+</span>
+                        <span class="stat-label">Jugadores</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="preamble-list-section">
+                <h3>Incluye las pruebas:</h3>
+                <div id="preamble-minigames-list" class="preamble-grid">
+                    <!-- Dynamic list -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <footer class="footer glass-panel" style="padding: 1.5rem; display: flex; justify-content: center; gap: 4rem; align-items: center;">
+        <button class="btn-start-premium" id="btn-preamble-back" style="background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);">Volver</button>
+        <button class="btn-start-premium" id="btn-preamble-confirm">CREAR SALA MÁGICA</button>
     </footer>
   </div>
 

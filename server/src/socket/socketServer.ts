@@ -58,14 +58,7 @@ export function setupSocketServer(httpServer: HttpServer) {
       const { roomCode, isTv } = socket.data;
       if (!isTv || !roomCode) return;
 
-      const minPlayersByGame: Record<string, number> = {
-        duelo_hechizos: 2,
-        sombrero_burlon: 2,
-        patronus_personalizado: 2,
-        caldero_mentiroso: 2
-      };
-
-      const minRequired = minPlayersByGame[gameId] || 1;
+      const minRequired = 4;
       const connectedPlayers = roomEngine.getConnectedPlayers(roomCode);
 
       if (connectedPlayers.length < minRequired) {
@@ -98,6 +91,12 @@ export function setupSocketServer(httpServer: HttpServer) {
     socket.on('tv_select_story', (storyId) => {
       const { roomCode, isTv } = socket.data;
       if (!isTv || !roomCode) return;
+
+      const connectedPlayers = roomEngine.getConnectedPlayers(roomCode);
+      if (connectedPlayers.length < 4) {
+        socket.emit('error_message', 'Se requieren al menos 4 jugadores para iniciar una historia.');
+        return;
+      }
 
       const storyState = storyEngine.initStory(storyId);
       if (!storyState) return;
