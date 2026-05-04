@@ -203,6 +203,11 @@ const SelectionManager = {
         safeText('preamble-desc', item.desc || item.description);
         safeText('preamble-type-label', item.type === 'story' ? 'Historia Premium' : 'Categoría de Minijuegos');
         
+        const img = document.getElementById('preamble-image');
+        if (img) {
+            img.src = item.image || '/assets/images/previews/minijuegos_categoria.png';
+        }
+        
         const list = document.getElementById('preamble-minigames-list');
         list.innerHTML = '';
         
@@ -563,13 +568,13 @@ socket.on('game_state', (data) => {
 
 // Catalogs for selection
 const STORY_CATALOG_FRONT = [
-    { id: 'copa_casas_clasica', title: 'Copa de las Casas Clásica', desc: 'La experiencia definitiva de Jackbox Mágico. Un viaje por el Gran Comedor, clases y la gran final.', min: 35, players: '2-8', diff: 'Normal', steps: [
+    { id: 'copa_casas_clasica', title: 'Copa de las Casas Clásica', image: '/assets/images/previews/copa_casas.png', desc: 'La experiencia definitiva de Jackbox Mágico. Un viaje por el Gran Comedor, clases y la gran final.', min: 35, players: '2-8', diff: 'Normal', steps: [
         { title: 'Bienvenida', type: 'story' }, { title: 'Trivia Mágica', type: 'minigame' }, { title: 'Pociones', type: 'minigame' }, { title: 'Duelo', type: 'minigame' }, { title: 'Copa Final', type: 'minigame' }
     ]},
-    { id: 'noche_en_el_castillo', title: 'Noche en el Castillo', desc: 'Explora los pasillos prohibidos. Una historia de misterio y sigilo con pruebas de memoria visual.', min: 40, players: '3-8', diff: 'Difícil', steps: [
+    { id: 'noche_en_el_castillo', title: 'Noche en el Castillo', image: '/assets/images/previews/noche_castillo.png', desc: 'Explora los pasillos prohibidos. Una historia de misterio y sigilo con pruebas de memoria visual.', min: 40, players: '3-8', diff: 'Difícil', steps: [
         { title: 'Intro Nocturna', type: 'story' }, { title: 'Mapa Travieso', type: 'minigame' }, { title: 'Retratos', type: 'minigame' }, { title: 'Hechizo', type: 'minigame' }, { title: 'Final', type: 'minigame' }
     ]},
-    { id: 'torneo_magico_relampago', title: 'Torneo Mágico Relámpago', desc: 'Sin diálogos largos, solo acción pura. Perfecto para partidas rápidas y competitivas.', min: 15, players: '2-8', diff: 'Fácil', steps: [
+    { id: 'torneo_magico_relampago', title: 'Torneo Mágico Relámpago', image: '/assets/images/previews/torneo_relampago.png', desc: 'Sin diálogos largos, solo acción pura. Perfecto para partidas rápidas y competitivas.', min: 15, players: '2-8', diff: 'Fácil', steps: [
         { title: 'Inicio', type: 'story' }, { title: 'Snitch', type: 'minigame' }, { title: 'Artes Ridículas', type: 'minigame' }, { title: 'Final', type: 'minigame' }
     ]}
 ];
