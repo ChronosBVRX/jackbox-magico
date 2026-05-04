@@ -1,5 +1,23 @@
 const socket = io();
 
+// Initial App Load Logic
+document.addEventListener('DOMContentLoaded', async () => {
+    showLoadingScreen('Iniciando sistema de audio...', 10);
+    
+    if (window.VoiceManagerV2) {
+        await window.VoiceManagerV2.init();
+        showLoadingScreen('Cargando historias mágicas...', 60);
+    }
+    
+    // Simulate some extra loading for that "Premium" feel
+    setTimeout(() => {
+        showLoadingScreen('Listo para la aventura', 100);
+        setTimeout(() => {
+            showView('view-init');
+        }, 800);
+    }, 1200);
+});
+
 const viewInit = document.getElementById('view-init');
 const viewLobby = document.getElementById('view-lobby');
 const btnCreate = document.getElementById('btn-create');
@@ -15,6 +33,7 @@ let currentRoom = null;
 let currentGameId = null;
 let tvTimerInterval = null;
 let autoNextTriggered = false;
+let pendingGameSelection = null;
 window.lastVoiceCue = null;
 
 // Selection Manager (Premium Carousel)
@@ -115,10 +134,20 @@ const SelectionManager = {
     select() {
         if (!this.active) return;
         const item = this.items[this.currentIndex];
-        if (item.type === 'story') {
-            socket.emit('tv_select_story', item.id);
+        
+        if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
+        
+        if (!currentRoom) {
+            // New Flow: Create room after selection
+            pendingGameSelection = item;
+            socket.emit('tv_create_room');
+            showLoadingScreen(`Preparando: ${item.name || item.title}...`, 40);
         } else {
-            socket.emit('tv_start_game', item.id);
+            if (item.type === 'story') {
+                socket.emit('tv_select_story', item.id);
+            } else {
+                socket.emit('tv_start_game', item.id);
+            }
         }
     }
 };
@@ -179,6 +208,37 @@ function safeText(id, value) {
 function safeHTML(id, value) {
   const el = document.getElementById(id);
   if (el) el.innerHTML = value ?? '';
+}
+
+function showLoadingScreen(message, progress = 0) {
+    const view = document.getElementById('view-loading');
+    if (!view) return;
+    
+    safeText('loading-status', message);
+    const bar = document.getElementById('loading-progress');
+    if (bar) bar.style.width = `${progress}%`;
+    
+    showView('view-loading');
+    
+    if (progress < 100) {
+        let current = progress;
+        const interval = setInterval(() => {
+            current += Math.random() * 5;
+            if (current >= 95) {
+                clearInterval(interval);
+            } else {
+                if (bar) bar.style.width = `${current}%`;
+            }
+        }, 200);
+    }
+}
+
+const btnShowSelection = document.getElementById('btn-show-selection');
+if (btnShowSelection) {
+    btnShowSelection.onclick = () => {
+        if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
+        SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
+    };
 }
 
 if (btnCreate) {
@@ -278,20 +338,40 @@ socket.on('game_started', (gameId) => {
 socket.on('room_created', (code) => {
   currentRoom = code;
   displayCode.textContent = code;
-  showView('view-lobby');
+  
+  const bar = document.getElementById('loading-progress');
+  if (bar) bar.style.width = '100%';
+
+  setTimeout(() => {
+    showView('view-lobby');
+    
+    // If we had a pending selection, trigger it now
+    if (pendingGameSelection) {
+        const item = pendingGameSelection;
+        if (item.type === 'story') {
+            socket.emit('tv_select_story', item.id);
+        } else {
+            socket.emit('tv_start_game', item.id);
+        }
+        pendingGameSelection = null;
+        SelectionManager.active = false;
+    }
+  }, 800);
 
   const mobileUrl = `${window.location.origin}/v2/mobile/?room=${encodeURIComponent(code)}`;
   const joinUrl = document.getElementById('join-url');
   if (joinUrl) joinUrl.textContent = `${window.location.origin}/v2/mobile/`;
 
   const qrContainer = document.getElementById('qrcode');
-  qrContainer.innerHTML = '';
-  const qrImg = document.createElement('img');
-  qrImg.className = 'qr-image';
-  qrImg.width = 220;
-  qrImg.height = 220;
-  qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(mobileUrl)}`;
-  qrContainer.appendChild(qrImg);
+  if (qrContainer) {
+    qrContainer.innerHTML = '';
+    const qrImg = document.createElement('img');
+    qrImg.className = 'qr-image';
+    qrImg.width = 220;
+    qrImg.height = 220;
+    qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(mobileUrl)}`;
+    qrContainer.appendChild(qrImg);
+  }
 });
 
 socket.on('room_state', (state) => {

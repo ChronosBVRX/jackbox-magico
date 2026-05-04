@@ -12,8 +12,6 @@ window.VoiceBridge = (function() {
     function init(socket) {
         if (!window.VoiceManagerV2) return;
         
-        window.VoiceManagerV2.init();
-
         socket.on('voice_cue', (cue) => {
             handleVoiceCue(cue);
         });
