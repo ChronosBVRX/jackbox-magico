@@ -294,7 +294,11 @@ const NavigationManager = {
 
         if (!current) return;
         this.activeView = current.id;
-        this.currentIndex = 0; // Always reset to first element on view change
+        
+        // Always reset to first element on view change or if current index is invalid
+        if (this.currentIndex === -1 || !this.elements[this.currentIndex]) {
+            this.currentIndex = 0;
+        }
 
         // Special case: Selection carousel
         if (this.activeView === 'view-selection') {
@@ -440,8 +444,9 @@ function showView(viewId) {
         target.style.display = 'grid';
     }
     
-    // Reset and update navigation
-    setTimeout(() => NavigationManager.update(), 50);
+    // Reset and update navigation (with a bit more delay to ensure DOM is ready)
+    setTimeout(() => NavigationManager.update(), 150);
+    setTimeout(() => NavigationManager.update(), 500); // Fallback for slower renders
   }
 }
 
