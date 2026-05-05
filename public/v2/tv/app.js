@@ -517,9 +517,7 @@ window.addEventListener('keydown', (e) => {
         case 'd':
         case 'D':
             if (currentRoom) {
-                const room = roomEngine?.debugMode; // Mock or get from state
-                // Since roomEngine isn't here, we just emit based on current state
-                // We'll use a local toggle or wait for room_state
+                console.log("Toggling debug mode...");
                 socket.emit('tv_toggle_debug', !window._debugEnabled);
             }
             break;
@@ -859,10 +857,16 @@ socket.on('room_state', (state) => {
         } else {
             btnStart.textContent = 'COMENZAR PARTIDA';
         }
+        
+        // Enable button if debug mode OR enough players (min 4 for games, but maybe min 2 for testing)
+        const canStart = state.debugMode || state.players.length >= 2;
+        btnStart.classList.toggle('disabled', !canStart);
+        btnStart.style.opacity = canStart ? '1' : '0.3';
     }
 
-    // Always show navigation
+    // Always show navigation and actions
     if (navActions) navActions.style.display = 'flex';
+    if (gameActions) gameActions.style.display = 'flex';
 
     if (count >= 1) {
       statusText.textContent = count < 4 ? `Faltan ${4 - count} magos para comenzar` : `${count} magos listos`;
