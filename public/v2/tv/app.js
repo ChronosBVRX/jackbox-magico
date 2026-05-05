@@ -361,7 +361,30 @@ window.addEventListener('keydown', (e) => {
             NavigationManager.confirm();
             break;
         case 'Escape':
-            // Logic for going back if needed
+        case 'Backspace':
+            // Logic for going back
+            if (NavigationManager.activeView === 'view-selection') {
+                showView('view-lobby');
+            } else if (NavigationManager.activeView === 'view-preamble') {
+                showView('view-selection');
+            } else if (NavigationManager.activeView === 'view-lobby') {
+                if (confirm('¿Cerrar sala y volver al inicio?')) {
+                    socket.emit('tv_close_room');
+                    currentRoom = null;
+                    showView('view-init');
+                }
+            }
+            break;
+        case 'm':
+        case 'M':
+        case 'h':
+        case 'H':
+            // Home / Menu key
+            if (confirm('¿Ir al menú principal?')) {
+                socket.emit('tv_close_room');
+                currentRoom = null;
+                showView('view-init');
+            }
             break;
     }
 });

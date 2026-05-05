@@ -72,6 +72,7 @@ export interface ClientToServerEvents {
   player_action: (data: any) => void;
   tv_next_round: () => void;
   tv_back_to_lobby: () => void;
+  tv_close_room: () => void;
   heartbeat: () => void;
 }
 
