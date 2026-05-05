@@ -466,15 +466,23 @@ window.addEventListener('keydown', (e) => {
             if (document.getElementById('view-modal').style.display !== 'none') {
                 ModalManager.close(false);
             } else if (NavigationManager.activeView === 'view-selection') {
-                showView('view-lobby');
+                if (currentRoom) {
+                    showView('view-lobby');
+                } else {
+                    showView('view-init');
+                }
             } else if (NavigationManager.activeView === 'view-preamble') {
                 showView('view-selection');
             } else if (NavigationManager.activeView === 'view-lobby') {
-                ModalManager.show('Cerrar Sala', '¿Estás seguro de que deseas cerrar la sala y volver al inicio?', true, (ok) => {
+                ModalManager.show('Abandonar Sala', '¿Deseas cerrar esta sala y volver a la selección de aventura?', true, (ok) => {
                     if (ok) {
                         socket.emit('tv_close_room');
                         currentRoom = null;
-                        showView('view-init');
+                        showView('view-init'); // Or selection, but usually init to reset state
+                        // Re-trigger selection after a brief delay if we want to go there
+                        setTimeout(() => {
+                           SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
+                        }, 500);
                     }
                 });
             }
@@ -584,9 +592,16 @@ const safeSetClick = (id, fn) => {
 };
 
 safeSetClick('btn-exit-lobby', () => {
-    socket.emit('tv_close_room');
-    currentRoom = null;
-    showView('view-init');
+    ModalManager.show('Abandonar Sala', '¿Deseas cerrar esta sala y volver a la selección de aventura?', true, (ok) => {
+        if (ok) {
+            socket.emit('tv_close_room');
+            currentRoom = null;
+            showView('view-init');
+            setTimeout(() => {
+                SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
+            }, 500);
+        }
+    });
 });
 
 safeSetClick('btn-results-to-lobby', () => {
