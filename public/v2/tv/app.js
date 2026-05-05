@@ -752,12 +752,16 @@ socket.on('room_state', (state) => {
     const count = state.players.length;
     playerCount.textContent = `${count} / 8 Jugadores`;
     
-    const actions = document.getElementById('lobby-actions');
+    const navActions = document.getElementById('lobby-nav-actions');
+    const gameActions = document.getElementById('lobby-game-actions');
     const btnStart = document.getElementById('btn-start');
+
+    // Always show navigation
+    if (navActions) navActions.style.display = 'flex';
 
     if (count >= 1) {
       statusText.textContent = count < 4 ? `Faltan ${4 - count} magos para comenzar` : `${count} magos listos`;
-      if (actions) actions.style.display = 'flex';
+      if (gameActions) gameActions.style.display = 'flex';
       
       if (btnStart) {
         btnStart.style.display = count >= 4 ? 'block' : 'none';
@@ -767,13 +771,13 @@ socket.on('room_state', (state) => {
           btnStart.classList.remove('disabled');
         }
       }
-      // Re-update navigation because buttons might have appeared/hidden
-      NavigationManager.update();
     } else {
       statusText.textContent = 'Esperando jugadores (Mín. 4)...';
-      if (actions) actions.style.display = 'none';
-      NavigationManager.update();
+      if (gameActions) gameActions.style.display = 'none';
     }
+
+    // Re-update navigation because buttons might have appeared/hidden
+    NavigationManager.update();
   }
 });
 
