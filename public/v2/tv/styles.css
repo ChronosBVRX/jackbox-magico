@@ -1479,4 +1479,53 @@ button:focus,
     border-width: 3px !important;
 }
 
+/* Custom Modal System */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    background: rgba(0, 0, 0, 0.85);
+    backdrop-filter: blur(10px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    animation: fadeIn 0.3s ease-out;
+}
 
+.modal-container {
+    width: 600px;
+    padding: 3rem;
+    text-align: center;
+    animation: zoomInModal 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+@keyframes zoomInModal {
+    from { transform: scale(0.8); opacity: 0; }
+    to { transform: scale(1); opacity: 1; }
+}
+
+.modal-header {
+    margin-bottom: 2rem;
+}
+
+.modal-icon {
+    font-size: 3rem;
+    display: block;
+    margin-bottom: 1rem;
+}
+
+.modal-body {
+    margin-bottom: 3rem;
+    font-size: 1.4rem;
+    line-height: 1.6;
+    color: var(--color-text-dim);
+}
+
+.modal-footer {
+    display: flex;
+    justify-content: center;
+    gap: 2rem;
+}

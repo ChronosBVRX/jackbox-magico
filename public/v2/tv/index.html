@@ -484,6 +484,23 @@
     </footer>
   </div>
 
+  <!-- Custom Magic Modal -->
+  <div id="view-modal" class="modal-overlay" style="display: none;">
+    <div class="modal-container glass-panel">
+        <div class="modal-header">
+            <span class="modal-icon">🪄</span>
+            <h2 id="modal-title" class="text-gradient-gold">Atención</h2>
+        </div>
+        <div class="modal-body">
+            <p id="modal-message">¿Deseas realizar esta acción mágica?</p>
+        </div>
+        <div class="modal-footer" id="modal-actions">
+            <button class="btn-create-premium" id="btn-modal-cancel">Volver</button>
+            <button class="btn-start-premium" id="btn-modal-confirm">Confirmar</button>
+        </div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/v2/shared/musicManager.js"></script>
   <script src="/v2/shared/voiceManager.js"></script>

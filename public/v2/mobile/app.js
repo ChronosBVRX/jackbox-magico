@@ -56,7 +56,7 @@ if (savedRoom && savedName) {
 btnJoin.addEventListener('click', () => {
   const roomCode = inCode.value.trim().toUpperCase();
   const name = inName.value.trim();
-  if (!roomCode || !name) return alert('Datos incompletos');
+  if (!roomCode || !name) return mobileAlert('Datos incompletos');
 
   socket.emit('player_join', {
     roomCode, clientId, name,
@@ -565,7 +565,19 @@ socket.on('answer_ack', (data) => {
   if (data.success) showMobileView('answer-sent');
 });
 
-socket.on('error_message', (msg) => alert(msg));
+function mobileAlert(msg) {
+    const el = document.getElementById('mobile-alert-msg');
+    const view = document.getElementById('mobile-alert');
+    if (el) el.textContent = msg;
+    if (view) view.style.display = 'flex';
+}
+
+window.closeMobileAlert = function() {
+    const view = document.getElementById('mobile-alert');
+    if (view) view.style.display = 'none';
+};
+
+socket.on('error_message', (msg) => mobileAlert(msg));
 
 function renderStoryInstructionsMobile(data) {
     const instr = data.instructions;

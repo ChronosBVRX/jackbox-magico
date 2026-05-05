@@ -260,19 +260,29 @@ const NavigationManager = {
     activeView: null,
 
     update() {
-        // Find current visible screen
-        const screens = document.querySelectorAll('.tv-layout, .init-screen, .selection-section, #view-loading, #view-preamble');
+        // Prioritize Modal if visible
+        const modal = document.getElementById('view-modal');
         let current = null;
-        screens.forEach(s => {
-            if (s.style.display !== 'none') current = s;
-        });
+        
+        if (modal && modal.style.display !== 'none') {
+            current = modal;
+        } else {
+            // Find current visible screen
+            const screens = document.querySelectorAll('.tv-layout, .init-screen, .selection-section, #view-loading, #view-preamble');
+            screens.forEach(s => {
+                if (s.style.display !== 'none') current = s;
+            });
+        }
 
         if (!current) return;
         this.activeView = current.id;
+        this.currentIndex = 0; // Always reset to first element on view change
 
         // Special case: Selection carousel
         if (this.activeView === 'view-selection') {
             this.elements = Array.from(current.querySelectorAll('.selection-card, button'));
+        } else if (this.activeView === 'view-modal') {
+            this.elements = Array.from(current.querySelectorAll('button'));
         } else {
             // Find all buttons that are NOT hidden
             this.elements = Array.from(current.querySelectorAll('button')).filter(b => {
@@ -280,10 +290,6 @@ const NavigationManager = {
             });
         }
 
-        // Set default focus if none
-        if (this.currentIndex === -1 || this.currentIndex >= this.elements.length) {
-            this.currentIndex = 0;
-        }
         this.highlight();
     },
 
@@ -325,6 +331,33 @@ const NavigationManager = {
     }
 };
 
+// Modal Manager (In-game alerts/confirms)
+const ModalManager = {
+    callback: null,
+    
+    show(title, message, isConfirm = true, cb = null) {
+        safeText('modal-title', title);
+        safeText('modal-message', message);
+        this.callback = cb;
+        
+        const btnCancel = document.getElementById('btn-modal-cancel');
+        const view = document.getElementById('view-modal');
+        if (btnCancel) btnCancel.style.display = isConfirm ? 'block' : 'none';
+        if (view) view.style.display = 'flex';
+        
+        NavigationManager.update();
+    },
+    
+    close(confirmed) {
+        const view = document.getElementById('view-modal');
+        if (view) view.style.display = 'none';
+        if (this.callback) this.callback(confirmed);
+        this.callback = null;
+        
+        NavigationManager.update();
+    }
+};
+
 // Update showView to include Navigation update
 function showView(viewId) {
   // Ocultar todas las vistas principales
@@ -363,16 +396,20 @@ window.addEventListener('keydown', (e) => {
         case 'Escape':
         case 'Backspace':
             // Logic for going back
-            if (NavigationManager.activeView === 'view-selection') {
+            if (document.getElementById('view-modal').style.display !== 'none') {
+                ModalManager.close(false);
+            } else if (NavigationManager.activeView === 'view-selection') {
                 showView('view-lobby');
             } else if (NavigationManager.activeView === 'view-preamble') {
                 showView('view-selection');
             } else if (NavigationManager.activeView === 'view-lobby') {
-                if (confirm('¿Cerrar sala y volver al inicio?')) {
-                    socket.emit('tv_close_room');
-                    currentRoom = null;
-                    showView('view-init');
-                }
+                ModalManager.show('Cerrar Sala', '¿Estás seguro de que deseas cerrar la sala y volver al inicio?', true, (ok) => {
+                    if (ok) {
+                        socket.emit('tv_close_room');
+                        currentRoom = null;
+                        showView('view-init');
+                    }
+                });
             }
             break;
         case 'm':
@@ -380,11 +417,13 @@ window.addEventListener('keydown', (e) => {
         case 'h':
         case 'H':
             // Home / Menu key
-            if (confirm('¿Ir al menú principal?')) {
-                socket.emit('tv_close_room');
-                currentRoom = null;
-                showView('view-init');
-            }
+            ModalManager.show('Menú Principal', '¿Deseas abandonar la partida actual?', true, (ok) => {
+                if (ok) {
+                    socket.emit('tv_close_room');
+                    currentRoom = null;
+                    showView('view-init');
+                }
+            });
             break;
     }
 });
@@ -480,6 +519,9 @@ safeSetClick('btn-exit-lobby', () => {
 safeSetClick('btn-results-to-lobby', () => {
     socket.emit('tv_back_to_lobby');
 });
+
+safeSetClick('btn-modal-cancel', () => ModalManager.close(false));
+safeSetClick('btn-modal-confirm', () => ModalManager.close(true));
 
 safeSetClick('btn-cancel-story', () => {
     showView('view-lobby');
