@@ -1,5 +1,23 @@
 const socket = io();
 
+// Global Overrides to replace native browser UI with Hogwarts Game Night custom modals
+window.alert = (msg) => {
+    if (window.ModalManager) {
+        ModalManager.show('Atención', msg, false);
+    } else {
+        console.warn("ModalManager not ready yet, using console for alert:", msg);
+    }
+};
+
+window.confirm = (msg) => {
+    if (window.ModalManager) {
+        ModalManager.show('Confirmación', msg, true);
+    } else {
+        console.warn("ModalManager not ready yet, using console for confirm:", msg);
+    }
+    return false; // Prevent blocking
+};
+
 // Initial App Load Logic
 document.addEventListener('DOMContentLoaded', async () => {
     showLoadingScreen('Iniciando sistema de audio...', 10);
@@ -332,7 +350,7 @@ const NavigationManager = {
 };
 
 // Modal Manager (In-game alerts/confirms)
-const ModalManager = {
+window.ModalManager = {
     callback: null,
     
     show(title, message, isConfirm = true, cb = null) {
@@ -1448,5 +1466,12 @@ socket.on('scoreboard_state', (data) => {
 });
 
 socket.on('error_message', (msg) => {
-  alert(msg);
+  ModalManager.show('Atención', msg, false);
 });
+
+// Global Overrides to prevent any browser alerts
+window.alert = (msg) => ModalManager.show('Atención', msg, false);
+window.confirm = (msg) => {
+    ModalManager.show('Confirmación', msg, true);
+    return false; 
+};

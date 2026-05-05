@@ -1,5 +1,14 @@
 const socket = io();
 
+// Global Override to prevent browser alerts
+window.alert = (msg) => {
+    if (window.mobileAlert) {
+        window.mobileAlert(msg);
+    } else {
+        console.warn("mobileAlert not ready yet, using console:", msg);
+    }
+};
+
 const joinForm = document.getElementById('join-form');
 const waitScreen = document.getElementById('wait-screen');
 const triviaInput = document.getElementById('trivia-input');
@@ -565,7 +574,7 @@ socket.on('answer_ack', (data) => {
   if (data.success) showMobileView('answer-sent');
 });
 
-function mobileAlert(msg) {
+window.mobileAlert = function(msg) {
     const el = document.getElementById('mobile-alert-msg');
     const view = document.getElementById('mobile-alert');
     if (el) el.textContent = msg;
@@ -578,6 +587,9 @@ window.closeMobileAlert = function() {
 };
 
 socket.on('error_message', (msg) => mobileAlert(msg));
+
+// Global Override to prevent browser alerts
+window.alert = (msg) => mobileAlert(msg);
 
 function renderStoryInstructionsMobile(data) {
     const instr = data.instructions;
