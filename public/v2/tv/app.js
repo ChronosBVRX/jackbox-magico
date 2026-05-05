@@ -1558,3 +1558,5 @@ window.confirm = (msg) => {
     ModalManager.show('Confirmación', msg, true);
     return false; 
 };
+/ /   t e s t  
+ 
