@@ -868,24 +868,15 @@ socket.on('room_state', (state) => {
     if (navActions) navActions.style.display = 'flex';
     if (gameActions) gameActions.style.display = 'flex';
 
-    if (count >= 1) {
-      statusText.textContent = count < 4 ? `Faltan ${4 - count} magos para comenzar` : `${count} magos listos`;
-      if (gameActions) gameActions.style.display = 'flex';
-      
-      if (btnStart) {
-        btnStart.style.display = count >= 4 ? 'block' : 'none';
-        if (count < 4) {
-          btnStart.classList.add('disabled');
-        } else {
-          btnStart.classList.remove('disabled');
-        }
-      }
+    // Update status text
+    if (count === 0) {
+      statusText.textContent = 'Esperando magos...';
+    } else if (count < 4) {
+      statusText.textContent = `Faltan ${4 - count} magos para el Gran Comedor`;
     } else {
-      statusText.textContent = 'Esperando jugadores (Mín. 4)...';
-      if (gameActions) gameActions.style.display = 'none';
+      statusText.textContent = `${count} magos listos para la Copa`;
     }
 
-    // Re-update navigation because buttons might have appeared/hidden
     NavigationManager.update();
   }
 });
