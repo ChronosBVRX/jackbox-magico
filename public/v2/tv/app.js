@@ -513,7 +513,6 @@ function showView(viewId) {
 window.addEventListener('keydown', (e) => {
     console.log("TV Key Pressed:", e.key, e.code);
     if (e.key === 'p' || e.key === 'P' || e.code === 'KeyP') {
-        window.alert("DEBUG KEY DETECTED");
         DebugManager.toggle(true);
         return;
     }
