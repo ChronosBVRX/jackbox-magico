@@ -60,6 +60,33 @@ let pendingDebugSelection = null;
 let armedDebugGame = null;
 window.lastVoiceCue = null;
 
+// Catalogs for selection
+const STORY_CATALOG_FRONT = [
+    { id: 'copa_casas_clasica', title: 'Copa de las Casas Clásica', image: '/assets/images/previews/copa_casas.png', desc: 'La experiencia definitiva de Jackbox Mágico. Un viaje por el Gran Comedor, clases y la gran final.', min: 35, players: '2-8', diff: 'Normal', steps: [
+        { title: 'Bienvenida', type: 'story' }, { title: 'Trivia Mágica', type: 'minigame' }, { title: 'Pociones', type: 'minigame' }, { title: 'Duelo', type: 'minigame' }, { title: 'Copa Final', type: 'minigame' }
+    ]},
+    { id: 'noche_en_el_castillo', title: 'Noche en el Castillo', image: '/assets/images/previews/noche_castillo.png', desc: 'Explora los pasillos prohibidos. Una historia de misterio y sigilo con pruebas de memoria visual.', min: 40, players: '3-8', diff: 'Difícil', steps: [
+        { title: 'Intro Nocturna', type: 'story' }, { title: 'Mapa Travieso', type: 'minigame' }, { title: 'Retratos', type: 'minigame' }, { title: 'Hechizo', type: 'minigame' }, { title: 'Final', type: 'minigame' }
+    ]},
+    { id: 'torneo_magico_relampago', title: 'Torneo Mágico Relámpago', image: '/assets/images/previews/torneo_relampago.png', desc: 'Sin diálogos largos, solo acción pura. Perfecto para partidas rápidas y competitivas.', min: 15, players: '2-8', diff: 'Fácil', steps: [
+        { title: 'Inicio', type: 'story' }, { title: 'Snitch', type: 'minigame' }, { title: 'Artes Ridículas', type: 'minigame' }, { title: 'Final', type: 'minigame' }
+    ]}
+];
+
+const GAME_CATALOG_FRONT = [
+    { id: 'trivia_magica', name: 'Trivia del Mundo Mágico', shortName: 'Trivia', description: 'Demuestra quién realmente puso atención a los libros.', durationSeconds: 5, mode: 'Quiz', maxPlayers: 8, enabled: true },
+    { id: 'artes_ridiculas', name: 'Artes Ridículas', shortName: 'Artes Ridículas', description: 'Enfrenta boggarts y amenazas absurdas con risas.', durationSeconds: 5, mode: 'Quiz', maxPlayers: 8, enabled: true },
+    { id: 'atrapa_snitch', name: 'Atrapa la Snitch', shortName: 'Snitch', description: 'Reflejos puros para capturar la bola dorada.', durationSeconds: 3, mode: 'Acción', maxPlayers: 8, enabled: true },
+    { id: 'duelo_hechizos', name: 'Duelo de Hechizos', shortName: 'Duelo', description: 'Estrategia de piedra, papel o tijera con varitas.', durationSeconds: 4, mode: 'Estrategia', maxPlayers: 8, enabled: true },
+    { id: 'clase_pociones', name: 'Clase de Pociones', shortName: 'Pociones', description: 'Memoriza y repite ingredientes en tu caldero.', durationSeconds: 6, mode: 'Memoria', maxPlayers: 8, enabled: true },
+    { id: 'sombrero_burlon', name: 'El Sombrero Burlón', shortName: 'Sombrero', description: 'Votación social sobre quién es quién en el grupo.', durationSeconds: 4, mode: 'Social', maxPlayers: 8, enabled: true },
+    { id: 'mapa_travieso', name: 'El Mapa Travieso', shortName: 'Mapa', description: 'Memoria espacial. Encuentra a los intrusos.', durationSeconds: 5, mode: 'Memoria', maxPlayers: 8, enabled: true },
+    { id: 'retratos_chismosos', name: 'Retratos Chismosos', shortName: 'Retratos', description: 'Adivina el personaje basándote en los chismes.', durationSeconds: 4, mode: 'Quiz', maxPlayers: 8, enabled: true },
+    { id: 'hechizo_incompleto', name: 'Hechizo Incompleto', shortName: 'Hechizo', description: 'Completa los encantamientos que han perdido palabras.', durationSeconds: 4, mode: 'Quiz', maxPlayers: 8, enabled: true },
+    { id: 'caldero_mentiroso', name: 'El Caldero Mentiroso', shortName: 'Caldero', description: 'Estrategia y engaño con ingredientes secretos.', durationSeconds: 7, mode: 'Estrategia', maxPlayers: 8, enabled: true },
+    { id: 'patronus_personalizado', name: 'Patronus', shortName: 'Patronus', description: 'Creatividad y votación por el mejor protector.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true }
+];
+
 // Selection Manager (Premium Carousel)
 const SelectionManager = {
     items: [],
@@ -389,8 +416,8 @@ const DebugManager = {
         if (!list) return;
         list.innerHTML = '';
         
-        // Combine all items for easy testing
-        const items = [...(window.STORY_CATALOG_FRONT || []), ...(window.GAME_CATALOG_FRONT || [])];
+        // Use the actual constants defined in app.js
+        const items = [...(STORY_CATALOG_FRONT || []), ...(GAME_CATALOG_FRONT || [])];
         
         items.forEach(item => {
             const btn = document.createElement('button');
@@ -467,7 +494,8 @@ function showView(viewId) {
 
 // Global Key Listeners for TV Remote
 window.addEventListener('keydown', (e) => {
-    if (e.key === 'p' || e.key === 'P') {
+    console.log("TV Key Pressed:", e.key, e.code);
+    if (e.key === 'p' || e.key === 'P' || e.code === 'KeyP') {
         DebugManager.toggle(true);
         return;
     }
@@ -858,32 +886,6 @@ socket.on('game_state', (data) => {
   }
 });
 
-// Catalogs for selection
-const STORY_CATALOG_FRONT = [
-    { id: 'copa_casas_clasica', title: 'Copa de las Casas Clásica', image: '/assets/images/previews/copa_casas.png', desc: 'La experiencia definitiva de Jackbox Mágico. Un viaje por el Gran Comedor, clases y la gran final.', min: 35, players: '2-8', diff: 'Normal', steps: [
-        { title: 'Bienvenida', type: 'story' }, { title: 'Trivia Mágica', type: 'minigame' }, { title: 'Pociones', type: 'minigame' }, { title: 'Duelo', type: 'minigame' }, { title: 'Copa Final', type: 'minigame' }
-    ]},
-    { id: 'noche_en_el_castillo', title: 'Noche en el Castillo', image: '/assets/images/previews/noche_castillo.png', desc: 'Explora los pasillos prohibidos. Una historia de misterio y sigilo con pruebas de memoria visual.', min: 40, players: '3-8', diff: 'Difícil', steps: [
-        { title: 'Intro Nocturna', type: 'story' }, { title: 'Mapa Travieso', type: 'minigame' }, { title: 'Retratos', type: 'minigame' }, { title: 'Hechizo', type: 'minigame' }, { title: 'Final', type: 'minigame' }
-    ]},
-    { id: 'torneo_magico_relampago', title: 'Torneo Mágico Relámpago', image: '/assets/images/previews/torneo_relampago.png', desc: 'Sin diálogos largos, solo acción pura. Perfecto para partidas rápidas y competitivas.', min: 15, players: '2-8', diff: 'Fácil', steps: [
-        { title: 'Inicio', type: 'story' }, { title: 'Snitch', type: 'minigame' }, { title: 'Artes Ridículas', type: 'minigame' }, { title: 'Final', type: 'minigame' }
-    ]}
-];
-
-const GAME_CATALOG_FRONT = [
-    { id: 'trivia_magica', name: 'Trivia del Mundo Mágico', shortName: 'Trivia', description: 'Demuestra quién realmente puso atención a los libros.', durationSeconds: 5, mode: 'Quiz', maxPlayers: 8, enabled: true },
-    { id: 'artes_ridiculas', name: 'Artes Ridículas', shortName: 'Artes Ridículas', description: 'Enfrenta boggarts y amenazas absurdas con risas.', durationSeconds: 5, mode: 'Quiz', maxPlayers: 8, enabled: true },
-    { id: 'atrapa_snitch', name: 'Atrapa la Snitch', shortName: 'Snitch', description: 'Reflejos puros para capturar la bola dorada.', durationSeconds: 3, mode: 'Acción', maxPlayers: 8, enabled: true },
-    { id: 'duelo_hechizos', name: 'Duelo de Hechizos', shortName: 'Duelo', description: 'Estrategia de piedra, papel o tijera con varitas.', durationSeconds: 4, mode: 'Estrategia', maxPlayers: 8, enabled: true },
-    { id: 'clase_pociones', name: 'Clase de Pociones', shortName: 'Pociones', description: 'Memoriza y repite ingredientes en tu caldero.', durationSeconds: 6, mode: 'Memoria', maxPlayers: 8, enabled: true },
-    { id: 'sombrero_burlon', name: 'El Sombrero Burlón', shortName: 'Sombrero', description: 'Votación social sobre quién es quién en el grupo.', durationSeconds: 4, mode: 'Social', maxPlayers: 8, enabled: true },
-    { id: 'mapa_travieso', name: 'El Mapa Travieso', shortName: 'Mapa', description: 'Memoria espacial. Encuentra a los intrusos.', durationSeconds: 5, mode: 'Memoria', maxPlayers: 8, enabled: true },
-    { id: 'retratos_chismosos', name: 'Retratos Chismosos', shortName: 'Retratos', description: 'Adivina el personaje basándote en los chismes.', durationSeconds: 4, mode: 'Quiz', maxPlayers: 8, enabled: true },
-    { id: 'hechizo_incompleto', name: 'Hechizo Incompleto', shortName: 'Hechizo', description: 'Completa los encantamientos que han perdido palabras.', durationSeconds: 4, mode: 'Quiz', maxPlayers: 8, enabled: true },
-    { id: 'caldero_mentiroso', name: 'El Caldero Mentiroso', shortName: 'Caldero', description: 'Estrategia y engaño con ingredientes secretos.', durationSeconds: 7, mode: 'Estrategia', maxPlayers: 8, enabled: true },
-    { id: 'patronus_personalizado', name: 'Patronus', shortName: 'Patronus', description: 'Creatividad y votación por el mejor protector.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true }
-];
 
 function renderStorySelect() {
     const list = document.getElementById('story-select-list');
