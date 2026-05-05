@@ -281,7 +281,7 @@ const NavigationManager = {
         // Special case: Selection carousel
         if (this.activeView === 'view-selection') {
             this.elements = Array.from(current.querySelectorAll('.selection-card, button'));
-        } else if (this.activeView === 'view-modal') {
+        } else if (this.activeView === 'view-modal' || this.activeView === 'view-debug') {
             this.elements = Array.from(current.querySelectorAll('button'));
         } else {
             // Find all buttons that are NOT hidden
@@ -358,6 +358,55 @@ const ModalManager = {
     }
 };
 
+// Debug Manager (Hidden tools)
+const DebugManager = {
+    init() {
+        const list = document.getElementById('debug-game-list');
+        if (!list) return;
+        list.innerHTML = '';
+        
+        // Combine all items for easy testing
+        const items = [...(window.STORY_CATALOG_FRONT || []), ...(window.GAME_CATALOG_FRONT || [])];
+        
+        items.forEach(item => {
+            const btn = document.createElement('button');
+            btn.className = 'btn-create-premium';
+            btn.style.fontSize = '0.9rem';
+            btn.style.padding = '0.8rem';
+            btn.style.textAlign = 'left';
+            btn.innerHTML = `<span>[${item.type || 'game'}]</span> ${item.id}<br><small style="opacity:0.6">${item.title || item.name || ''}</small>`;
+            btn.onclick = () => {
+                if (!currentRoom) {
+                    socket.emit('tv_create_room');
+                    setTimeout(() => this.forceStart(item), 1000);
+                } else {
+                    this.forceStart(item);
+                }
+            };
+            list.appendChild(btn);
+        });
+        
+        safeSetClick('btn-debug-close', () => this.toggle(false));
+    },
+    
+    forceStart(item) {
+        if (item.type === 'story') {
+            socket.emit('tv_select_story', item.id);
+            setTimeout(() => socket.emit('tv_story_next'), 500);
+        } else {
+            socket.emit('tv_start_game', item.id);
+        }
+        this.toggle(false);
+    },
+    
+    toggle(show) {
+        const view = document.getElementById('view-debug');
+        if (view) view.style.display = show ? 'flex' : 'none';
+        if (show) this.init();
+        NavigationManager.update();
+    }
+};
+
 // Update showView to include Navigation update
 function showView(viewId) {
   // Ocultar todas las vistas principales
@@ -424,6 +473,12 @@ window.addEventListener('keydown', (e) => {
                     showView('view-init');
                 }
             });
+            break;
+        case 'D':
+            // Hidden Debug Menu (Shift + D)
+            if (e.shiftKey) {
+                DebugManager.toggle(true);
+            }
             break;
     }
 });

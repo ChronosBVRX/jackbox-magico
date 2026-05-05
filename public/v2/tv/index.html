@@ -501,6 +501,22 @@
     </div>
   </div>
 
+  <!-- Debug/Test Modal -->
+  <div id="view-debug" class="modal-overlay" style="display: none; z-index: 100000;">
+    <div class="modal-container glass-panel" style="width: 800px; max-height: 80vh; display: flex; flex-direction: column;">
+        <div class="modal-header">
+            <h2 class="text-gradient-gold">🧪 Modo Pruebas (Debug)</h2>
+            <p style="font-size: 0.8rem; opacity: 0.6;">Selecciona un juego para forzar su inicio</p>
+        </div>
+        <div class="modal-body" id="debug-game-list" style="overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem;">
+            <!-- Games list -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn-create-premium" id="btn-debug-close">Cerrar</button>
+        </div>
+    </div>
+  </div>
+
   <script src="/socket.io/socket.io.js"></script>
   <script src="/v2/shared/musicManager.js"></script>
   <script src="/v2/shared/voiceManager.js"></script>
