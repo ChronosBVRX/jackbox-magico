@@ -1,4 +1,4 @@
-# Jackbox Mágico V2 - Realtime Engine
+# Hogwarts Game Night V2 - Realtime Engine
 
 Este es el núcleo de la versión 2.0 del proyecto, migrado a una arquitectura autoritativa en tiempo real con WebSockets.
 

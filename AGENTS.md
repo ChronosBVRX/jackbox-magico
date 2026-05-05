@@ -1,6 +1,6 @@
-# Jackbox Mágico V2 - Agent Rules
+# Hogwarts Game Night V2 - Agent Rules
 
-Este proyecto es una reconstrucción limpia de Jackbox Mágico.
+Este proyecto es una reconstrucción limpia de Hogwarts Game Night.
 
 Objetivo:
 Crear una app tipo Jackbox para TV + celulares, con Socket.IO, servidor autoritativo y minijuegos modulares.

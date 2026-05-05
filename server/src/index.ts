@@ -38,7 +38,7 @@ setupSocketServer(httpServer);
 
 httpServer.listen(PORT, () => {
   console.log(`=========================================`);
-  console.log(`Jackbox Mágico V2 corriendo en puerto ${PORT}`);
+  console.log(`Hogwarts Game Night corriendo en puerto ${PORT}`);
   console.log(`Lobby TV: http://localhost:${PORT}/v2/tv/`);
   console.log(`Lobby Móvil: http://localhost:${PORT}/v2/mobile/`);
   console.log(`=========================================`);
