@@ -591,6 +591,19 @@ const safeSetClick = (id, fn) => {
     if (el) el.onclick = fn;
 };
 
+safeSetClick('btn-lobby-back', () => {
+    ModalManager.show('Abandonar Sala', '¿Deseas cerrar esta sala y volver a la selección de aventura?', true, (ok) => {
+        if (ok) {
+            socket.emit('tv_close_room');
+            currentRoom = null;
+            showView('view-init');
+            setTimeout(() => {
+                SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
+            }, 500);
+        }
+    });
+});
+
 safeSetClick('btn-exit-lobby', () => {
     ModalManager.show('Abandonar Sala', '¿Deseas cerrar esta sala y volver a la selección de aventura?', true, (ok) => {
         if (ok) {
@@ -612,7 +625,11 @@ safeSetClick('btn-modal-cancel', () => ModalManager.close(false));
 safeSetClick('btn-modal-confirm', () => ModalManager.close(true));
 
 safeSetClick('btn-cancel-story', () => {
-    showView('view-lobby');
+    if (currentRoom) {
+        showView('view-lobby');
+    } else {
+        showView('view-init');
+    }
 });
 
 safeSetClick('btn-preamble-back', () => {
