@@ -2,11 +2,14 @@
 
 body {
   height: 100vh;
+  width: 100vw;
   display: flex;
   align-items: center;
   justify-content: center;
   background: radial-gradient(circle at center, #111827 0%, #030712 100%);
   position: relative;
+  overflow: hidden; /* NO SCROLL */
+  margin: 0;
 }
 
 /* Background Effects */
@@ -29,13 +32,16 @@ body {
 
 /* Main Layout */
 .tv-layout {
-  width: 90vw;
-  height: 85vh;
+  width: 100vw;
+  height: 100vh;
   display: grid;
   grid-template-rows: auto 1fr auto;
-  gap: 2rem;
+  gap: 1.5rem;
+  padding: 3rem 5rem;
+  box-sizing: border-box;
   z-index: 10;
   animation: fadeIn 1s ease-out;
+  overflow: hidden;
 }
 
 .header {
@@ -1416,4 +1422,33 @@ body {
 .btn-select-adventure:hover {
   transform: scale(1.05);
   box-shadow: 0 0 50px rgba(139, 92, 246, 0.5);
+}
+/* Focus State for TV Remote */
+.focused,
+button:focus,
+.selection-card.focused {
+    outline: none !important;
+    border-color: var(--color-accent) !important;
+    box-shadow: 0 0 40px rgba(212, 175, 55, 0.4), inset 0 0 20px rgba(212, 175, 55, 0.2) !important;
+    transform: scale(1.05) translateY(-5px);
+    background: rgba(255, 255, 255, 0.15) !important;
+    z-index: 100;
+    transition: all 0.2s cubic-bezier(0.23, 1, 0.32, 1);
+}
+
+.selection-card.focused {
+    transform: scale(1.1) !important;
+    border-width: 3px !important;
+}
+
+/* Ensure no scroll on preamble */
+.preamble-main {
+    height: 100%;
+    max-height: calc(100vh - 250px);
+    overflow: hidden;
+}
+
+.preamble-content {
+    height: 100%;
+    max-height: 100%;
 }

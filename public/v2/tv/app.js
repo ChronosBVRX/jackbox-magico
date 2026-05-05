@@ -209,26 +209,28 @@ const SelectionManager = {
         }
         
         const list = document.getElementById('preamble-minigames-list');
-        list.innerHTML = '';
-        
-        let games = [];
-        if (item.steps) {
-            games = item.steps.filter(s => s.type === 'minigame' || s.type === 'fixed_minigame');
-        } else if (item.games) {
-            games = item.games;
+        if (list) {
+            list.innerHTML = '';
+            
+            let games = [];
+            if (item.steps) {
+                games = item.steps.filter(s => s.type === 'minigame' || s.type === 'fixed_minigame');
+            } else if (item.games) {
+                games = item.games;
+            }
+
+            safeText('preamble-game-count', games.length);
+
+            games.forEach((g, i) => {
+                const div = document.createElement('div');
+                div.className = 'preamble-game-item';
+                div.style.animationDelay = `${i * 0.1}s`;
+                const icon = g.icon || '🎮';
+                const name = g.title || g.name || g.shortName;
+                div.innerHTML = `<span class="icon">${icon}</span> <span class="name">${name}</span>`;
+                list.appendChild(div);
+            });
         }
-
-        safeText('preamble-game-count', games.length);
-
-        games.forEach((g, i) => {
-            const div = document.createElement('div');
-            div.className = 'preamble-game-item';
-            div.style.animationDelay = `${i * 0.1}s`;
-            const icon = g.icon || '🎮';
-            const name = g.title || g.name || g.shortName;
-            div.innerHTML = `<span class="icon">${icon}</span> <span class="name">${name}</span>`;
-            list.appendChild(div);
-        });
 
         showView('view-preamble');
     },
@@ -251,18 +253,95 @@ const SelectionManager = {
     }
 };
 
-// Update showView
+// TV Navigation Manager (D-Pad support)
+const NavigationManager = {
+    elements: [],
+    currentIndex: -1,
+    activeView: null,
+
+    update() {
+        // Find current visible screen
+        const screens = document.querySelectorAll('.tv-layout, .init-screen, .selection-section, #view-loading, #view-preamble');
+        let current = null;
+        screens.forEach(s => {
+            if (s.style.display !== 'none') current = s;
+        });
+
+        if (!current) return;
+        this.activeView = current.id;
+
+        // Special case: Selection carousel
+        if (this.activeView === 'view-selection') {
+            this.elements = Array.from(current.querySelectorAll('.selection-card, button'));
+        } else {
+            // Find all buttons that are NOT hidden
+            this.elements = Array.from(current.querySelectorAll('button')).filter(b => {
+                return b.style.display !== 'none' && b.offsetParent !== null;
+            });
+        }
+
+        // Set default focus if none
+        if (this.currentIndex === -1 || this.currentIndex >= this.elements.length) {
+            this.currentIndex = 0;
+        }
+        this.highlight();
+    },
+
+    highlight() {
+        this.elements.forEach((el, i) => {
+            if (i === this.currentIndex) {
+                el.classList.add('focused');
+                // Ensure visibility for carousel
+                if (el.classList.contains('selection-card')) {
+                    SelectionManager.currentIndex = i;
+                    SelectionManager.updateScroll();
+                }
+            } else {
+                el.classList.remove('focused');
+            }
+        });
+    },
+
+    navigate(dir) {
+        if (this.elements.length === 0) return;
+
+        if (dir === 'left' || dir === 'up') {
+            this.currentIndex = (this.currentIndex - 1 + this.elements.length) % this.elements.length;
+        } else {
+            this.currentIndex = (this.currentIndex + 1) % this.elements.length;
+        }
+        this.highlight();
+    },
+
+    confirm() {
+        const el = this.elements[this.currentIndex];
+        if (el) {
+            if (el.classList.contains('selection-card')) {
+                SelectionManager.select();
+            } else {
+                el.click();
+            }
+        }
+    }
+};
+
+// Update showView to include Navigation update
 function showView(viewId) {
   // Ocultar todas las vistas principales
-  document.querySelectorAll('.tv-layout, .init-screen, .selection-section, #view-loading').forEach(v => {
+  document.querySelectorAll('.tv-layout, .init-screen, .selection-section, #view-loading, #view-preamble, .screen').forEach(v => {
     v.style.display = 'none';
   });
   
   const target = document.getElementById(viewId);
   if (target) {
-    if (viewId === 'view-init') target.style.display = 'flex';
-    else if (viewId === 'view-selection' || viewId === 'view-loading') target.style.display = 'flex';
-    else target.style.display = 'grid';
+    if (viewId === 'view-init' || viewId === 'view-selection' || viewId === 'view-loading') {
+        target.style.display = 'flex';
+    } else {
+        target.style.display = 'grid';
+    }
+    
+    // Reset and update navigation
+    setTimeout(() => NavigationManager.update(), 50);
   }
 }
 
@@ -270,20 +349,19 @@ function showView(viewId) {
 window.addEventListener('keydown', (e) => {
     switch(e.key) {
         case 'ArrowLeft':
-            SelectionManager.navigate('left');
+        case 'ArrowUp':
+            NavigationManager.navigate('left');
             break;
         case 'ArrowRight':
-            SelectionManager.navigate('right');
+        case 'ArrowDown':
+            NavigationManager.navigate('right');
             break;
         case 'Enter':
             if (window.MusicManager) window.MusicManager.play();
-            SelectionManager.select();
+            NavigationManager.confirm();
             break;
         case 'Escape':
-            if (SelectionManager.active) {
-                showView('view-lobby');
-                SelectionManager.active = false;
-            }
+            // Logic for going back if needed
             break;
     }
 });
@@ -504,14 +582,17 @@ socket.on('room_state', (state) => {
       if (btnStart) {
         btnStart.style.display = count >= 4 ? 'block' : 'none';
         if (count < 4) {
-          btnStart.classList.add('disabled'); // Optional styling
+          btnStart.classList.add('disabled');
         } else {
           btnStart.classList.remove('disabled');
         }
       }
+      // Re-update navigation because buttons might have appeared/hidden
+      NavigationManager.update();
     } else {
       statusText.textContent = 'Esperando jugadores (Mín. 4)...';
       if (actions) actions.style.display = 'none';
+      NavigationManager.update();
     }
   }
 });
