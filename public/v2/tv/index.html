@@ -7,6 +7,21 @@
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+  <!-- Debug/Test Modal (Force Top Stacking) -->
+  <div id="view-debug" style="display: none; position: fixed; inset: 0; background: rgba(0,0,100,0.9); z-index: 9999999; justify-content: center; align-items: center; border: 15px solid red;">
+    <div class="modal-container glass-panel" style="width: 800px; max-height: 80vh; display: flex; flex-direction: column; animation: none; opacity: 1; transform: scale(1);">
+        <div class="modal-header">
+            <h2 class="text-gradient-gold">🧪 Modo Pruebas (Debug)</h2>
+            <p style="font-size: 0.8rem; opacity: 0.6;">Selecciona un juego para forzar su inicio</p>
+        </div>
+        <div class="modal-body" id="debug-game-list" style="overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem;">
+            <!-- Games list -->
+        </div>
+        <div class="modal-footer">
+            <button class="btn-create-premium" id="btn-debug-close">Cerrar</button>
+        </div>
+    </div>
+  </div>
   <div class="bg-overlay" id="bg-overlay"></div>
 
   <!-- PANTALLA DE CARGA INICIAL -->
@@ -505,20 +520,6 @@
     </div>
   </div>
 
-  <!-- Debug/Test Modal -->
-  <div id="view-debug" style="display: flex; position: fixed; inset: 0; background: rgba(0,0,100,0.9); z-index: 9999999; justify-content: center; align-items: center; border: 10px solid red;">
-    <div class="modal-container glass-panel" style="width: 800px; max-height: 80vh; display: flex; flex-direction: column;">
-        <div class="modal-header">
-            <h2 class="text-gradient-gold">🧪 Modo Pruebas (Debug)</h2>
-            <p style="font-size: 0.8rem; opacity: 0.6;">Selecciona un juego para forzar su inicio</p>
-        </div>
-        <div class="modal-body" id="debug-game-list" style="overflow-y: auto; display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1rem;">
-            <!-- Games list -->
-        </div>
-        <div class="modal-footer">
-            <button class="btn-create-premium" id="btn-debug-close">Cerrar</button>
-        </div>
-    </div>
   </div>
 
   <script src="/socket.io/socket.io.js"></script>
