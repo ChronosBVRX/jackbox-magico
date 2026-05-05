@@ -467,7 +467,7 @@ function showView(viewId) {
 
 // Global Key Listeners for TV Remote
 window.addEventListener('keydown', (e) => {
-    if (e.key === '|' || (e.code === 'Backslash' && e.shiftKey)) {
+    if (e.key === 'p' || e.key === 'P') {
         DebugManager.toggle(true);
         return;
     }
@@ -519,15 +519,6 @@ window.addEventListener('keydown', (e) => {
                 }
             });
             break;
-        case '|':
-            // Hidden Debug Menu (Pipe key)
-            DebugManager.toggle(true);
-            break;
-        case 'D':
-            // Hidden Debug Menu (Shift + D) - Keeping it for now but shifting to |
-            if (e.shiftKey) {
-                DebugManager.toggle(true);
-            }
             break;
     }
 });
