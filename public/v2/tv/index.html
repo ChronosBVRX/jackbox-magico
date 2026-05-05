@@ -81,7 +81,10 @@
 
     <!-- Lobby Footer (Actions) -->
     <footer class="lobby-footer">
-      <div id="lobby-actions" style="display: none;">
+      <div id="lobby-actions" style="display: none; gap: 2rem;">
+        <button class="btn-create-premium" id="btn-exit-lobby" style="background: rgba(239, 68, 68, 0.1); border-color: rgba(239, 68, 68, 0.3);">
+            <span class="icon">🚪</span> Salir
+        </button>
         <button class="btn-create-premium" id="btn-select-adventure">
           <span class="icon">🪄</span> Elegir Aventura
         </button>
@@ -238,9 +241,12 @@
       <!-- Player results cards -->
     </main>
 
-    <footer class="results-footer glass-panel">
-      <p id="narrator-comment">"Comentario del narrador..."</p>
-      <button class="btn-start-premium" id="btn-next-round">Siguiente Pregunta</button>
+    <footer class="results-footer glass-panel" style="display: flex; justify-content: space-between; align-items: center; padding: 1rem 2rem;">
+      <p id="narrator-comment" style="margin: 0;">"Comentario del narrador..."</p>
+      <div style="display: flex; gap: 2rem;">
+        <button class="btn-create-premium" id="btn-results-to-lobby" style="font-size: 1rem; padding: 0.8rem 2rem;">Volver al Lobby</button>
+        <button class="btn-start-premium" id="btn-next-round" style="font-size: 1.2rem; padding: 1rem 3rem;">Siguiente</button>
+      </div>
     </footer>
   </div>
 

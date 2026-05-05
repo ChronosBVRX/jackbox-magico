@@ -38,6 +38,18 @@ export function setupSocketServer(httpServer: HttpServer) {
       if (state) socket.emit('room_state', state);
     });
 
+    socket.on('tv_close_room', () => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+      
+      // Notify all players
+      io.to(roomCode).emit('error_message', 'La sala ha sido cerrada por el anfitrión.');
+      // Actually delete room if you want or just reset
+      roomEngine.resetRoomToLobby(roomCode); // Just in case
+      // We could fully delete it too
+      io.in(roomCode).socketsLeave(roomCode);
+    });
+
     socket.on('player_join', (data) => {
       const { roomCode, clientId, name, house, gender } = data;
       const result = roomEngine.addPlayer(roomCode, { clientId, name, house, gender });
@@ -86,6 +98,18 @@ export function setupSocketServer(httpServer: HttpServer) {
       
       // Send initial state
       updateGameClients(roomCode);
+    });
+
+    socket.on('tv_back_to_lobby', () => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+      
+      roomEngine.resetRoomToLobby(roomCode);
+      const room = roomEngine.getRoom(roomCode);
+      if (room) {
+        io.to(roomCode).emit('room_state', room);
+        io.to(roomCode).emit('game_started', null as any); // Clear game on clients
+      }
     });
 
     socket.on('tv_select_story', (storyId) => {

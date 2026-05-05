@@ -448,6 +448,16 @@ const safeSetClick = (id, fn) => {
     if (el) el.onclick = fn;
 };
 
+safeSetClick('btn-exit-lobby', () => {
+    socket.emit('tv_close_room');
+    currentRoom = null;
+    showView('view-init');
+});
+
+safeSetClick('btn-results-to-lobby', () => {
+    socket.emit('tv_back_to_lobby');
+});
+
 safeSetClick('btn-cancel-story', () => {
     showView('view-lobby');
 });
