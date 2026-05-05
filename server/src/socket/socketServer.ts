@@ -66,38 +66,120 @@ export function setupSocketServer(httpServer: HttpServer) {
       }
     });
 
-    socket.on('tv_start_game', (gameId) => {
-      const { roomCode, isTv } = socket.data;
-      if (!isTv || !roomCode) return;
+    function startGameForRoom(roomCode: string, gameId: string, debug = false) {
+      const room = roomEngine.getRoom(roomCode);
+      if (!room) return { success: false, error: 'Sala no encontrada.' };
 
-      const minRequired = 4;
       const connectedPlayers = roomEngine.getConnectedPlayers(roomCode);
+      const minRequired = debug ? 1 : 4;
 
       if (connectedPlayers.length < minRequired) {
-        socket.emit('error_message', `Este minijuego requiere al menos ${minRequired} jugadores.`);
-        return;
+        return {
+          success: false,
+          error: debug
+            ? 'Entra con al menos un celular para iniciar el debug.'
+            : `Este minijuego requiere al menos ${minRequired} jugadores.`
+        };
       }
 
       const module = createGameModule(gameId as any);
       if (!module) {
-        socket.emit('error_message', 'Minijuego no soportado o deshabilitado.');
-        return;
+        return { success: false, error: 'Minijuego no soportado o deshabilitado.' };
       }
 
-      const room = roomEngine.getRoom(roomCode);
-      if (!room) return;
+      const playersForGame = debug
+        ? buildDebugPlayersForGame(gameId, room.players)
+        : room.players;
 
-      const state = module.init(room.players);
+      const state = module.init(playersForGame);
       activeGames.set(roomCode, { module, state });
 
       roomEngine.setRoomStatus(roomCode, 'playing');
       roomEngine.setCurrentGameId(roomCode, gameId);
 
-      // Notify start
       io.to(roomCode).emit('game_started', gameId);
-      
-      // Send initial state
       updateGameClients(roomCode);
+
+      return { success: true };
+    }
+
+    function buildDebugPlayersForGame(gameId: string, realPlayers: any[]) {
+      const debugBots = [
+        {
+          clientId: 'debug_bot_1',
+          name: 'Dobby Debug',
+          house: 'Gryffindor',
+          gender: 'wizard' as const,
+          points: 0,
+          streak: 0,
+          isConnected: true
+        },
+        {
+          clientId: 'debug_bot_2',
+          name: 'Luna Debug',
+          house: 'Ravenclaw',
+          gender: 'witch' as const,
+          points: 0,
+          streak: 0,
+          isConnected: true
+        },
+        {
+          clientId: 'debug_bot_3',
+          name: 'Snape Debug',
+          house: 'Slytherin',
+          gender: 'wizard' as const,
+          points: 0,
+          streak: 0,
+          isConnected: true
+        },
+        {
+          clientId: 'debug_bot_4',
+          name: 'Cedric Debug',
+          house: 'Hufflepuff',
+          gender: 'wizard' as const,
+          points: 0,
+          streak: 0,
+          isConnected: true
+        }
+      ];
+
+      const minPlayersByGame: Record<string, number> = {
+        duelo_hechizos: 2,
+        sombrero_burlon: 4,
+        caldero_mentiroso: 4,
+        patronus_personalizado: 4,
+        copa_final: 4
+      };
+
+      const targetCount = minPlayersByGame[gameId] || 1;
+      const players = [...realPlayers];
+
+      for (const bot of debugBots) {
+        if (players.length >= targetCount) break;
+        players.push(bot);
+      }
+
+      return players;
+    }
+
+    socket.on('tv_start_game', (gameId) => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+
+      const result = startGameForRoom(roomCode, gameId, false);
+      if (!result.success) {
+        socket.emit('error_message', result.error || 'No se pudo iniciar el juego.');
+      }
+    });
+
+    socket.on('tv_debug_start_game', (gameId) => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+
+      const result = startGameForRoom(roomCode, gameId, true);
+      if (!result.success) {
+        socket.emit('error_message', result.error || 'No se pudo iniciar el modo debug.');
+      }
     });
 
     socket.on('tv_back_to_lobby', () => {

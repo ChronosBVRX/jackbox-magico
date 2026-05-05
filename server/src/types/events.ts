@@ -66,6 +66,7 @@ export interface ClientToServerEvents {
     gender: 'wizard' | 'witch';
   }) => void;
   tv_start_game: (gameId: string) => void;
+  tv_debug_start_game: (gameId: string) => void;
   tv_select_story: (storyId: string) => void;
   tv_story_next: () => void;
   answer_submit: (data: { answer: string }) => void;

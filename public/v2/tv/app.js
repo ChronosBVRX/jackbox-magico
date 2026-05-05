@@ -56,6 +56,8 @@ let currentGameId = null;
 let tvTimerInterval = null;
 let autoNextTriggered = false;
 let pendingGameSelection = null;
+let pendingDebugSelection = null;
+let armedDebugGame = null;
 window.lastVoiceCue = null;
 
 // Selection Manager (Premium Carousel)
@@ -398,12 +400,15 @@ const DebugManager = {
             btn.style.textAlign = 'left';
             btn.innerHTML = `<span>[${item.type || 'game'}]</span> ${item.id}<br><small style="opacity:0.6">${item.title || item.name || ''}</small>`;
             btn.onclick = () => {
+                armedDebugGame = item;
                 if (!currentRoom) {
+                    pendingDebugSelection = item;
                     socket.emit('tv_create_room');
-                    setTimeout(() => this.forceStart(item), 1000);
+                    showLoadingScreen(`Creando lobby debug para: ${item.title || item.name || item.id}...`, 40);
                 } else {
-                    this.forceStart(item);
+                    this.armGame(item);
                 }
+                this.toggle(false);
             };
             list.appendChild(btn);
         });
@@ -411,14 +416,24 @@ const DebugManager = {
         safeSetClick('btn-debug-close', () => this.toggle(false));
     },
     
-    forceStart(item) {
-        if (item.type === 'story') {
-            socket.emit('tv_select_story', item.id);
-            setTimeout(() => socket.emit('tv_story_next'), 500);
-        } else {
-            socket.emit('tv_start_game', item.id);
+    armGame(item) {
+        armedDebugGame = item;
+        showView('view-lobby');
+
+        if (statusText) {
+            statusText.textContent = `🧪 DEBUG armado: ${item.title || item.name || item.id}. Entra con un celular y presiona iniciar.`;
         }
-        this.toggle(false);
+
+        const gameActions = document.getElementById('lobby-game-actions');
+        const btnStart = document.getElementById('btn-start');
+
+        if (gameActions) gameActions.style.display = 'flex';
+        if (btnStart) {
+            btnStart.style.display = 'block';
+            btnStart.classList.remove('disabled');
+            btnStart.textContent = `INICIAR DEBUG: ${item.shortName || item.title || item.name || item.id}`;
+        }
+        NavigationManager.update();
     },
     
     toggle(show) {
@@ -452,6 +467,10 @@ function showView(viewId) {
 
 // Global Key Listeners for TV Remote
 window.addEventListener('keydown', (e) => {
+    if (e.key === '|' || (e.code === 'Backslash' && e.shiftKey)) {
+        DebugManager.toggle(true);
+        return;
+    }
     switch(e.key) {
         case 'ArrowLeft':
         case 'ArrowUp':
@@ -500,8 +519,12 @@ window.addEventListener('keydown', (e) => {
                 }
             });
             break;
+        case '|':
+            // Hidden Debug Menu (Pipe key)
+            DebugManager.toggle(true);
+            break;
         case 'D':
-            // Hidden Debug Menu (Shift + D)
+            // Hidden Debug Menu (Shift + D) - Keeping it for now but shifting to |
             if (e.shiftKey) {
                 DebugManager.toggle(true);
             }
@@ -623,6 +646,26 @@ safeSetClick('btn-preamble-confirm', () => {
     SelectionManager.confirmSelection();
 });
 
+safeSetClick('btn-start', () => {
+    if (armedDebugGame) {
+        socket.emit('tv_debug_start_game', armedDebugGame.id);
+        armedDebugGame = null;
+        const btnStart = document.getElementById('btn-start');
+        if (btnStart) btnStart.textContent = 'COMENZAR PARTIDA';
+        return;
+    }
+
+    if (pendingGameSelection) {
+        const item = pendingGameSelection;
+        if (item.type === 'story') {
+            socket.emit('tv_select_story', item.id);
+        } else {
+            socket.emit('tv_start_game', item.id);
+        }
+        pendingGameSelection = null;
+    }
+});
+
 safeSetClick('btn-story-next-dialogue', () => {
     socket.emit('tv_story_next');
 });
@@ -697,6 +740,16 @@ socket.on('room_created', (code) => {
   setTimeout(() => {
     showView('view-lobby');
     
+    // If we had a pending debug selection
+    if (pendingDebugSelection) {
+        const item = pendingDebugSelection;
+        pendingDebugSelection = null;
+        setTimeout(() => {
+            DebugManager.armGame(item);
+        }, 300);
+        return;
+    }
+
     // If we had a pending selection, trigger it now
     if (pendingGameSelection) {
         const item = pendingGameSelection;
