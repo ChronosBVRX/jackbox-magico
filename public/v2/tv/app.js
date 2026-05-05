@@ -474,17 +474,12 @@ window.addEventListener('keydown', (e) => {
             } else if (NavigationManager.activeView === 'view-preamble') {
                 showView('view-selection');
             } else if (NavigationManager.activeView === 'view-lobby') {
-                ModalManager.show('Abandonar Sala', '¿Deseas cerrar esta sala y volver a la selección de aventura?', true, (ok) => {
-                    if (ok) {
-                        socket.emit('tv_close_room');
-                        currentRoom = null;
-                        showView('view-init'); // Or selection, but usually init to reset state
-                        // Re-trigger selection after a brief delay if we want to go there
-                        setTimeout(() => {
-                           SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
-                        }, 500);
-                    }
-                });
+                socket.emit('tv_close_room');
+                currentRoom = null;
+                showView('view-init');
+                setTimeout(() => {
+                   SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
+                }, 500);
             }
             break;
         case 'm':
@@ -592,16 +587,12 @@ const safeSetClick = (id, fn) => {
 };
 
 safeSetClick('btn-lobby-back', () => {
-    ModalManager.show('Abandonar Sala', '¿Deseas cerrar esta sala y volver a la selección de aventura?', true, (ok) => {
-        if (ok) {
-            socket.emit('tv_close_room');
-            currentRoom = null;
-            showView('view-init');
-            setTimeout(() => {
-                SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
-            }, 500);
-        }
-    });
+    socket.emit('tv_close_room');
+    currentRoom = null;
+    showView('view-init');
+    setTimeout(() => {
+        SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
+    }, 500);
 });
 
 safeSetClick('btn-results-to-lobby', () => {
