@@ -1449,34 +1449,65 @@ body {
   transform: scale(1.05);
   box-shadow: 0 0 50px rgba(139, 92, 246, 0.5);
 }
-/* Focus State for TV Remote */
+/* High-End Focus System (Console Style) */
 .focused,
-button:focus,
-.selection-card.focused {
+button:focus {
     outline: none !important;
     border: 3px solid var(--color-accent) !important;
-    box-shadow: 0 0 50px var(--color-accent), inset 0 0 20px rgba(212, 175, 55, 0.4) !important;
+    box-shadow: 0 0 50px rgba(212, 175, 55, 0.6), inset 0 0 20px rgba(212, 175, 55, 0.3) !important;
     transform: scale(1.08) translateY(-10px) !important;
-    background: rgba(212, 175, 55, 0.2) !important;
+    background: rgba(212, 175, 55, 0.25) !important;
     z-index: 1000;
-    transition: all 0.15s cubic-bezier(0.34, 1.56, 0.64, 1);
-    animation: focusPulse 2s infinite ease-in-out;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+    animation: focusGlowPulse 1.5s infinite alternate ease-in-out !important;
 }
 
-@keyframes focusPulse {
-    0% { box-shadow: 0 0 40px var(--color-accent); }
-    50% { box-shadow: 0 0 70px var(--color-accent); }
-    100% { box-shadow: 0 0 40px var(--color-accent); }
+@keyframes focusGlowPulse {
+    from {
+        box-shadow: 0 0 30px rgba(212, 175, 55, 0.4), inset 0 0 15px rgba(212, 175, 55, 0.2);
+    }
+    to {
+        box-shadow: 0 0 60px rgba(212, 175, 55, 0.8), inset 0 0 30px rgba(212, 175, 55, 0.5);
+    }
 }
 
 .selection-card.focused {
-    transform: scale(1.15) translateY(-15px) !important;
+    transform: scale(1.15) translateY(-20px) !important;
     border-width: 4px !important;
+    box-shadow: 0 20px 60px rgba(212, 175, 55, 0.4) !important;
 }
 
-.selection-card.focused {
-    transform: scale(1.1) !important;
-    border-width: 3px !important;
+/* Button Premium Shine Effect */
+.btn-create-premium, .btn-start-premium {
+    position: relative;
+    overflow: hidden;
+}
+
+.btn-create-premium::before, .btn-start-premium::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 50%;
+    height: 100%;
+    background: linear-gradient(
+        to right,
+        rgba(255, 255, 255, 0) 0%,
+        rgba(255, 255, 255, 0.3) 50%,
+        rgba(255, 255, 255, 0) 100%
+    );
+    transform: skewX(-25deg);
+    transition: none;
+}
+
+.focused::before {
+    animation: buttonShine 2s infinite;
+}
+
+@keyframes buttonShine {
+    0% { left: -100%; }
+    50% { left: 150%; }
+    100% { left: 150%; }
 }
 
 /* Custom Modal System */
