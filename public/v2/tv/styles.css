@@ -291,6 +291,30 @@ body {
   border: 1px solid var(--glass-border);
   animation: magicIn 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
   transition: all 0.3s ease;
+  position: relative;
+}
+
+.ready-indicator {
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  width: 24px;
+  height: 24px;
+  background: #10b981;
+  border-radius: 50%;
+  border: 3px solid #111827;
+  box-shadow: 0 0 15px rgba(16, 185, 129, 0.6);
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ready-indicator::after {
+  content: '✓';
+  color: #000;
+  font-size: 0.8rem;
+  font-weight: bold;
 }
 
 @keyframes magicIn {

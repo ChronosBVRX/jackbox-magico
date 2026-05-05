@@ -50,6 +50,14 @@ export function setupSocketServer(httpServer: HttpServer) {
       io.in(roomCode).socketsLeave(roomCode);
     });
 
+    socket.on('tv_toggle_debug', (enabled) => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+      roomEngine.toggleDebugMode(roomCode, enabled);
+      const state = roomEngine.getRoom(roomCode);
+      if (state) io.to(roomCode).emit('room_state', state);
+    });
+
     socket.on('player_join', (data) => {
       const { roomCode, clientId, name, house, gender } = data;
       const result = roomEngine.addPlayer(roomCode, { clientId, name, house, gender });
@@ -60,10 +68,33 @@ export function setupSocketServer(httpServer: HttpServer) {
         socket.join(roomCode);
         socket.join(clientId); // Join personal room for private state updates
         const state = roomEngine.getRoom(roomCode);
-        if (state) io.to(roomCode).emit('room_state', state);
+        
+        // AUTO-BOTS if debug mode and first real player
+        if (state && state.debugMode && state.players.length === 1) {
+          const bots = [
+            { clientId: 'debug_bot_1', name: 'Dobby Debug', house: 'Gryffindor', gender: 'wizard' as const },
+            { clientId: 'debug_bot_2', name: 'Luna Debug', house: 'Ravenclaw', gender: 'witch' as const },
+            { clientId: 'debug_bot_3', name: 'Snape Debug', house: 'Slytherin', gender: 'wizard' as const },
+          ];
+          bots.forEach(bot => {
+            roomEngine.addPlayer(roomCode, bot);
+            roomEngine.setPlayerReady(roomCode, bot.clientId, true);
+          });
+        }
+
+        const updatedState = roomEngine.getRoom(roomCode);
+        if (updatedState) io.to(roomCode).emit('room_state', updatedState);
       } else {
         socket.emit('error_message', result.error || 'Error al unirse');
       }
+    });
+
+    socket.on('player_ready', () => {
+      const { roomCode, clientId } = socket.data;
+      if (!roomCode || !clientId) return;
+      roomEngine.setPlayerReady(roomCode, clientId, true);
+      const state = roomEngine.getRoom(roomCode);
+      if (state) io.to(roomCode).emit('room_state', state);
     });
 
     function startGameForRoom(roomCode: string, gameId: string, debug = false) {

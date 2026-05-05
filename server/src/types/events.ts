@@ -25,6 +25,7 @@ export interface Player {
   points: number; // Renamed score to points for clarity with V1
   streak: number;
   isConnected: boolean;
+  isReady: boolean;
 }
 
 export interface RoomState {
@@ -37,6 +38,7 @@ export interface RoomState {
   startedAt: number | null;
   serverTime: number;
   storyState?: StoryState;
+  debugMode: boolean;
 }
 
 export interface ServerToClientEvents {
@@ -74,6 +76,8 @@ export interface ClientToServerEvents {
   tv_next_round: () => void;
   tv_back_to_lobby: () => void;
   tv_close_room: () => void;
+  tv_toggle_debug: (enabled: boolean) => void;
+  player_ready: () => void;
   heartbeat: () => void;
 }
 

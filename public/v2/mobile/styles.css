@@ -85,6 +85,14 @@ input:focus, select:focus {
   transform: scale(0.98);
 }
 
+.btn-join-premium.ready {
+    background: rgba(16, 185, 129, 0.2) !important;
+    color: #10b981 !important;
+    border: 2px solid #10b981 !important;
+    cursor: default;
+    box-shadow: none;
+}
+
 /* Wait Screen */
 .wait-screen {
   text-align: center;

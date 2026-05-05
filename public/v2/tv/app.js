@@ -513,11 +513,20 @@ function showView(viewId) {
 // Global Key Listeners for TV Remote
 window.addEventListener('keydown', (e) => {
     console.log("TV Key Pressed:", e.key, e.code);
-    if (e.key === 'p' || e.key === 'P' || e.code === 'KeyP') {
-        DebugManager.toggle(true);
-        return;
-    }
     switch(e.key) {
+        case 'd':
+        case 'D':
+            if (currentRoom) {
+                const room = roomEngine?.debugMode; // Mock or get from state
+                // Since roomEngine isn't here, we just emit based on current state
+                // We'll use a local toggle or wait for room_state
+                socket.emit('tv_toggle_debug', !window._debugEnabled);
+            }
+            break;
+        case 'p':
+        case 'P':
+            DebugManager.toggle(true);
+            return;
         case 'ArrowLeft':
         case 'ArrowUp':
             NavigationManager.navigate('left');
@@ -777,6 +786,13 @@ socket.on('room_created', (code) => {
   setTimeout(() => {
     showView('view-lobby');
     
+    // Update debug indicator if it exists
+    const debugIndicator = document.getElementById('debug-mode-status');
+    if (debugIndicator) {
+        debugIndicator.style.display = 'none'; // Reset on new room
+    }
+    window._debugEnabled = false;
+
     // If we had a pending debug selection
     if (pendingDebugSelection) {
         const item = pendingDebugSelection;
@@ -818,6 +834,14 @@ socket.on('room_created', (code) => {
 
 socket.on('room_state', (state) => {
   currentGameId = state.currentGameId;
+  window._debugEnabled = state.debugMode;
+  
+  const debugIndicator = document.getElementById('debug-mode-status');
+  if (debugIndicator) {
+      debugIndicator.style.display = state.debugMode ? 'block' : 'none';
+      debugIndicator.textContent = '🧪 MODO DEBUG ACTIVO (3 BOTS AUTO)';
+  }
+
   if (state.status === 'lobby') {
     showView('view-lobby');
     renderPlayers(state.players);
@@ -828,6 +852,14 @@ socket.on('room_state', (state) => {
     const navActions = document.getElementById('lobby-nav-actions');
     const gameActions = document.getElementById('lobby-game-actions');
     const btnStart = document.getElementById('btn-start');
+
+    if (btnStart) {
+        if (state.storyState || pendingGameSelection?.type === 'story') {
+            btnStart.textContent = 'INICIAR HISTORIA';
+        } else {
+            btnStart.textContent = 'COMENZAR PARTIDA';
+        }
+    }
 
     // Always show navigation
     if (navActions) navActions.style.display = 'flex';
@@ -861,7 +893,10 @@ function renderPlayers(players) {
     card.className = `player-card ${player.house.toLowerCase()}`;
     if (!player.isConnected) card.classList.add('offline');
     const avatar = player.gender === 'wizard' ? '🧙‍♂️' : '🧙‍♀️';
+    const readyClass = player.isReady ? 'ready' : '';
+    const readyDot = player.isReady ? '<div class="ready-indicator"></div>' : '';
     card.innerHTML = `
+      ${readyDot}
       <div class="player-avatar">${avatar}</div>
       <div class="player-name">${escapeHTML(player.name)}</div>
       <div style="font-size: 0.7rem; opacity: 0.6; margin-top: 0.2rem;">${player.house}</div>

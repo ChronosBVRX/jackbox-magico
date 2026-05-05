@@ -15,6 +15,7 @@ export class RoomEngine {
       durationMs: 0,
       startedAt: null,
       serverTime: Date.now(),
+      debugMode: false,
     };
     this.rooms.set(code, newState);
     return code;
@@ -33,7 +34,7 @@ export class RoomEngine {
     return room?.players.find(p => p.clientId === clientId);
   }
 
-  addPlayer(roomCode: string, playerData: Omit<Player, 'points' | 'streak' | 'isConnected'>): { success: boolean; error?: string } {
+  addPlayer(roomCode: string, playerData: Omit<Player, 'points' | 'streak' | 'isConnected' | 'isReady'>): { success: boolean; error?: string } {
     const room = this.getRoom(roomCode);
     if (!room) return { success: false, error: 'Sala no encontrada' };
 
@@ -65,6 +66,7 @@ export class RoomEngine {
       points: 0,
       streak: 0,
       isConnected: true,
+      isReady: false,
     });
 
     return { success: true };
@@ -91,6 +93,20 @@ export class RoomEngine {
     const player = room.players.find(p => p.clientId === clientId);
     if (player) {
       player.isConnected = isConnected;
+    }
+  }
+
+  toggleDebugMode(roomCode: string, enabled: boolean) {
+    const room = this.getRoom(roomCode);
+    if (room) room.debugMode = enabled;
+  }
+
+  setPlayerReady(roomCode: string, clientId: string, ready: boolean) {
+    const room = this.getRoom(roomCode);
+    if (!room) return;
+    const player = room.players.find(p => p.clientId === clientId);
+    if (player) {
+      player.isReady = ready;
     }
   }
 

@@ -74,6 +74,16 @@ btnJoin.addEventListener('click', () => {
   });
 });
 
+const btnReady = document.getElementById('btn-ready');
+if (btnReady) {
+    btnReady.onclick = () => {
+        socket.emit('player_ready');
+        btnReady.disabled = true;
+        btnReady.classList.add('ready');
+        btnReady.textContent = '¡ESTÁS LISTO!';
+    };
+}
+
 // Generic Player Action
 document.querySelectorAll('.btn-trivia').forEach(btn => {
   btn.addEventListener('click', () => {
@@ -103,6 +113,18 @@ socket.on('room_state', (state) => {
       if (playerNameDisplay) playerNameDisplay.textContent = myPlayer.name;
       if (houseBanner) houseBanner.textContent = myPlayer.house;
       if (wandIcon) wandIcon.textContent = myPlayer.gender === 'wizard' ? '🧙‍♂️' : '🧙‍♀️';
+      
+      if (btnReady) {
+          if (myPlayer.isReady) {
+              btnReady.disabled = true;
+              btnReady.classList.add('ready');
+              btnReady.textContent = '¡ESTÁS LISTO!';
+          } else {
+              btnReady.disabled = false;
+              btnReady.classList.remove('ready');
+              btnReady.textContent = '¡ESTOY LISTO!';
+          }
+      }
     }
   }
 });
