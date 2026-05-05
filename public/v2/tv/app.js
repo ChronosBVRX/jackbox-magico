@@ -488,6 +488,77 @@ const DebugManager = {
     }
 };
 
+// Debug Manager (Hidden tools)
+const DebugManager = {
+    init() {
+        console.log("DebugManager: Initializing list...");
+        try {
+            const list = document.getElementById('debug-game-list');
+            if (!list) return;
+            list.innerHTML = '';
+            
+            const items = [...(STORY_CATALOG_FRONT || []), ...(GAME_CATALOG_FRONT || [])];
+            
+            items.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-create-premium';
+                btn.style.fontSize = '0.9rem';
+                btn.style.padding = '0.8rem';
+                btn.style.textAlign = 'left';
+                btn.innerHTML = `<span>[${item.type || 'game'}]</span> ${item.id}<br><small style="opacity:0.6">${item.title || item.name || ''}</small>`;
+                btn.onclick = () => {
+                    armedDebugGame = item;
+                    if (!currentRoom) {
+                        pendingDebugSelection = item;
+                        socket.emit('tv_create_room');
+                        showLoadingScreen(`Creando lobby debug para: ${item.title || item.name || item.id}...`, 40);
+                    } else {
+                        this.armGame(item);
+                    }
+                    this.toggle(false);
+                };
+                list.appendChild(btn);
+            });
+            
+            safeSetClick('btn-debug-close', () => this.toggle(false));
+        } catch (err) {
+            console.error("DebugManager Init Error:", err);
+        }
+    },
+    
+    armGame(item) {
+        armedDebugGame = item;
+        showView('view-lobby');
+
+        if (statusText) {
+            statusText.textContent = `🧪 DEBUG armado: ${item.title || item.name || item.id}. Entra con un celular y presiona iniciar.`;
+        }
+
+        const gameActions = document.getElementById('lobby-game-actions');
+        const btnStart = document.getElementById('btn-start');
+
+        if (gameActions) gameActions.style.display = 'flex';
+        if (btnStart) {
+            btnStart.style.display = 'block';
+            btnStart.classList.remove('disabled');
+            btnStart.textContent = `INICIAR DEBUG: ${item.shortName || item.title || item.name || item.id}`;
+        }
+        NavigationManager.update();
+    },
+    
+    toggle(show) {
+        const view = document.getElementById('view-debug');
+        if (view) {
+            view.style.display = show ? 'flex' : 'none';
+            if (show) {
+                NavigationManager.activeView = 'view-debug';
+                this.init();
+            }
+        }
+        NavigationManager.update();
+    }
+};
+
 // Update showView to include Navigation update
 function showView(viewId) {
   // Ocultar todas las vistas principales
@@ -513,7 +584,6 @@ function showView(viewId) {
 window.addEventListener('keydown', (e) => {
     console.log("TV Key Pressed:", e.key, e.code);
     if (e.key === 'p' || e.key === 'P' || e.code === 'KeyP') {
-        window.alert("DEBUG KEY DETECTED");
         DebugManager.toggle(true);
         return;
     }
@@ -681,6 +751,26 @@ safeSetClick('btn-preamble-back', () => {
 
 safeSetClick('btn-preamble-confirm', () => {
     SelectionManager.confirmSelection();
+});
+
+safeSetClick('btn-start', () => {
+    if (armedDebugGame) {
+        socket.emit('tv_debug_start_game', armedDebugGame.id);
+        armedDebugGame = null;
+        const btnStart = document.getElementById('btn-start');
+        if (btnStart) btnStart.textContent = 'COMENZAR PARTIDA';
+        return;
+    }
+
+    if (pendingGameSelection) {
+        const item = pendingGameSelection;
+        if (item.type === 'story') {
+            socket.emit('tv_select_story', item.id);
+        } else {
+            socket.emit('tv_start_game', item.id);
+        }
+        pendingGameSelection = null;
+    }
 });
 
 safeSetClick('btn-start', () => {
