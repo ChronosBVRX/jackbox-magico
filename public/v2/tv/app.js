@@ -478,20 +478,12 @@ const DebugManager = {
         const view = document.getElementById('view-debug');
         if (view) {
             view.style.display = show ? 'flex' : 'none';
-            view.style.zIndex = "1000000";
-            view.style.opacity = "1";
-            view.style.visibility = "visible";
             console.log("DebugManager: View display set to", view.style.display);
             if (show) {
-                this.previousActiveView = NavigationManager.activeView;
                 NavigationManager.activeView = 'view-debug';
-            } else if (this.previousActiveView) {
-                NavigationManager.activeView = this.previousActiveView;
+                this.init();
             }
-        } else {
-            console.error("DebugManager: View #view-debug not found in DOM!");
         }
-        if (show) this.init();
         NavigationManager.update();
     }
 };
