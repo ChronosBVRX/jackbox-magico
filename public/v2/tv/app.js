@@ -412,35 +412,45 @@ window.ModalManager = {
 // Debug Manager (Hidden tools)
 const DebugManager = {
     init() {
-        const list = document.getElementById('debug-game-list');
-        if (!list) return;
-        list.innerHTML = '';
-        
-        // Use the actual constants defined in app.js
-        const items = [...(STORY_CATALOG_FRONT || []), ...(GAME_CATALOG_FRONT || [])];
-        
-        items.forEach(item => {
-            const btn = document.createElement('button');
-            btn.className = 'btn-create-premium';
-            btn.style.fontSize = '0.9rem';
-            btn.style.padding = '0.8rem';
-            btn.style.textAlign = 'left';
-            btn.innerHTML = `<span>[${item.type || 'game'}]</span> ${item.id}<br><small style="opacity:0.6">${item.title || item.name || ''}</small>`;
-            btn.onclick = () => {
-                armedDebugGame = item;
-                if (!currentRoom) {
-                    pendingDebugSelection = item;
-                    socket.emit('tv_create_room');
-                    showLoadingScreen(`Creando lobby debug para: ${item.title || item.name || item.id}...`, 40);
-                } else {
-                    this.armGame(item);
-                }
-                this.toggle(false);
-            };
-            list.appendChild(btn);
-        });
-        
-        safeSetClick('btn-debug-close', () => this.toggle(false));
+        console.log("DebugManager: Initializing list...");
+        try {
+            const list = document.getElementById('debug-game-list');
+            if (!list) {
+                console.error("DebugManager: list container #debug-game-list not found!");
+                return;
+            }
+            list.innerHTML = '';
+            
+            const items = [...(STORY_CATALOG_FRONT || []), ...(GAME_CATALOG_FRONT || [])];
+            console.log("DebugManager: Found", items.length, "items");
+
+            items.forEach(item => {
+                const btn = document.createElement('button');
+                btn.className = 'btn-create-premium';
+                btn.style.fontSize = '0.9rem';
+                btn.style.padding = '0.8rem';
+                btn.style.textAlign = 'left';
+                btn.innerHTML = `<span>[${item.type || 'game'}]</span> ${item.id}<br><small style="opacity:0.6">${item.title || item.name || ''}</small>`;
+                btn.onclick = () => {
+                    console.log("DebugManager: Selecting", item.id);
+                    armedDebugGame = item;
+                    if (!currentRoom) {
+                        pendingDebugSelection = item;
+                        socket.emit('tv_create_room');
+                        showLoadingScreen(`Creando lobby debug para: ${item.title || item.name || item.id}...`, 40);
+                    } else {
+                        this.armGame(item);
+                    }
+                    this.toggle(false);
+                };
+                list.appendChild(btn);
+            });
+            
+            safeSetClick('btn-debug-close', () => this.toggle(false));
+            console.log("DebugManager: Init complete");
+        } catch (err) {
+            console.error("DebugManager Init Error:", err);
+        }
     },
     
     armGame(item) {
@@ -464,8 +474,23 @@ const DebugManager = {
     },
     
     toggle(show) {
+        console.log("DebugManager: Toggling display:", show);
         const view = document.getElementById('view-debug');
-        if (view) view.style.display = show ? 'flex' : 'none';
+        if (view) {
+            view.style.display = show ? 'flex' : 'none';
+            view.style.zIndex = "1000000";
+            view.style.opacity = "1";
+            view.style.visibility = "visible";
+            console.log("DebugManager: View display set to", view.style.display);
+            if (show) {
+                this.previousActiveView = NavigationManager.activeView;
+                NavigationManager.activeView = 'view-debug';
+            } else if (this.previousActiveView) {
+                NavigationManager.activeView = this.previousActiveView;
+            }
+        } else {
+            console.error("DebugManager: View #view-debug not found in DOM!");
+        }
         if (show) this.init();
         NavigationManager.update();
     }
