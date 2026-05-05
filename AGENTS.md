@@ -42,3 +42,4 @@ public/
 No exponer secretos.
 Usar .env.example.
 Nunca escribir claves reales en el código.
+Nunca borres funciones si no te lo pido yo explícitamente.

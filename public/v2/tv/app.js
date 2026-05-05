@@ -604,19 +604,6 @@ safeSetClick('btn-lobby-back', () => {
     });
 });
 
-safeSetClick('btn-exit-lobby', () => {
-    ModalManager.show('Abandonar Sala', '¿Deseas cerrar esta sala y volver a la selección de aventura?', true, (ok) => {
-        if (ok) {
-            socket.emit('tv_close_room');
-            currentRoom = null;
-            showView('view-init');
-            setTimeout(() => {
-                SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
-            }, 500);
-        }
-    });
-});
-
 safeSetClick('btn-results-to-lobby', () => {
     socket.emit('tv_back_to_lobby');
 });
