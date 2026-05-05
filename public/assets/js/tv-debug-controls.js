@@ -138,6 +138,48 @@
     if (panel) panel.style.opacity = panelVisible ? "1" : "0.35";
   }
 
+  function attachLobbyListeners() {
+    const btnStart = document.getElementById("btn-iniciar-partida");
+    const btnBack = document.getElementById("btn-regresar-inicio");
+
+    if (btnStart) {
+      btnStart.style.cursor = "pointer";
+      btnStart.onclick = (e) => {
+        e.stopPropagation();
+        actionStartStory();
+      };
+    }
+
+    if (btnBack) {
+      btnBack.style.cursor = "pointer";
+      btnBack.onclick = (e) => {
+        e.stopPropagation();
+        if (window.regresarAlInicio) window.regresarAlInicio();
+      };
+    }
+  }
+
+  async function actionStartStory() {
+    if (busy) return feedback("⏳ Operación en curso...");
+    const room = getRoomCode();
+    if (!room) return feedback("❌ Sin sala activa");
+    busy = true;
+    feedback("🪄 Iniciando partida forzada...");
+    try {
+      if (window.startStoryFromLobby) {
+        await window.startStoryFromLobby();
+        feedback("✅ Partida iniciada");
+      } else {
+        const data = await post(`/api/story-tv/${room}/start`, { tv_token: getTvToken() });
+        feedback("✅ Partida iniciada API");
+      }
+    } catch (err) {
+      feedback(`❌ Error: ${err.message}`);
+    } finally {
+      busy = false;
+    }
+  }
+
   // ─── Feedback visual ──────────────────────────────────────────────────────
 
   function feedback(msg) {
@@ -321,6 +363,10 @@
 
   document.addEventListener("DOMContentLoaded", () => {
     createPanel();
+    attachLobbyListeners();
+    // Re-intentar por si el DOM cambia (vía renderLobby)
+    setInterval(attachLobbyListeners, 2000);
+    
     feedback("🛠️ Debug activado — usa N/B/L/R/P");
     console.info("[DEBUG FLOW] Controles de debug activos (?debug=1). Teclas: N=avanzar, B=retroceder, L=lobby, R=ready reset, P=pausa, D=panel");
   });

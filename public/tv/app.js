@@ -1094,6 +1094,13 @@ async function startStoryFromLobby() {
   }
 }
 
+function regresarAlInicio() {
+  console.log("[DEBUG] Regresando al catálogo de historias...");
+  currentRoom = "";
+  if (radarInterval) clearInterval(radarInterval);
+  showScreen("view-inicio");
+}
+
 async function nextStoryStep() {
   if (!currentRoom) return;
   try {

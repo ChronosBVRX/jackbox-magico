@@ -17,6 +17,11 @@
 
   function injectStyles() {
     if (document.getElementById("tv-host-copy-cleanup-style")) return;
+    
+    // Si estamos en modo debug, NO ocultamos los controles del host
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("debug") === "1") return;
+
     const style = document.createElement("style");
     style.id = "tv-host-copy-cleanup-style";
     style.textContent = `
