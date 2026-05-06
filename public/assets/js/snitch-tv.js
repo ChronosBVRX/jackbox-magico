@@ -14,6 +14,11 @@
   let lastFeedIds = new Set();
   let audioCtx = null;
   let serverClockOffsetMs = 0;
+  
+  const snitchImg = new Image();
+  snitchImg.src = "/assets/images/snitch/snitch.png";
+  const bgImg = new Image();
+  bgImg.src = "/assets/images/snitch/stadium_bg.png";
 
   const houseIcons = {
     Gryffindor: "🦁",
@@ -273,52 +278,49 @@
   }
 
   function drawBackground(ctx, width, height, elapsed) {
-    const gradient = ctx.createLinearGradient(0, 0, 0, height);
+    // 1. Dibujar imagen de fondo base
+    if (bgImg.complete) {
+      ctx.drawImage(bgImg, 0, 0, width, height);
+    } else {
+      const gradient = ctx.createLinearGradient(0, 0, 0, height);
+      gradient.addColorStop(0, "#07111f");
+      gradient.addColorStop(1, "#040810");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, width, height);
+    }
 
-    gradient.addColorStop(0, "#07111f");
-    gradient.addColorStop(0.5, "#0b1c34");
-    gradient.addColorStop(1, "#040810");
-
-    ctx.fillStyle = gradient;
-    ctx.fillRect(0, 0, width, height);
-
+    // 2. Partículas ambientales (estrellas mágicas)
     ctx.save();
-    ctx.globalAlpha = 0.28;
-
-    for (let i = 0; i < 80; i++) {
-      const x = ((i * 157 + elapsed * 18) % (width + 80)) - 40;
-      const y = ((i * 83) % height);
-      const s = 1 + ((i * 17) % 4);
-
-      ctx.fillStyle = i % 5 === 0 ? "rgba(255,216,121,.85)" : "rgba(255,255,255,.55)";
+    ctx.globalAlpha = 0.4;
+    for (let i = 0; i < 60; i++) {
+      const x = ((i * 197 + elapsed * 12) % (width + 80)) - 40;
+      const y = ((i * 123) % height);
+      const s = 0.5 + ((i * 13) % 3);
+      const glow = Math.sin(elapsed * 2 + i) * 0.5 + 0.5;
+      
+      ctx.fillStyle = i % 7 === 0 ? "rgba(255,216,121," + glow + ")" : "rgba(255,255,255," + glow + ")";
       ctx.beginPath();
-      ctx.arc(x, y, s * 0.5, 0, Math.PI * 2);
+      ctx.arc(x, y, s, 0, Math.PI * 2);
       ctx.fill();
     }
-
     ctx.restore();
 
+    // 3. Grid sutil (vibe tecnológico-mágico)
     ctx.save();
-    ctx.strokeStyle = "rgba(255,255,255,.045)";
+    ctx.strokeStyle = "rgba(255,216,121,.08)";
     ctx.lineWidth = 1;
-
-    const grid = 58;
-    const offset = (elapsed * 20) % grid;
-
+    const grid = 64;
+    const offset = (elapsed * 15) % grid;
     for (let x = -grid + offset; x < width + grid; x += grid) {
       ctx.beginPath();
-      ctx.moveTo(x, 0);
-      ctx.lineTo(x, height);
+      ctx.moveTo(x, 0); ctx.lineTo(x, height);
       ctx.stroke();
     }
-
     for (let y = -grid + offset; y < height + grid; y += grid) {
       ctx.beginPath();
-      ctx.moveTo(0, y);
-      ctx.lineTo(width, y);
+      ctx.moveTo(0, y); ctx.lineTo(width, y);
       ctx.stroke();
     }
-
     ctx.restore();
   }
 
@@ -385,73 +387,66 @@
   }
 
   function drawZone(ctx, pos, elapsed) {
-    const pulse = 1 + Math.sin(elapsed * 7.4) * 0.05;
-    const radius = 78 * pulse;
+    const pulse = 1 + Math.sin(elapsed * 8) * 0.06;
+    const radius = 68 * pulse;
 
     ctx.save();
     ctx.translate(pos.x, pos.y);
 
-    const glow = ctx.createRadialGradient(0, 0, 10, 0, 0, radius * 2.4);
-    glow.addColorStop(0, "rgba(120,220,255,.24)");
-    glow.addColorStop(0.45, "rgba(120,220,255,.10)");
-    glow.addColorStop(1, "rgba(120,220,255,0)");
+    // Aura mágica azul
+    const glow = ctx.createRadialGradient(0, 0, 10, 0, 0, radius * 2.8);
+    glow.addColorStop(0, "rgba(0, 160, 255, 0.3)");
+    glow.addColorStop(0.5, "rgba(0, 80, 255, 0.1)");
+    glow.addColorStop(1, "rgba(0, 40, 255, 0)");
 
     ctx.fillStyle = glow;
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 2.4, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius * 2.8, 0, Math.PI * 2);
     ctx.fill();
 
-    ctx.rotate(elapsed * 1.7);
-
-    ctx.lineWidth = 9;
-    ctx.strokeStyle = "rgba(140,230,255,.22)";
+    // Runas / Círculos mágicos
+    ctx.rotate(elapsed * 1.2);
+    ctx.lineWidth = 12;
+    ctx.strokeStyle = "rgba(100, 200, 255, 0.15)";
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 1.18, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius * 1.3, 0, Math.PI * 2);
     ctx.stroke();
 
-    ctx.lineWidth = 4;
-    ctx.setLineDash([22, 14]);
-    ctx.strokeStyle = "rgba(180,245,255,.95)";
+    ctx.lineWidth = 3;
+    ctx.setLineDash([30, 20]);
+    ctx.strokeStyle = "rgba(180, 240, 255, 0.8)";
     ctx.beginPath();
     ctx.arc(0, 0, radius, 0, Math.PI * 2);
     ctx.stroke();
-
+    
     ctx.setLineDash([]);
-    ctx.rotate(-elapsed * 3.1);
-
+    ctx.rotate(-elapsed * 2.5);
     ctx.lineWidth = 2;
-    ctx.strokeStyle = "rgba(255,255,255,.55)";
+    ctx.strokeStyle = "rgba(255, 255, 255, 0.6)";
     ctx.beginPath();
-    ctx.arc(0, 0, radius * 0.66, 0, Math.PI * 2);
+    ctx.arc(0, 0, radius * 0.7, 0, Math.PI * 2);
     ctx.stroke();
 
     ctx.restore();
   }
 
   function drawSnitch(ctx, pos, elapsed, speedLabel) {
-    const wing = Math.sin(elapsed * 40) * 10;
-    const rotation = Math.sin(elapsed * 9) * 0.4;
+    const rotation = Math.sin(elapsed * 12) * 0.25;
 
-    trail.unshift({
-      x: pos.x,
-      y: pos.y,
-    });
-
-    if (trail.length > 24) {
-      trail.length = 24;
-    }
+    trail.unshift({ x: pos.x, y: pos.y });
+    if (trail.length > 30) trail.length = 30;
 
     trail.forEach((p, index) => {
-      const alpha = (1 - index / trail.length) * 0.42;
-      const size = 26 * (1 - index / trail.length);
+      const alpha = (1 - index / trail.length) * 0.5;
+      const size = 32 * (1 - index / trail.length);
 
       ctx.save();
       ctx.globalAlpha = alpha;
-      ctx.fillStyle = "rgba(255,216,121,.85)";
-      ctx.shadowColor = "rgba(255,216,121,.9)";
-      ctx.shadowBlur = 22;
+      ctx.fillStyle = "rgba(255, 216, 121, 0.7)";
+      ctx.shadowColor = "rgba(255, 216, 121, 0.9)";
+      ctx.shadowBlur = 15;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, size * 0.42, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, size * 0.3, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     });
@@ -460,53 +455,40 @@
     ctx.translate(pos.x, pos.y);
     ctx.rotate(rotation);
 
-    const glow = ctx.createRadialGradient(0, 0, 6, 0, 0, 90);
-    glow.addColorStop(0, "rgba(255,255,255,1)");
-    glow.addColorStop(0.22, "rgba(255,216,121,.92)");
-    glow.addColorStop(1, "rgba(255,216,121,0)");
-
+    // Glow de la snitch
+    const glow = ctx.createRadialGradient(0, 0, 5, 0, 0, 60);
+    glow.addColorStop(0, "rgba(255, 255, 255, 0.8)");
+    glow.addColorStop(0.3, "rgba(255, 216, 121, 0.6)");
+    glow.addColorStop(1, "rgba(255, 216, 121, 0)");
     ctx.fillStyle = glow;
-    ctx.beginPath();
-    ctx.arc(0, 0, 90, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(0, 0, 60, 0, Math.PI * 2); ctx.fill();
 
-    ctx.fillStyle = "rgba(245,250,255,.95)";
-    ctx.beginPath();
-    ctx.ellipse(-38, -5, 48, 12 + wing * 0.18, -0.38, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.ellipse(38, -5, 48, 12 - wing * 0.18, 0.38, 0, Math.PI * 2);
-    ctx.fill();
-
-    const core = ctx.createRadialGradient(-6, -6, 4, 0, 0, 25);
-    core.addColorStop(0, "#fffbe8");
-    core.addColorStop(0.35, "#ffe089");
-    core.addColorStop(1, "#c87400");
-
-    ctx.fillStyle = core;
-    ctx.shadowColor = "rgba(255,216,121,.9)";
-    ctx.shadowBlur = 28;
-    ctx.beginPath();
-    ctx.arc(0, 0, 23, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = "rgba(255,255,255,.55)";
-    ctx.beginPath();
-    ctx.arc(-7, -8, 6, 0, Math.PI * 2);
-    ctx.fill();
+    // Dibujar Sprite de Snitch
+    if (snitchImg.complete) {
+      const imgSize = 110;
+      // Animación de alas sutil (escalado vertical)
+      const wingScale = 0.8 + Math.sin(elapsed * 45) * 0.2;
+      ctx.save();
+      ctx.scale(1, wingScale);
+      ctx.drawImage(snitchImg, -imgSize / 2, -imgSize / 2, imgSize, imgSize);
+      ctx.restore();
+    } else {
+      // Fallback a dibujo procedural
+      ctx.fillStyle = "#ffd879";
+      ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill();
+    }
 
     ctx.restore();
 
     if (speedLabel === "dash" || speedLabel === "quiebre") {
       ctx.save();
-      ctx.globalAlpha = 0.72;
-      ctx.fillStyle = speedLabel === "dash" ? "rgba(255,216,121,.92)" : "rgba(130,220,255,.92)";
-      ctx.font = "900 22px Arial";
+      ctx.globalAlpha = 0.9;
+      ctx.fillStyle = speedLabel === "dash" ? "#ffb44d" : "#7dd3fc";
+      ctx.font = "900 28px Outfit, system-ui";
       ctx.textAlign = "center";
-      ctx.shadowColor = "rgba(0,0,0,.65)";
-      ctx.shadowBlur = 8;
-      ctx.fillText(speedLabel === "dash" ? "¡FLASH!" : "¡CAMBIO!", pos.x, pos.y - 56);
+      ctx.shadowColor = "rgba(0,0,0,0.8)";
+      ctx.shadowBlur = 12;
+      ctx.fillText(speedLabel === "dash" ? "¡FLASH!" : "¡QUIEBRE!", pos.x, pos.y - 70);
       ctx.restore();
     }
   }

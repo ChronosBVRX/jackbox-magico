@@ -13,8 +13,8 @@ ATTEMPTS_TOTAL = 5
 ARENA_WIDTH = 100
 ARENA_HEIGHT = 100
 
-SNITCH_RADIUS = 3.2
-ZONE_RADIUS = 9.5
+SNITCH_RADIUS = 2.4
+ZONE_RADIUS = 7.0
 
 POINTS_LEGENDARY = 180
 POINTS_PERFECT = 130
@@ -179,8 +179,8 @@ def _build_motion_segments(rng, duration_seconds, kind="snitch"):
         remaining = duration_seconds - elapsed
 
         if kind == "snitch":
-            dash = rng.random() < 0.30
-            sudden_turn = rng.random() < 0.24
+            dash = rng.random() < 0.45
+            sudden_turn = rng.random() < 0.35
 
             if dash:
                 segment_duration = rng.uniform(0.42, 0.68)
