@@ -1771,3 +1771,66 @@ button:focus {
     justify-content: center;
     gap: 2rem;
 }
+
+/* Responsive adjustments for compact screens (720p / laptops / projectors) */
+@media (max-height: 800px) {
+    .tv-layout, .init-screen, .selection-section, #view-loading, #view-preamble, .screen {
+        padding: 1.5rem 3rem !important;
+        gap: 1rem !important;
+    }
+    .title-group h1 {
+        font-size: 2.5rem !important;
+    }
+    .title-group p {
+        font-size: 1rem !important;
+    }
+    .central-panel {
+        padding: 1.5rem 2.5rem !important;
+        gap: 2rem !important;
+    }
+    #lobby-main-content {
+        gap: 1rem !important;
+    }
+    .room-code-large {
+        font-size: 5.5rem !important;
+    }
+    .room-label {
+        margin-bottom: 0.5rem !important;
+        font-size: 1rem !important;
+    }
+    .qr-container {
+        gap: 0.8rem !important;
+    }
+    #qrcode {
+        min-height: 160px !important;
+    }
+    .qr-image {
+        width: 160px !important;
+        height: 160px !important;
+    }
+    .players-section {
+        margin-top: 1rem !important;
+        gap: 0.5rem !important;
+    }
+    .players-grid {
+        min-height: 80px !important;
+        gap: 0.8rem !important;
+    }
+    .player-card {
+        padding: 0.8rem !important;
+    }
+    .lobby-actions-integrated {
+        padding-top: 1rem !important;
+        gap: 1.5rem !important;
+    }
+    .btn-start-premium {
+        padding: 1rem 4rem !important;
+        font-size: 1.4rem !important;
+        min-width: 350px !important;
+    }
+    .btn-create-premium {
+        padding: 1rem 2.5rem !important;
+        font-size: 1.1rem !important;
+        min-width: 200px !important;
+    }
+}
