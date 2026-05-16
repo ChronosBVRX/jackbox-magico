@@ -354,6 +354,10 @@ export function setupSocketServer(httpServer: HttpServer) {
             // Story mode: return to story engine
             roomEngine.setRoomStatus(roomCode, 'story');
             roomEngine.setCurrentGameId(roomCode, null);
+            
+            const nextStoryState = storyEngine.nextStep(room.storyState);
+            roomEngine.setStoryState(roomCode, nextStoryState);
+
             updateGameClients(roomCode);
           } else {
             roomEngine.resetRoomToLobby(roomCode);

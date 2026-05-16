@@ -6,7 +6,7 @@ export class AtrapaSnitch implements GameModule {
   id = 'atrapa_snitch' as const;
   name = 'Atrapa la Snitch';
 
-  private readonly MAX_ATTEMPTS = 5;
+  private readonly MAX_ATTEMPTS = 15;
   private readonly LAG_COMPENSATION_MS = 80;
 
   init(players: Player[]): SnitchState {
@@ -15,8 +15,8 @@ export class AtrapaSnitch implements GameModule {
 
     const state: SnitchState = {
       phase: 'playing',
-      snitchSegments: this.generateSegments(startedAt, durationMs, 2000, 3000),
-      zoneSegments: this.generateSegments(startedAt, durationMs, 4000, 6000),
+      snitchSegments: this.generateSegments(startedAt, durationMs, 500, 1200),
+      zoneSegments: this.generateSegments(startedAt, durationMs, 1500, 2500),
       catches: [],
       playerAttempts: {},
       startedAt,
@@ -130,8 +130,19 @@ export class AtrapaSnitch implements GameModule {
           ranking
         };
 
+        const pointEvents: any[] = [];
+        state.catches.forEach(c => {
+          pointEvents.push({
+            clientId: c.clientId,
+            points: c.points,
+            gameId: 'atrapa_snitch',
+            label: c.label
+          });
+        });
+
         return { 
           state,
+          pointEvents,
           events: [
             { 
               type: 'voice_cue', 
