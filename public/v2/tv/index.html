@@ -271,6 +271,24 @@
 
   <!-- Snitch Screen -->
   <div class="tv-layout" id="view-snitch" style="display: none;">
+    <div class="house-scoreboard HUD glass-panel" id="snitch-house-scoreboard" style="position: absolute; top: 2rem; left: 2rem; z-index: 30; display: flex; gap: 1.5rem; padding: 1rem 1.5rem; border-radius: 16px; background: rgba(15, 23, 42, 0.85); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.1); box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div class="house-score-item" style="text-align: center;">
+        <div style="font-size: 1.5rem; filter: drop-shadow(0 0 8px rgba(239,68,68,0.6));">🦁</div>
+        <div id="snitch-score-gryffindor" style="font-size: 1.4rem; font-weight: 800; color: var(--house-gryffindor);">0</div>
+      </div>
+      <div class="house-score-item" style="text-align: center;">
+        <div style="font-size: 1.5rem; filter: drop-shadow(0 0 8px rgba(16,185,129,0.6));">🐍</div>
+        <div id="snitch-score-slytherin" style="font-size: 1.4rem; font-weight: 800; color: var(--house-slytherin);">0</div>
+      </div>
+      <div class="house-score-item" style="text-align: center;">
+        <div style="font-size: 1.5rem; filter: drop-shadow(0 0 8px rgba(59,130,246,0.6));">🦅</div>
+        <div id="snitch-score-ravenclaw" style="font-size: 1.4rem; font-weight: 800; color: var(--house-ravenclaw);">0</div>
+      </div>
+      <div class="house-score-item" style="text-align: center;">
+        <div style="font-size: 1.5rem; filter: drop-shadow(0 0 8px rgba(245,158,11,0.6));">🦡</div>
+        <div id="snitch-score-hufflepuff" style="font-size: 1.4rem; font-weight: 800; color: var(--house-hufflepuff);">0</div>
+      </div>
+    </div>
     <div class="snitch-arena" id="snitch-arena">
       <div class="snitch-zone" id="snitch-zone"></div>
       <div class="snitch-ball" id="snitch-ball"></div>

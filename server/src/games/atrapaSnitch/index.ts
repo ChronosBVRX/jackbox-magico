@@ -31,11 +31,29 @@ export class AtrapaSnitch implements GameModule {
     if (state.phase === 'results') {
       return { phase: 'results', results: state.results };
     }
+
+    const houseScores: { [house: string]: number } = {
+      Gryffindor: 0,
+      Slytherin: 0,
+      Ravenclaw: 0,
+      Hufflepuff: 0
+    };
+
+    state.catches.forEach(c => {
+      const h = c.house || 'Gryffindor';
+      if (houseScores[h] !== undefined) {
+        houseScores[h] += c.points;
+      } else {
+        houseScores[h] = c.points;
+      }
+    });
+
     return {
       phase: state.phase,
       snitchSegments: state.snitchSegments,
       zoneSegments: state.zoneSegments,
       catches: state.catches.slice(-5),
+      houseScores,
       startedAt: state.startedAt,
       durationMs: state.durationMs
     };

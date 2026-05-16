@@ -1430,6 +1430,14 @@ function renderSnitchView(data) {
     feed.appendChild(toast);
   });
 
+  // Update house scoreboard
+  if (data.houseScores) {
+    safeText('snitch-score-gryffindor', data.houseScores.Gryffindor || 0);
+    safeText('snitch-score-slytherin', data.houseScores.Slytherin || 0);
+    safeText('snitch-score-ravenclaw', data.houseScores.Ravenclaw || 0);
+    safeText('snitch-score-hufflepuff', data.houseScores.Hufflepuff || 0);
+  }
+
   if (snitchAnimFrame) cancelAnimationFrame(snitchAnimFrame);
 
   function animate() {
