@@ -97,6 +97,24 @@ socket.on('game_started', (gameId) => {
   currentGameId = gameId;
 });
 
+// Helper for wait screen modes
+function showWaitScreen(inGameMsg) {
+    showMobileView('wait-screen');
+    const lobbyContainer = document.getElementById('lobby-ready-container');
+    const statusEl = document.getElementById('wait-screen-status');
+    const myName = localStorage.getItem('v2_playerName') || 'Mago';
+    
+    if (!inGameMsg) {
+        // Lobby mode
+        if (lobbyContainer) lobbyContainer.style.display = 'block';
+        if (statusEl) statusEl.innerHTML = `<strong id="player-name-display">${myName}</strong><br>Tu varita ya está conectada.`;
+    } else {
+        // In-game waiting mode
+        if (lobbyContainer) lobbyContainer.style.display = 'none';
+        if (statusEl) statusEl.innerHTML = `<strong id="player-name-display">${myName}</strong><br><span style="color:var(--color-accent); font-size:1.1rem; display:block; margin-top:0.5rem;">${inGameMsg}</span>`;
+    }
+}
+
 socket.on('room_state', (state) => {
   currentGameId = state.currentGameId || currentGameId;
   const myPlayer = state.players.find(p => p.clientId === clientId);
@@ -107,7 +125,7 @@ socket.on('room_state', (state) => {
     localStorage.setItem('v2_playerGender', myPlayer.gender);
 
     if (state.status === 'lobby') {
-      showMobileView('wait-screen');
+      showWaitScreen();
       const waitScreenEl = document.getElementById('wait-screen');
       if (waitScreenEl) waitScreenEl.className = `wait-screen glass-panel theme-${myPlayer.house.toLowerCase()}`;
       if (playerNameDisplay) playerNameDisplay.textContent = myPlayer.name;
@@ -184,29 +202,42 @@ socket.on('game_player_state', (data) => {
     else renderTriviaInput(data);
   } else if (data.phase === 'playing') {
     showMobileView('snitch-input');
-    document.getElementById('snitch-feedback').textContent = `Intentos: ${data.attemptsRemaining}`;
+    const attemptsEl = document.getElementById('snitch-attempts');
+    const btnCatch = document.getElementById('btn-catch');
+    if (attemptsEl) attemptsEl.textContent = `Intentos restantes: ${data.attemptsRemaining}`;
+    if (btnCatch) {
+        if (!data.canCatch || data.attemptsRemaining <= 0) {
+            btnCatch.disabled = true;
+            btnCatch.style.opacity = '0.5';
+            btnCatch.textContent = '¡AGOTADO!';
+        } else {
+            btnCatch.disabled = false;
+            btnCatch.style.opacity = '1';
+            btnCatch.textContent = '¡ATRAPAR!';
+        }
+    }
   } else if (data.phase === 'selection') {
     if (data.isDuelist) {
         if (data.alreadyChosen) showMobileView('answer-sent');
         else showMobileView('duelo-input');
     } else {
-        showMobileView('wait-screen');
+        showWaitScreen('¡Duelo Mágico! Mira el enfrentamiento en la TV.');
     }
   } else if (data.phase === 'clash') {
     if (data.isDuelist) showMobileView('clash-input');
-    else showMobileView('wait-screen');
+    else showWaitScreen('¡Choque de Hechizos! Apoya a tu compañero en la TV.');
   } else if (data.phase === 'prompt') {
     if (data.alreadyVoted) showMobileView('answer-sent');
     else renderSombreroVoting(data);
   } else if (data.phase === 'round_results' || data.phase === 'final_results') {
-    showMobileView('wait-screen');
+    showWaitScreen('¡Revisando los resultados en la TV!');
   } else if (data.phase === 'memorize') {
-    showMobileView('wait-screen');
+    showWaitScreen('¡Memoriza la secuencia mágica en la TV!');
   } else if (data.phase === 'mix') {
     if (data.alreadySubmitted) showMobileView('answer-sent');
     else renderPocionesInput(data);
   } else if (data.phase === 'results') {
-    showMobileView('wait-screen');
+    showWaitScreen('¡Revisando los puntajes y ganadores en la TV!');
   } else if (currentGameId === 'retratos_chismosos') {
     renderRetratosInput(data);
   } else if (currentGameId === 'hechizo_incompleto') {
@@ -588,8 +619,20 @@ document.getElementById('btn-pociones-submit').onclick = () => {
 
 socket.on('catch_result', (data) => {
     const feedback = document.getElementById('snitch-feedback');
-    feedback.textContent = `${data.label} (Intentos: ${data.attemptsRemaining})`;
-    feedback.style.color = data.points > 0 ? '#10b981' : '#ef4444';
+    const attemptsEl = document.getElementById('snitch-attempts');
+    const btnCatch = document.getElementById('btn-catch');
+    if (feedback) {
+        feedback.textContent = data.label;
+        feedback.style.color = data.points > 0 ? '#10b981' : '#ef4444';
+    }
+    if (attemptsEl) {
+        attemptsEl.textContent = `Intentos restantes: ${data.attemptsRemaining}`;
+    }
+    if (btnCatch && data.attemptsRemaining <= 0) {
+        btnCatch.disabled = true;
+        btnCatch.style.opacity = '0.5';
+        btnCatch.textContent = '¡AGOTADO!';
+    }
 });
 
 socket.on('answer_ack', (data) => {

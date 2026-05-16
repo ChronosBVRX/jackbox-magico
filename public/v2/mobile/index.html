@@ -49,12 +49,12 @@
       <div class="wand-icon" id="wand-icon">✨</div>
       <div class="house-banner" id="house-banner">CASA</div>
       
-      <p class="status-text">
-        <strong id="player-name-display">Mago</strong>
-        Mira la TV.<br>Tu varita ya está conectada.
+      <p class="status-text" id="wait-screen-status">
+        <strong id="player-name-display">Mago</strong><br>
+        Tu varita ya está conectada.
       </p>
 
-      <div style="font-size: 0.8rem; color: var(--color-text-dim); border-top: 1px solid var(--glass-border); padding-top: 1.5rem; margin-top: 1rem; width: 100%;">
+      <div id="lobby-ready-container" style="font-size: 0.8rem; color: var(--color-text-dim); border-top: 1px solid var(--glass-border); padding-top: 1.5rem; margin-top: 1rem; width: 100%;">
         <button id="btn-ready" class="btn-join-premium" style="margin-bottom: 1.5rem; background: var(--color-accent); color: black;">¡ESTOY LISTO!</button>
         Esperando a que el Gran Comedor inicie la partida...
       </div>
@@ -78,9 +78,10 @@
 
     <!-- Snitch Input -->
     <div class="game-view glass-panel mobile-view" id="snitch-input" style="display: none; text-align: center;">
-      <h2 style="margin-bottom: 2rem;">¡ATRAPA LA SNITCH!</h2>
+      <h2 style="margin-bottom: 1rem;">¡ATRAPA LA SNITCH!</h2>
+      <div id="snitch-attempts" style="font-size: 1.1rem; color: var(--color-text-dim); margin-bottom: 1.5rem;">Intentos restantes: 15</div>
       <button class="btn-catch" id="btn-catch">¡ATRAPAR!</button>
-      <div id="snitch-feedback" style="margin-top: 1rem; font-size: 1.2rem;"></div>
+      <div id="snitch-feedback" style="margin-top: 1.5rem; font-size: 1.3rem; font-weight: bold; min-height: 3rem; display: flex; align-items: center; justify-content: center; padding: 0 1rem;"></div>
     </div>
 
     <!-- Duelo Hechizos Input -->
