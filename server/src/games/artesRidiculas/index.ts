@@ -6,7 +6,7 @@ interface ArtesState {
   roundNumber: number;
   totalRounds: number;
   currentThreat: Threat | null;
-  answeredClients: Map<string, { answer: string; elapsedMs: number }>;
+  answeredClients: Map<string, { playerName: string; house: string; answer: string; elapsedMs: number }>;
   startedAt: number;
   durationMs: number;
   results: any | null;
@@ -79,7 +79,7 @@ export class ArtesRidiculas implements GameModule {
       normalizedAnswer = state.currentThreat.options[labelIndex];
     }
 
-    state.answeredClients.set(player.clientId, { answer: normalizedAnswer, elapsedMs });
+    state.answeredClients.set(player.clientId, { playerName: player.name, house: player.house, answer: normalizedAnswer, elapsedMs });
 
     return {
       state,
@@ -108,7 +108,6 @@ export class ArtesRidiculas implements GameModule {
     state.results = null;
     state.answeredClients.clear();
     
-    // Pick threat by difficulty progression
     const diff = state.roundNumber === 1 ? 'facil' : (state.roundNumber === 2 ? 'media' : 'dificil');
     const available = THREAT_POOL.filter(t => t.difficulty === diff && !state.usedIds.includes(t.id));
     const threat = available.length > 0 
@@ -152,7 +151,7 @@ export class ArtesRidiculas implements GameModule {
       }
 
       pointEvents.push({ clientId, points, reason: labels.join(', ') });
-      results.push({ clientId, isCorrect, isFunny, points, labels });
+      results.push({ clientId, playerName: ans.playerName, house: ans.house, isCorrect, isFunny, points, labels });
     });
 
     state.results = {

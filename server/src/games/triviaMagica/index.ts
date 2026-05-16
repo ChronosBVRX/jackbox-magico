@@ -8,7 +8,7 @@ interface TriviaState {
   totalRounds: number;
   currentQuestion: TriviaQuestion | null;
   answeredClients: Set<string>;
-  roundAnswers: Array<{ clientId: string; answer: string; elapsedMs: number }>;
+  roundAnswers: Array<{ clientId: string; playerName: string; house: string; answer: string; elapsedMs: number }>;
   startedAt: number;
   durationMs: number;
   results: any | null;
@@ -81,7 +81,7 @@ export class TriviaMagica implements GameModule {
     }
 
     state.answeredClients.add(player.clientId);
-    state.roundAnswers.push({ clientId: player.clientId, answer: normalizedAnswer, elapsedMs });
+    state.roundAnswers.push({ clientId: player.clientId, playerName: player.name, house: player.house, answer: normalizedAnswer, elapsedMs });
 
     return {
       state,
@@ -130,15 +130,12 @@ export class TriviaMagica implements GameModule {
       }
     });
 
-    // Scoring logic is handled by the engine normally, but for now we'll put it here or return point events
-    // Let's use a point_events pattern
     const pointEvents: any[] = [];
 
     state.roundAnswers.forEach(ans => {
       const isCorrect = ans.answer === state.currentQuestion?.correctAnswer;
       const isFastest = ans.clientId === fastestClientId;
       
-      // We need streak here... for now simplified
       const { points, labels } = calculateTriviaPoints(state.currentQuestion!.difficulty, isCorrect, isFastest, 0);
       
       pointEvents.push({
@@ -149,6 +146,8 @@ export class TriviaMagica implements GameModule {
 
       results.push({
         clientId: ans.clientId,
+        playerName: ans.playerName,
+        house: ans.house,
         isCorrect,
         points,
         labels

@@ -1561,9 +1561,9 @@ function renderResultsView(data) {
   resultsContainer.innerHTML = '';
   data.results.results.forEach(res => {
     const card = document.createElement('div');
-    card.className = 'result-player-card glass-panel';
+    card.className = `result-player-card glass-panel ${res.house ? res.house.toLowerCase() : ''}`;
     card.innerHTML = `
-      <div class="player-name">Mago</div>
+      <div class="player-name">${escapeHTML(res.playerName || 'Mago')}</div>
       <div class="result-status ${res.isCorrect ? 'status-correct' : 'status-wrong'}">
         ${res.isCorrect ? '¡CORRECTO!' : (res.isFunny ? '¡GRACIOSO!' : 'INCORRECTO')}
       </div>
