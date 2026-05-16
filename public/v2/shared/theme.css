@@ -1,35 +1,44 @@
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Inter:wght@300;400;500;700&family=Crimson+Text:ital,wght@0,400;0,600;1,400&display=swap');
 
 :root {
-  /* Core Colors */
+  /* Core Colors - Ultra Deep Space & Magical Atmosphere */
   --color-bg: #030712;
-  --color-surface: rgba(17, 24, 39, 0.7);
+  --color-surface: rgba(17, 24, 39, 0.75);
+  --color-surface-hover: rgba(31, 41, 55, 0.85);
   --color-accent: #fbbf24; /* Golden Magical */
+  --color-accent-glow: rgba(251, 191, 36, 0.5);
   --color-text: #f9fafb;
   --color-text-dim: #9ca3af;
   
-  /* House Colors - Deep & Elegant */
+  /* House Colors - Deep, Rich & Neon-Accented */
   --house-gryffindor: #991b1b;
+  --house-gryffindor-glow: rgba(239, 68, 68, 0.6);
   --house-gryffindor-accent: #fbbf24;
   
   --house-slytherin: #064e3b;
+  --house-slytherin-glow: rgba(16, 185, 129, 0.6);
   --house-slytherin-accent: #94a3b8;
   
   --house-ravenclaw: #1e3a8a;
-  --house-ravenclaw-accent: #92400e;
+  --house-ravenclaw-glow: rgba(59, 130, 246, 0.6);
+  --house-ravenclaw-accent: #fbbf24;
   
   --house-hufflepuff: #a16207;
+  --house-hufflepuff-glow: rgba(245, 158, 11, 0.6);
   --house-hufflepuff-accent: #171717;
 
-  /* Glassmorphism */
-  --glass-bg: rgba(255, 255, 255, 0.03);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.8);
-  --glass-filter: blur(12px);
+  /* Ultra Premium Glassmorphism */
+  --glass-bg: rgba(255, 255, 255, 0.04);
+  --glass-bg-hover: rgba(255, 255, 255, 0.08);
+  --glass-border: rgba(255, 255, 255, 0.12);
+  --glass-border-highlight: rgba(251, 191, 36, 0.4);
+  --glass-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.8), inset 0 1px 0 0 rgba(255, 255, 255, 0.1);
+  --glass-filter: blur(16px);
 
   /* Typography */
   --font-main: 'Inter', system-ui, sans-serif;
   --font-title: 'Outfit', sans-serif;
+  --font-magic: 'Crimson Text', serif;
 }
 
 * {
@@ -53,28 +62,45 @@ body {
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
   border-radius: 1.5rem;
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel:hover {
+  background: var(--glass-bg-hover);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .text-gradient-gold {
-  background: linear-gradient(135deg, #fbbf24 0%, #d97706 100%);
+  background: linear-gradient(135deg, #fff 0%, #fbbf24 50%, #d97706 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 2px 8px rgba(251, 191, 36, 0.3));
 }
 
-/* Animations */
+/* Master Cinematic Animations */
+@keyframes cinematicEnter {
+  0% { opacity: 0; transform: scale(0.96) translateY(20px); filter: blur(10px); }
+  100% { opacity: 1; transform: scale(1) translateY(0); filter: blur(0); }
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 }
 
 @keyframes float {
-  0% { transform: translateY(0px); }
-  50% { transform: translateY(-10px); }
-  100% { transform: translateY(0px); }
+  0% { transform: translateY(0px) rotate(0deg); }
+  50% { transform: translateY(-12px) rotate(1deg); }
+  100% { transform: translateY(0px) rotate(0deg); }
 }
 
 @keyframes glowPulse {
-  0% { text-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
-  50% { text-shadow: 0 0 30px rgba(251, 191, 36, 0.6); }
-  100% { text-shadow: 0 0 10px rgba(251, 191, 36, 0.3); }
+  0% { text-shadow: 0 0 15px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2); }
+  50% { text-shadow: 0 0 30px rgba(251, 191, 36, 0.8), 0 0 60px rgba(251, 191, 36, 0.5); }
+  100% { text-shadow: 0 0 15px rgba(251, 191, 36, 0.4), 0 0 30px rgba(251, 191, 36, 0.2); }
+}
+
+@keyframes magicSparkle {
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1.2); filter: brightness(1.5); }
 }
