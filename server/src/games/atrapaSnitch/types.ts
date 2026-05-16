@@ -24,4 +24,5 @@ export interface SnitchState {
   playerAttempts: Record<string, number>;
   startedAt: number;
   durationMs: number;
+  results?: any | null;
 }
