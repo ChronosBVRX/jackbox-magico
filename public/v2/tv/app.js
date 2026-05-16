@@ -1464,8 +1464,27 @@ function getInterpolatedPos(segments, time) {
 
 function renderSnitchResults(data) {
     if (snitchAnimFrame) cancelAnimationFrame(snitchAnimFrame);
-    showView('view-results'); // Reuse quiz results for now or make specific
-    // ... logic to show ranking
+    showView('view-results');
+    
+    document.getElementById('correct-answer').textContent = data.results?.correctAnswer || "Resultado del Partido";
+    document.getElementById('narrator-comment').textContent = data.results?.narratorComment || "...";
+    
+    const resultsContainer = document.getElementById('results-list');
+    if (!resultsContainer) return;
+    resultsContainer.innerHTML = '';
+    
+    if (data.results?.ranking) {
+      data.results.ranking.forEach(res => {
+        const card = document.createElement('div');
+        card.className = `result-player-card glass-panel ${res.house ? res.house.toLowerCase() : ''}`;
+        card.innerHTML = `
+          <div class="player-name">${escapeHTML(res.name)}</div>
+          <div class="result-status status-correct" style="font-size:0.9rem">${escapeHTML(res.bestCatch || 'Buscador')}</div>
+          <div class="points-gain">+${res.points} Pts</div>
+        `;
+        resultsContainer.appendChild(card);
+      });
+    }
 }
 
 function renderDueloView(data) {

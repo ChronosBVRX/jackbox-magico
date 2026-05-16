@@ -13,29 +13,36 @@ export class AtrapaSnitch implements GameModule {
     const durationMs = 25000;
     const startedAt = Date.now();
 
-    return {
-      phase: 'playing', // For now, skip instructions for speed
+    const state: SnitchState = {
+      phase: 'playing',
       snitchSegments: this.generateSegments(startedAt, durationMs, 2000, 3000),
       zoneSegments: this.generateSegments(startedAt, durationMs, 4000, 6000),
       catches: [],
       playerAttempts: {},
       startedAt,
-      durationMs
+      durationMs,
+      results: null
     };
+
+    return state;
   }
 
   getTvState(state: SnitchState) {
+    if (state.phase === 'results') {
+      return { phase: 'results', results: state.results };
+    }
     return {
       phase: state.phase,
       snitchSegments: state.snitchSegments,
       zoneSegments: state.zoneSegments,
-      catches: state.catches.slice(-5), // Only last 5 for UI feed
+      catches: state.catches.slice(-5),
       startedAt: state.startedAt,
       durationMs: state.durationMs
     };
   }
 
   getPlayerState(state: SnitchState, player: Player) {
+    if (state.phase === 'results') return { phase: 'results' };
     const attempts = state.playerAttempts[player.clientId] || 0;
     return {
       phase: state.phase,
@@ -52,13 +59,12 @@ export class AtrapaSnitch implements GameModule {
 
     state.playerAttempts[player.clientId] = attempts + 1;
 
-    // VALIDATION
     const catchTime = (action.timestamp || Date.now()) - this.LAG_COMPENSATION_MS;
     const snitchPos = this.getPositionAt(state.snitchSegments, catchTime);
     const zonePos = this.getPositionAt(state.zoneSegments, catchTime);
 
     if (!snitchPos || !zonePos) {
-      return { state }; // Outside game time
+      return { state };
     }
 
     const distance = Math.sqrt(
@@ -96,7 +102,47 @@ export class AtrapaSnitch implements GameModule {
     if (action === 'next') {
       if (state.phase === 'playing') {
         state.phase = 'results';
-        return { state };
+
+        const playerMap: { [clientId: string]: { name: string; house: string; points: number; bestCatch: string } } = {};
+        
+        state.catches.forEach(c => {
+          if (!playerMap[c.clientId]) {
+            playerMap[c.clientId] = { name: c.playerName, house: c.house, points: 0, bestCatch: c.label };
+          }
+          playerMap[c.clientId].points += c.points;
+          if (c.points > 100) playerMap[c.clientId].bestCatch = c.label;
+        });
+
+        const ranking = Object.values(playerMap).sort((a, b) => b.points - a.points);
+        const winner = ranking[0];
+
+        const narratorComments = [
+          "¡Qué espectáculo! Algunos volaron como halcones, otros rebotaron contra el suelo como sacos de papas.",
+          "Madame Hooch está conmovida. O tal vez solo se le metió una mosca al ojo.",
+          "El buscador estrella será la envidia de todo Hogwarts... hasta que le toque limpiar las jaulas de las lechuzas.",
+          "Una persecución digna de la Copa Mundial de Quidditch. ¡Casi me da un infarto de tanta emoción!"
+        ];
+        const randomComment = narratorComments[Math.floor(Math.random() * narratorComments.length)];
+
+        state.results = {
+          correctAnswer: winner ? `¡${winner.name} es el Buscador Estrella!` : "¡Nadie atrapó la Snitch!",
+          narratorComment: winner ? `"${randomComment}" - Comentarista de Quidditch` : '"¡Pésimo vuelo! Madame Hooch los ha mandado a clases de recuperación con Filch."',
+          ranking
+        };
+
+        return { 
+          state,
+          events: [
+            { 
+              type: 'voice_cue', 
+              payload: { 
+                cueKey: 'snitch_results', 
+                text: winner ? `¡Increíble! ${winner.name} ha capturado la Snitch dorada con una técnica espectacular. ${randomComment}` : '¡Qué desastre de partido! Nadie atrapó la Snitch. Madame Hooch está furiosa.' 
+              }, 
+              target: 'all' 
+            }
+          ]
+        };
       } else {
         return { state, finished: true };
       }
@@ -109,7 +155,6 @@ export class AtrapaSnitch implements GameModule {
     let currentT = startTime;
     const endTime = startTime + totalDuration;
 
-    // Start center
     let lastX = 50;
     let lastY = 50;
 
@@ -153,10 +198,10 @@ export class AtrapaSnitch implements GameModule {
   }
 
   private calculateCatchResult(distance: number): { points: number, label: string } {
-    if (distance <= 3.8) return { points: 180, label: '¡CAPTURADA! (Legendaria)' };
-    if (distance <= 6.0) return { points: 130, label: '¡CAPTURADA! (Perfecta)' };
-    if (distance <= 9.8) return { points: 90, label: '¡CAPTURADA! (Gran Captura)' };
-    if (distance <= 14.8) return { points: 45, label: '¡CAPTURADA! (Cerca)' };
-    return { points: 0, label: 'FALLO' };
+    if (distance <= 3.8) return { points: 180, label: '¡AGARRE BUCAL! (Te tragaste la Snitch como Harry en su 1er año)' };
+    if (distance <= 6.0) return { points: 130, label: '¡MANIOBRA WRONSKI! (Casi te rompes la crisma, pero la tienes)' };
+    if (distance <= 9.8) return { points: 90, label: '¡ROZANDO LAS ALAS! (Le arrancaste una pluma dorada)' };
+    if (distance <= 14.8) return { points: 45, label: '¡AGARRE DE AXILA! (Atrapada de milagro, el árbitro duda)' };
+    return { points: 0, label: '¡BLUDGER EN LA CARA! (Atrapaste una mosca gorda en lugar de la Snitch)' };
   }
 }

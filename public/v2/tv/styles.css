@@ -835,49 +835,86 @@ body {
   position: relative;
   width: 100%;
   height: 80vh;
-  background: radial-gradient(circle at center, #064e3b 0%, #022c22 50%, #020617 100%);
+  background: url('/assets/images/quidditch_pitch.png') center/cover no-repeat, radial-gradient(circle at center, #064e3b 0%, #022c22 50%, #020617 100%);
   border-radius: 28px;
   overflow: hidden;
   margin-top: 2rem;
-  box-shadow: 0 25px 60px rgba(0,0,0,0.8), inset 0 0 100px rgba(16, 185, 129, 0.3);
-  border: 2px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 25px 60px rgba(0,0,0,0.9), inset 0 0 120px rgba(212, 175, 55, 0.5);
+  border: 2px solid rgba(212, 175, 55, 0.6);
 }
 .snitch-arena::before {
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(90deg, rgba(255,255,255,0.05) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.05) 1px, transparent 1px);
-  background-size: 50px 50px;
+  background: radial-gradient(circle at center, transparent 20%, rgba(0, 0, 0, 0.6) 80%, rgba(0, 0, 0, 0.9) 100%);
   pointer-events: none;
 }
 .snitch-ball {
   position: absolute;
-  width: 40px;
-  height: 40px;
-  background: radial-gradient(circle at 30% 30%, #fff 0%, #ffd700 30%, #b8860b 100%);
+  width: 48px;
+  height: 48px;
+  background: radial-gradient(circle at 30% 30%, #ffffff 0%, #ffd700 30%, #b8860b 80%, #5c4308 100%);
   border-radius: 50%;
-  box-shadow: 0 0 30px #ffd700, 0 0 60px #ffae00, 0 0 90px #ff8c00;
+  box-shadow: 0 0 30px #ffd700, 0 0 60px #ffae00, 0 0 90px #ff8c00, inset 0 0 15px #ffffff;
   z-index: 10;
   transform: translate(-50%, -50%);
-  animation: snitchWingPulse 0.1s infinite alternate;
+  animation: snitchFlutter 0.08s infinite alternate;
 }
-@keyframes snitchWingPulse {
-  0% { filter: drop-shadow(0 0 20px #ffd700) brightness(1); }
-  100% { filter: drop-shadow(0 0 50px #fff) brightness(1.4); }
+.snitch-ball::before, .snitch-ball::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  width: 60px;
+  height: 25px;
+  background: linear-gradient(90deg, rgba(255,255,255,0.9), rgba(255,215,0,0.6), transparent);
+  border-radius: 50% 100% 0 50%;
+  filter: drop-shadow(0 0 15px rgba(255,215,0,0.8));
+  pointer-events: none;
+}
+.snitch-ball::before {
+  left: -55px;
+  transform-origin: right center;
+  animation: wingFlapLeft 0.05s infinite alternate;
+}
+.snitch-ball::after {
+  right: -55px;
+  transform-origin: left center;
+  transform: scaleX(-1);
+  animation: wingFlapRight 0.05s infinite alternate;
+}
+@keyframes wingFlapLeft {
+  0% { transform: translateY(-50%) rotate(-30deg); filter: drop-shadow(0 0 10px #ffd700); }
+  100% { transform: translateY(-50%) rotate(30deg); filter: drop-shadow(0 0 25px #ffffff); }
+}
+@keyframes wingFlapRight {
+  0% { transform: scaleX(-1) translateY(-50%) rotate(-30deg); filter: drop-shadow(0 0 10px #ffd700); }
+  100% { transform: scaleX(-1) translateY(-50%) rotate(30deg); filter: drop-shadow(0 0 25px #ffffff); }
+}
+@keyframes snitchFlutter {
+  0% { filter: drop-shadow(0 0 20px #ffd700) brightness(1); transform: translate(-50%, -50%) scale(0.95); }
+  100% { filter: drop-shadow(0 0 50px #ffffff) brightness(1.3); transform: translate(-50%, -50%) scale(1.05); }
 }
 .snitch-zone {
   position: absolute;
-  width: 150px;
-  height: 150px;
-  border: 6px dashed rgba(255, 215, 0, 0.8);
+  width: 160px;
+  height: 160px;
+  border: 6px dashed rgba(255, 215, 0, 0.9);
   border-radius: 50%;
-  background: radial-gradient(circle, rgba(255, 215, 0, 0.25), transparent);
+  background: radial-gradient(circle, rgba(255, 215, 0, 0.35), rgba(255, 215, 0, 0.1) 60%, transparent 100%);
   z-index: 5;
   transform: translate(-50%, -50%);
-  box-shadow: 0 0 40px rgba(255, 215, 0, 0.5), inset 0 0 30px rgba(255, 215, 0, 0.5);
-  animation: zoneRotate 10s linear infinite;
+  box-shadow: 0 0 50px rgba(255, 215, 0, 0.6), inset 0 0 40px rgba(255, 215, 0, 0.6);
+  animation: zoneRotateHUD 8s linear infinite;
 }
-@keyframes zoneRotate {
+.snitch-zone::before {
+  content: '';
+  position: absolute;
+  inset: -15px;
+  border: 2px solid rgba(255, 215, 0, 0.4);
+  border-radius: 50%;
+  animation: zoneRotateHUD 12s linear infinite reverse;
+}
+@keyframes zoneRotateHUD {
   from { transform: translate(-50%, -50%) rotate(0deg); }
   to { transform: translate(-50%, -50%) rotate(360deg); }
 }
