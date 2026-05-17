@@ -61,12 +61,15 @@ export class RoomEngine {
       return { success: false, error: 'Ese nombre ya está en uso' };
     }
 
+    const isHost = room.players.length === 0;
+
     room.players.push({
       ...playerData,
       points: 0,
       streak: 0,
       isConnected: true,
       isReady: false,
+      isHost,
     });
 
     return { success: true };

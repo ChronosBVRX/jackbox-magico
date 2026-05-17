@@ -26,6 +26,7 @@ export interface Player {
   streak: number;
   isConnected: boolean;
   isReady: boolean;
+  isHost?: boolean;
 }
 
 export interface RoomState {
