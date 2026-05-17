@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hogwarts Game Night - Copa de las Casas</title>
   <link rel="stylesheet" href="styles.css?v=2.1">
+  <link rel="icon" type="image/png" href="/favicon.png">
 </head>
 <body>
   <!-- Debug/Test Modal (Force Top Stacking) -->
@@ -26,11 +27,10 @@
 
   <!-- PANTALLA DE CARGA INICIAL -->
   <div id="view-loading" class="screen" style="display: flex; position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 100000; background: var(--color-bg); justify-content: center; align-items: center; flex-direction: column;">
-    <div class="magic-loader-wrap">
-      <div class="magic-wand-loader"></div>
-      <div class="magic-circles"></div>
+    <div class="magic-loader-wrap" style="margin-bottom: 2rem;">
+      <img src="/assets/images/logo.png" alt="Hogwarts Snacks & Foods" style="width: 220px; filter: drop-shadow(0 0 20px rgba(212,175,55,0.6)); animation: pulse 2s infinite;">
     </div>
-    <h1 class="text-gradient-gold" style="font-family: var(--font-title); font-size: 2.5rem; margin-top: 2rem;">Preparando el Castillo</h1>
+    <h1 class="text-gradient-gold" style="font-family: var(--font-title); font-size: 2.5rem; margin-top: 1rem;">Preparando el Castillo</h1>
     <p id="loading-status" style="color: var(--color-text-dim); margin-top: 1rem;">Encendiendo las velas y cargando audios...</p>
     <div style="width: 300px; height: 4px; background: rgba(255,255,255,0.1); border-radius: 10px; margin-top: 2rem; overflow: hidden;">
         <div id="loading-progress" style="width: 0%; height: 100%; background: var(--color-accent); transition: width 0.3s ease;"></div>
@@ -38,7 +38,8 @@
   </div>
 
   <div class="init-screen" id="view-init" style="display: none; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: radial-gradient(circle at center, rgba(30, 35, 50, 0.4), rgba(10, 15, 30, 0.9));">
-    <div class="hero-section" style="animation: fadeInDown 1.5s ease-out; margin-bottom: 2rem;">
+    <div class="hero-section" style="animation: fadeInDown 1.5s ease-out; margin-bottom: 2rem; display: flex; flex-direction: column; align-items: center;">
+        <img src="/assets/images/logo.png" alt="Hogwarts Snacks & Foods" style="width: 280px; margin-bottom: 1.5rem; filter: drop-shadow(0 0 30px rgba(212,175,55,0.5));">
         <h1 class="text-gradient-gold" style="font-size: 6rem; margin-bottom: 0.5rem; font-family: var(--font-title); text-shadow: 0 0 50px rgba(212,175,55,0.4); letter-spacing: 4px;">Hogwarts Game Night</h1>
         <p style="color: var(--color-accent); margin-bottom: 4rem; font-size: 1.6rem; letter-spacing: 8px; font-family: var(--font-title); opacity: 0.8; text-transform: uppercase;">Copa de las Casas</p>
     </div>
@@ -53,10 +54,13 @@
 
   <div class="tv-layout" id="view-lobby" style="display: none;">
     <header class="header">
-      <div class="title-group">
-        <h1 class="text-gradient-gold">Hogwarts Game Night</h1>
-        <p>Copa de las Casas</p>
-        <div id="debug-mode-status" style="display: none; background: rgba(239,68,68,0.2); color: #f87171; padding: 0.3rem 0.8rem; border-radius: 5px; font-size: 0.8rem; font-weight: bold; border: 1px solid rgba(239,68,68,0.4); margin-top: 0.5rem; animation: pulse 2s infinite;">🧪 MODO DEBUG ACTIVO</div>
+      <div class="title-group" style="display: flex; align-items: center; gap: 1.5rem;">
+        <img src="/assets/images/logo.png" alt="Logo" style="width: 80px; filter: drop-shadow(0 0 10px rgba(212,175,55,0.4));">
+        <div>
+          <h1 class="text-gradient-gold" style="margin: 0;">Hogwarts Game Night</h1>
+          <p style="margin: 0; opacity: 0.8;">Copa de las Casas</p>
+          <div id="debug-mode-status" style="display: none; background: rgba(239,68,68,0.2); color: #f87171; padding: 0.3rem 0.8rem; border-radius: 5px; font-size: 0.8rem; font-weight: bold; border: 1px solid rgba(239,68,68,0.4); margin-top: 0.5rem; animation: pulse 2s infinite;">🧪 MODO DEBUG ACTIVO</div>
+        </div>
       </div>
       <div class="connection-status" style="display: flex; flex-direction: column; align-items: flex-end; gap: 0.5rem;">
         <div style="display: flex; align-items: center; gap: 0.5rem;">
