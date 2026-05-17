@@ -6,6 +6,7 @@ export interface PatronusPrompt {
   id: string;
   text: string;
   tone: 'gracioso' | 'raro' | 'dramatico' | 'tierno' | 'absurdo';
+  category?: 'familiar' | 'adultos';
   narratorLine?: string;
 }
 

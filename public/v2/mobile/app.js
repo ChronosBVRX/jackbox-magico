@@ -447,13 +447,51 @@ function renderPatronusInput(data) {
     const promptEl = document.getElementById('patronus-prompt-mobile');
     if (promptEl) promptEl.textContent = data.prompt || '';
     
+    const textEl = document.getElementById('patronus-text');
+    let charCounterEl = document.getElementById('patronus-char-counter');
+    if (!charCounterEl && textEl) {
+      charCounterEl = document.createElement('div');
+      charCounterEl.id = 'patronus-char-counter';
+      charCounterEl.style.textAlign = 'right';
+      charCounterEl.style.fontSize = '0.85rem';
+      charCounterEl.style.color = '#9ca3af';
+      charCounterEl.style.margin = '0.3rem 0 1rem 0';
+      if (textEl.parentNode) textEl.parentNode.insertBefore(charCounterEl, textEl.nextSibling);
+      
+      textEl.oninput = () => {
+        const len = textEl.value.length;
+        charCounterEl.textContent = `${len} / 80 caracteres`;
+        charCounterEl.style.color = len >= 80 ? '#ef4444' : '#9ca3af';
+      };
+    }
+    if (charCounterEl && textEl) charCounterEl.textContent = `${textEl.value.length} / 80 caracteres`;
+
+    let clearBtnEl = document.getElementById('btn-patronus-clear');
+    if (!clearBtnEl && textEl) {
+      const btnContainer = document.getElementById('btn-patronus-submit')?.parentNode;
+      clearBtnEl = document.createElement('button');
+      clearBtnEl.id = 'btn-patronus-clear';
+      clearBtnEl.className = 'btn-target';
+      clearBtnEl.style.background = 'rgba(239, 68, 68, 0.15)';
+      clearBtnEl.style.color = '#ef4444';
+      clearBtnEl.style.border = '1px solid #ef4444';
+      clearBtnEl.style.marginTop = '0.5rem';
+      clearBtnEl.textContent = '🧹 Limpiar Texto';
+      clearBtnEl.onclick = () => {
+        textEl.value = '';
+        if (charCounterEl) charCounterEl.textContent = '0 / 80 caracteres';
+      };
+      if (btnContainer) btnContainer.appendChild(clearBtnEl);
+    }
+
     const btn = document.getElementById('btn-patronus-submit');
     if (btn) {
       btn.onclick = () => {
-        const textEl = document.getElementById('patronus-text');
         const text = textEl ? textEl.value : '';
         if (!text.trim()) return;
         socket.emit('player_action', { type: 'patronus_submit', text });
+        if (textEl) textEl.value = '';
+        if (charCounterEl) charCounterEl.textContent = '0 / 80 caracteres';
         showMobileView('answer-sent');
       };
     }

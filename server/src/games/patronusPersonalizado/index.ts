@@ -54,8 +54,14 @@ export class PatronusPersonalizado implements GameModule {
   handlePlayerAction(state: PatronusState, player: Player, action: any): GameUpdateResult {
     if (state.phase === 'submit' && action.type === 'patronus_submit') {
       if (state.submissions[player.clientId]) return { state };
-      const text = (action.text || '').trim().substring(0, 80);
+      let text = (action.text || '').trim().substring(0, 80);
       if (!text) return { state };
+
+      const OFENSIVAS = ['mierda', 'puta', 'puto', 'pene', 'vagina', 'culo', 'joder', 'cabron', 'chinga', 'verga', 'pendejo', 'coño', 'bitch', 'fuck', 'shit'];
+      OFENSIVAS.forEach(word => {
+        const regex = new RegExp(word, 'gi');
+        text = text.replace(regex, '🎇[magia pura]🎇');
+      });
 
       state.submissions[player.clientId] = {
         id: Math.random().toString(36).substring(7),
