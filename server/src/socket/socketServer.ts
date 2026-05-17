@@ -89,6 +89,10 @@ export function setupSocketServer(httpServer: HttpServer) {
     });
 
     socket.on('tv_toggle_debug', (enabled) => {
+      if (process.env.NODE_ENV === 'production') {
+        socket.emit('error_message', 'El modo debug está deshabilitado en producción.');
+        return;
+      }
       const { roomCode, isTv } = socket.data;
       if (!isTv || !roomCode) return;
       roomEngine.toggleDebugMode(roomCode, enabled);
@@ -116,7 +120,7 @@ export function setupSocketServer(httpServer: HttpServer) {
         const state = roomEngine.getRoom(roomCode);
         
         // AUTO-BOTS if debug mode and first real player
-        if (state && state.debugMode && state.players.length === 1) {
+        if (process.env.NODE_ENV !== 'production' && state && state.debugMode && state.players.length === 1) {
           const bots = [
             { clientId: 'debug_bot_1', name: 'Dobby Debug', house: 'Gryffindor', gender: 'wizard' as const },
             { clientId: 'debug_bot_2', name: 'Luna Debug', house: 'Ravenclaw', gender: 'witch' as const },
@@ -266,6 +270,10 @@ export function setupSocketServer(httpServer: HttpServer) {
     });
 
     socket.on('tv_debug_start_game', (gameId) => {
+      if (process.env.NODE_ENV === 'production') {
+        socket.emit('error_message', 'El inicio rápido de debug está deshabilitado en producción.');
+        return;
+      }
       const { roomCode, isTv } = socket.data;
       if (!isTv || !roomCode) return;
 
@@ -431,7 +439,8 @@ export function setupSocketServer(httpServer: HttpServer) {
 
       const game = activeGames.get(roomCode);
       if (game) {
-        const result = game.module.handleHostAction(game.state, 'next');
+        const room = roomEngine.getRoom(roomCode);
+        const result = game.module.handleHostAction(game.state, 'next', room?.players);
         game.state = result.state;
 
         if (result.events) {
@@ -483,7 +492,8 @@ export function setupSocketServer(httpServer: HttpServer) {
         const player = roomEngine.getPlayer(roomCode, clientId);
         if (!player || !player.isHost) return;
 
-        const result = game.module.handleHostAction(game.state, data?.action || 'next');
+        const room = roomEngine.getRoom(roomCode);
+        const result = game.module.handleHostAction(game.state, data?.action || 'next', room?.players);
         game.state = result.state;
 
         if (result.events) {

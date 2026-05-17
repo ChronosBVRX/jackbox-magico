@@ -1519,15 +1519,27 @@ function renderDictadoInput(data) {
                     socket.emit('player_action', { type: 'repeat_dictado_audio' });
                 };
                 barControlsEl.appendChild(btnRepeat);
+
+                const btnTvHint = document.createElement('button');
+                btnTvHint.className = 'btn-join-premium';
+                btnTvHint.style.padding = '0.8rem';
+                btnTvHint.style.background = data.showNoisyHint ? '#ec4899' : '#8b5cf6';
+                btnTvHint.style.borderColor = data.showNoisyHint ? '#db2777' : '#7c3aed';
+                btnTvHint.style.fontSize = '1rem';
+                btnTvHint.innerHTML = data.showNoisyHint ? `👁️ Ocultar Subtítulo en TV` : `👁️ Mostrar Subtítulo en TV`;
+                btnTvHint.onclick = () => {
+                    socket.emit('player_action', { type: 'toggle_noisy_hint' });
+                };
+                barControlsEl.appendChild(btnTvHint);
             }
 
             const btnHint = document.createElement('button');
             btnHint.className = 'btn-join-premium';
             btnHint.style.padding = '0.8rem';
-            btnHint.style.background = '#8b5cf6';
-            btnHint.style.borderColor = '#7c3aed';
+            btnHint.style.background = '#6b7280';
+            btnHint.style.borderColor = '#4b5563';
             btnHint.style.fontSize = '1rem';
-            btnHint.innerHTML = `👁️ Mostrar Subtítulo (Modo Bar Ruidoso)`;
+            btnHint.innerHTML = `📱 Ver Subtítulo en mi Móvil`;
             btnHint.onclick = () => {
                 const hintDiv = document.getElementById('dictado-noisy-hint');
                 if (hintDiv) {

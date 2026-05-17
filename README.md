@@ -1,6 +1,8 @@
-# Hogwarts Game Night V2 - Realtime Engine
+# Hogwarts Game Night / Torneo Mágico Interactivo (Versión 1.0 Estable)
 
-Este es el núcleo de la versión 2.0 del proyecto, migrado a una arquitectura autoritativa en tiempo real con WebSockets.
+Hogwarts Game Night es una experiencia interactiva tipo Jackbox para noches sociales en bar, diseñada para grupos de 4 a 8 jugadores.
+
+Este es el núcleo estable del proyecto, basado en una arquitectura autoritativa en tiempo real con WebSockets y diseñado específicamente para operación comercial y entretenimiento en vivo.
 
 ## Stack Tecnológico
 - **Backend**: Node.js + TypeScript + Express + Socket.IO

@@ -104,6 +104,9 @@ export class ElImpostor implements GameModule {
       }
     }
 
+    return { state };
+  }
+
   onTick(state: ImpostorState): GameUpdateResult {
     if (state.phase === 'playing') {
       const elapsed = Date.now() - state.startedAt;

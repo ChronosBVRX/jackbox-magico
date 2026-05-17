@@ -160,6 +160,7 @@ export class ElDictado implements GameModule {
       startedAt: Date.now(),
       durationMs: randomStory.durationMs || 35000,
       audioRepeatCount: 0,
+      showNoisyHint: false,
       results: null
     };
   }
@@ -182,6 +183,7 @@ export class ElDictado implements GameModule {
       audioUrl: state.currentStory.audioUrl,
       noisyBarText: state.currentStory.noisyBarText,
       audioRepeatCount: state.audioRepeatCount,
+      showNoisyHint: state.showNoisyHint,
       submittedCount,
       totalPlayers: Object.keys(state.submissions).length,
       startedAt: state.startedAt,
@@ -207,6 +209,7 @@ export class ElDictado implements GameModule {
       currentStoryTitle: state.currentStory.title,
       noisyBarText: state.currentStory.noisyBarText,
       audioRepeatCount: state.audioRepeatCount,
+      showNoisyHint: state.showNoisyHint,
       alreadySubmitted: mySub ? mySub.transcription !== '' : false
     };
   }
@@ -224,6 +227,12 @@ export class ElDictado implements GameModule {
 
     if (action.type === 'repeat_dictado_audio' && state.phase === 'playing') {
       state.audioRepeatCount = (state.audioRepeatCount || 0) + 1;
+      state.showNoisyHint = true;
+      return { state, events: [{ type: 'answer_ack', payload: { success: true }, target: 'players' }] };
+    }
+
+    if (action.type === 'toggle_noisy_hint' && state.phase === 'playing' && player.isHost) {
+      state.showNoisyHint = !state.showNoisyHint;
       return { state, events: [{ type: 'answer_ack', payload: { success: true }, target: 'players' }] };
     }
 

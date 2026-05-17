@@ -25,6 +25,7 @@ export interface DictadoState {
   startedAt: number;
   durationMs: number;
   audioRepeatCount: number;
+  showNoisyHint: boolean;
   results: {
     ranking: DictadoSubmission[];
     winner: DictadoSubmission | null;

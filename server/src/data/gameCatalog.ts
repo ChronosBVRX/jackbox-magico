@@ -43,7 +43,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'artes_ridiculas',
     name: 'Defensa Contra las Artes Ridículas',
     shortName: 'Artes Ridículas',
-    status: 'beta',
+    status: 'stable',
     mode: 'quiz',
     description: 'Enfrenta amenazas absurdas del mundo cotidiano con soluciones creativas.',
     rules: [
@@ -61,7 +61,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'atrapa_snitch',
     name: 'Atrapa la Snitch',
     shortName: 'Snitch',
-    status: 'beta',
+    status: 'stable',
     mode: 'action',
     description: 'Reflejos puros. Captura la Snitch cuando entre en tu aro de visión.',
     rules: [
@@ -79,7 +79,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'duelo_hechizos',
     name: 'Duelo de Hechizos',
     shortName: 'Duelo',
-    status: 'beta',
+    status: 'ready',
     mode: 'strategy',
     description: 'Enfréntate en un duelo de varitas usando la tabla de ventajas mágicas.',
     rules: [
@@ -97,7 +97,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'sombrero_burlon',
     name: 'El Sombrero Burlón',
     shortName: 'Sombrero',
-    status: 'beta',
+    status: 'stable',
     mode: 'social',
     description: 'Votación social. ¿Quién encaja mejor con la descripción del sombrero?',
     rules: [
@@ -115,7 +115,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'clase_pociones',
     name: 'Clase de Pociones',
     shortName: 'Pociones',
-    status: 'beta',
+    status: 'ready',
     mode: 'memory',
     description: 'Memoria colectiva. Repite la secuencia de ingredientes en tu caldero.',
     rules: [
@@ -133,7 +133,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'mapa_travieso',
     name: 'El Mapa Travieso',
     shortName: 'Mapa',
-    status: 'beta',
+    status: 'stable',
     mode: 'quiz',
     description: 'Observa el mapa y recuerda la ubicación de los objetos ocultos.',
     rules: [
@@ -151,7 +151,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'retratos_chismosos',
     name: 'Retratos Chismosos',
     shortName: 'Retratos',
-    status: 'beta',
+    status: 'ready',
     mode: 'quiz',
     description: 'Escucha los rumores de los retratos y adivina de quién están hablando.',
     rules: [
@@ -169,7 +169,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'hechizo_incompleto',
     name: 'Hechizo Incompleto',
     shortName: 'Hechizo',
-    status: 'beta',
+    status: 'ready',
     mode: 'quiz',
     description: 'Completa los encantamientos antiguos que han perdido algunas palabras.',
     rules: [
@@ -187,7 +187,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'caldero_mentiroso',
     name: 'El Caldero Mentiroso',
     shortName: 'Caldero',
-    status: 'beta',
+    status: 'ready',
     mode: 'strategy',
     description: 'Sabotaje y engaño. Mantén la poción estable o hazla explotar en secreto.',
     rules: [
@@ -205,7 +205,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'patronus_personalizado',
     name: 'Patronus Personalizado',
     shortName: 'Patronus',
-    status: 'beta',
+    status: 'stable',
     mode: 'social',
     description: 'Conjura un Patronus único respondiendo a situaciones mágicas y vota por el mejor.',
     rules: [
@@ -223,7 +223,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'copa_final',
     name: 'Copa Final',
     shortName: 'Final',
-    status: 'beta',
+    status: 'stable',
     mode: 'quiz',
     description: 'La gran pregunta final donde apuestas tus puntos para ganar la Copa de las Casas.',
     rules: [
@@ -241,7 +241,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'el_impostor',
     name: 'El Impostor de Hogwarts',
     shortName: 'Impostor',
-    status: 'beta',
+    status: 'ready',
     mode: 'social',
     description: 'Deducción y engaño. Todos conocen el lugar secreto en Hogwarts excepto el espía mortífago.',
     rules: [
@@ -259,7 +259,7 @@ export const GAME_CATALOG: GameInfo[] = [
     id: 'el_tiburon',
     name: 'El Tiburón de los Negocios Mágicos',
     shortName: 'Tiburón',
-    status: 'beta',
+    status: 'premium',
     mode: 'social',
     description: 'Gartic Phone Modo Complemento. Dibuja criaturas extrañas y productos defectuosos en equipo sin saber qué era originalmente.',
     rules: [
@@ -285,8 +285,30 @@ export const GAME_CATALOG: GameInfo[] = [
       'Transcribe exactamente lo que escuches antes de que se agote el tiempo.',
       'Gana puntos por precisión de parentesco o por el voto del Host si tu respuesta fue hilarante.'
     ],
-    points: { min: 0, max: 1300, description: 'Hasta 1000 puntos por precisión (Sørensen-Dice) + 300 de bono por respuesta hilarante' },
+    points: {
+      min: 0,
+      max: 550,
+      description: 'Hasta 400 puntos por precisión + 150 de bono hilarante del Host'
+    },
     durationSeconds: 60,
+    maxPlayers: 8,
+    maxPerHouse: 2,
+    enabled: true
+  },
+  {
+    id: 'beso_boda_muerte',
+    name: 'Beso, Boda, Muerte',
+    shortName: 'Beso/Boda/Muerte',
+    status: 'premium',
+    mode: 'social',
+    description: 'Chismes del Corazón de Bruja. Elige el destino amoroso de tres personajes y deja que la mesa prediga tus decisiones.',
+    rules: [
+      'El protagonista elige a quién besar, con quién casarse y a quién lanzar un Avada Kedavra.',
+      'Los demás jugadores intentan predecir las elecciones exactas del protagonista.',
+      'Puntos por cada coincidencia y bono perfecto.'
+    ],
+    points: { min: 0, max: 300, description: '100 por acierto + bono de predicción perfecta' },
+    durationSeconds: 90,
     maxPlayers: 8,
     maxPerHouse: 2,
     enabled: true

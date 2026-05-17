@@ -61,7 +61,7 @@ export interface GameModule {
   /**
    * Handles a control action from the host (TV)
    */
-  handleHostAction(state: any, action: string): GameUpdateResult;
+  handleHostAction(state: any, action: string, players?: Player[]): GameUpdateResult;
 
   /**
    * Called when a timer expires or transition is forced

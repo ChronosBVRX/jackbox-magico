@@ -2243,7 +2243,12 @@ function renderDictadoView(data) {
         if (container) container.appendChild(tvHintEl);
     }
     if (tvHintEl) {
-        tvHintEl.innerHTML = `<div style="color:#c084fc; font-weight:bold; font-size:1.2rem; margin-bottom:0.5rem;">👁️ MODO BAR RUIDOSO (Subtítulo Parcial)</div><div style="color:white; font-size:1.4rem; font-style:italic; line-height:1.4;">"${escapeHTML(data.noisyBarText || '')}"</div>`;
+        if (data.showNoisyHint) {
+            tvHintEl.style.display = 'block';
+            tvHintEl.innerHTML = `<div style="color:#c084fc; font-weight:bold; font-size:1.2rem; margin-bottom:0.5rem;">👁️ MODO BAR RUIDOSO (Subtítulo Parcial)</div><div style="color:white; font-size:1.4rem; font-style:italic; line-height:1.4;">"${escapeHTML(data.noisyBarText || '')}"</div>`;
+        } else {
+            tvHintEl.style.display = 'none';
+        }
     }
 
     const bar = document.getElementById('dictado-timer-bar');
