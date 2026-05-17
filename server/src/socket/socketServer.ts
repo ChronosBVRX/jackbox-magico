@@ -407,10 +407,21 @@ export function setupSocketServer(httpServer: HttpServer) {
           io.to(roomCode).emit('game_state' as any, { phase: 'story_step', ...tvData });
 
           // Voice Cues
+          let leaderHouse: string | undefined = undefined;
+          if (step.type === 'scoreboard') {
+            const sortedHouses = roomEngine.getHouseScoreboard(roomCode).sort((a, b) => b.points - a.points);
+            if (sortedHouses.length >= 2 && sortedHouses[0].points === sortedHouses[1].points && sortedHouses[0].points > 0) {
+              leaderHouse = 'empate';
+            } else if (sortedHouses.length > 0) {
+              leaderHouse = sortedHouses[0].house;
+            }
+          }
+
           if (step.voiceSlot) {
             io.to(roomCode).emit('voice_cue', {
               type: 'voiceSlot',
               slotId: step.voiceSlot,
+              leaderHouse,
               delayMs: 300,
               interrupt: true
             });
@@ -435,6 +446,7 @@ export function setupSocketServer(httpServer: HttpServer) {
               io.to(roomCode).emit('voice_cue', {
                   type: 'event',
                   eventName: 'leaderboard',
+                  leaderHouse,
                   delayMs: 500,
                   cooldownMs: 5000
               });

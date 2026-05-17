@@ -250,16 +250,73 @@ window.VoiceManagerV2 = (function() {
         addToQueue({ path, interrupt: true });
     }
 
+    const VOICE_SLOT_MAP = {
+        copa_clasica_bienvenida: "boot",
+        story_scoreboard: "leaderboard",
+        story_transition_trivia: "round_start",
+        story_transition_minigame: "round_start",
+        copa_clasica_sombrero_intro: "rules",
+        copa_clasica_pociones_intro: "round_start",
+        copa_clasica_mapa_intro: "round_start",
+        copa_clasica_retratos_intro: "round_start",
+        copa_clasica_duelo_intro: "round_start",
+        copa_clasica_final_intro: "rules",
+        copa_clasica_cierre: "final",
+        torneo_relampago_inicio: "boot",
+        torneo_relampago_trivia: "round_start",
+        torneo_relampago_snitch: "round_start",
+        torneo_relampago_artes: "round_start",
+        torneo_relampago_duelo: "round_start",
+        torneo_relampago_final: "round_start",
+        torneo_relampago_cierre: "final",
+        noche_castillo_inicio: "boot",
+        noche_castillo_retratos: "round_start",
+        noche_castillo_artes: "round_start",
+        noche_castillo_caldero: "round_start",
+        noche_castillo_hechizo: "round_start",
+        noche_castillo_patronus: "round_start",
+        noche_castillo_cierre: "final"
+    };
+
+    const LEADER_AUDIO_BY_HOUSE = {
+        gryffindor: "leader_dumbledore_gryffindor.mp3",
+        slytherin: "leader_dumbledore_slytherin.mp3",
+        ravenclaw: "leader_dumbledore_ravenclaw.mp3",
+        hufflepuff: "leader_dumbledore_hufflepuff.mp3",
+        empate: "leader_dumbledore_empate.mp3",
+        tie: "leader_dumbledore_empate.mp3"
+    };
+
     function playVoiceSlot(slotId, options = {}) {
         if (!isVoiceEnabled()) return;
-        // For V2 slots, we might have specific paths or logic
-        // This can be expanded to fetch from a V2 manifest if needed
-        // For now, let's assume slotId can map to a known legacy path or event
+
         if (slotId.startsWith('/')) {
             addToQueue({ path: slotId, interrupt: options.interrupt });
-        } else {
-            playEvent(slotId, options);
+            return;
         }
+
+        if (slotId.startsWith('instructions_')) {
+            const gameId = slotId.replace('instructions_', '');
+            playInstruction(gameId, "1", options.force);
+            return;
+        }
+
+        const mappedEvent = VOICE_SLOT_MAP[slotId] || slotId;
+
+        // If it's a scoreboard and we have a leaderHouse, queue leader announcement after leaderboard intro
+        if (mappedEvent === 'leaderboard' && options.leaderHouse) {
+            playEvent('leaderboard', { ...options, clearQueue: options.interrupt });
+            
+            const h = (options.leaderHouse || "").toLowerCase().trim();
+            const audioFile = LEADER_AUDIO_BY_HOUSE[h];
+            if (audioFile) {
+                const path = VOICE_BASE + audioFile;
+                addToQueue({ path, interrupt: false });
+            }
+            return;
+        }
+
+        playEvent(mappedEvent, options);
     }
 
     function playAudioFile(path, options = {}) {

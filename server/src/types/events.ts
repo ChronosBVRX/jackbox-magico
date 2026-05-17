@@ -11,6 +11,7 @@ export interface VoiceCue {
   stepId?: string;
   audioPath?: string;
   winnerHouse?: string;
+  leaderHouse?: string;
   delayMs?: number;
   cooldownMs?: number;
   interrupt?: boolean;

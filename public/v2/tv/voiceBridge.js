@@ -24,7 +24,7 @@ window.VoiceBridge = (function() {
         if (!cue || !window.VoiceManagerV2) return;
 
         // Duplicate prevention
-        const cueKey = `${cue.type}:${cue.slotId || cue.gameId || cue.eventName || 'audio'}:${cue.winnerHouse || ''}`;
+        const cueKey = `${cue.type}:${cue.slotId || cue.gameId || cue.eventName || 'audio'}:${cue.winnerHouse || cue.leaderHouse || ''}`;
         const now = Date.now();
         if (cueKey === lastCueKey && (now - lastCueAt < 1000) && !cue.force) {
             return; 
@@ -54,7 +54,8 @@ window.VoiceBridge = (function() {
                         cooldownMs: cue.cooldownMs,
                         force: cue.force,
                         clearQueue: cue.interrupt,
-                        interrupt: cue.interrupt
+                        interrupt: cue.interrupt,
+                        leaderHouse: cue.leaderHouse
                     });
                     break;
 
@@ -77,7 +78,8 @@ window.VoiceBridge = (function() {
                     } else {
                         window.VoiceManagerV2.playVoiceSlot(cue.slotId, {
                             interrupt: cue.interrupt,
-                            force: cue.force
+                            force: cue.force,
+                            leaderHouse: cue.leaderHouse
                         });
                     }
                     break;
