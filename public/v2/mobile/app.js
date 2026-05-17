@@ -704,10 +704,28 @@ function renderCalderoInput(data) {
   safeText('ing-name', ing.name);
   safeText('ing-desc', ing.description);
   
+  let objEl = document.getElementById('caldero-mobile-objective');
+  if (!objEl) {
+    const parent = document.getElementById('ingredient-card');
+    objEl = document.createElement('div');
+    objEl.id = 'caldero-mobile-objective';
+    objEl.className = 'glass-panel';
+    objEl.style.margin = '1rem 0 0 0';
+    objEl.style.padding = '0.8rem';
+    objEl.style.textAlign = 'center';
+    objEl.style.fontWeight = 'bold';
+    objEl.style.borderRadius = '8px';
+    objEl.style.fontSize = '0.95rem';
+    if (parent) parent.appendChild(objEl);
+  }
+  objEl.textContent = ing.objective || '';
+  const colors = { good: '#10b981', bad: '#ef4444', explosive: '#dc2626', gold: '#f59e0b' };
+  objEl.style.background = ing.type === 'good' ? 'rgba(16,185,129,0.15)' : (ing.type === 'bad' ? 'rgba(239,68,68,0.15)' : (ing.type === 'explosive' ? 'rgba(220,38,38,0.15)' : 'rgba(245,158,11,0.15)'));
+  objEl.style.color = colors[ing.type] || '#fff';
+
   // Color the card
   const card = document.getElementById('ingredient-card');
   if (card) {
-    const colors = { good: '#10b981', bad: '#ef4444', explosive: '#dc2626', gold: '#f59e0b' };
     card.style.borderTopColor = colors[ing.type] || 'var(--color-accent)';
   }
 
@@ -716,18 +734,45 @@ function renderCalderoInput(data) {
   if (actions) actions.style.display = 'grid';
   if (targets) targets.style.display = 'none';
 
+  function confirmAction(text, onConfirm) {
+    if (confirm(`¿Estás seguro de que deseas ${text}?`)) {
+      onConfirm();
+    }
+  }
+
   const btnAdd = document.getElementById('btn-caldero-add');
   if (btnAdd) btnAdd.onclick = () => {
-    socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'add' } });
+    confirmAction("Agregar este ingrediente al caldero", () => {
+      socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'add' } });
+    });
   };
   const btnDiscard = document.getElementById('btn-caldero-discard');
   if (btnDiscard) btnDiscard.onclick = () => {
-    socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'discard' } });
+    confirmAction("Descartar en secreto este ingrediente", () => {
+      socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'discard' } });
+    });
   };
   const btnAccuse = document.getElementById('btn-caldero-accuse');
   if (btnAccuse) btnAccuse.onclick = () => {
     if (actions) actions.style.display = 'none';
     if (targets) targets.style.display = 'block';
+    
+    let tipEl = document.getElementById('caldero-accuse-tip');
+    if (!tipEl) {
+      tipEl = document.createElement('div');
+      tipEl.id = 'caldero-accuse-tip';
+      tipEl.className = 'glass-panel';
+      tipEl.style.margin = '0 0 1rem 0';
+      tipEl.style.padding = '0.8rem';
+      tipEl.style.textAlign = 'center';
+      tipEl.style.fontSize = '0.9rem';
+      tipEl.style.color = '#f59e0b';
+      tipEl.style.background = 'rgba(245,158,11,0.15)';
+      tipEl.style.borderRadius = '8px';
+      tipEl.textContent = '⚠️ Consejo: Acusa solo a quien creas que metió un ingrediente Explosivo o Malo. Si aciertas, ¡ganas hasta +90 pts! Si te equivocas o no metieron nada, pierdes -30 pts.';
+      if (targets && targets.firstChild) targets.insertBefore(tipEl, targets.firstChild);
+    }
+
     const grid = document.getElementById('accuse-grid');
     if (grid && data.players) {
       grid.innerHTML = '';
@@ -736,7 +781,9 @@ function renderCalderoInput(data) {
         btn.className = 'btn-target';
         btn.innerHTML = `<span>${escapeHTML(p.name)}</span><small>${escapeHTML(p.house)}</small>`;
         btn.onclick = () => {
-          socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'accuse', targetClientId: p.clientId } });
+          confirmAction(`acusar a ${p.name}`, () => {
+            socket.emit('player_action', { type: 'caldero_action', actionData: { type: 'accuse', targetClientId: p.clientId } });
+          });
         };
         grid.appendChild(btn);
       });

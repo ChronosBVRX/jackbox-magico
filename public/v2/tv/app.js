@@ -1394,6 +1394,39 @@ function renderCalderoView(data) {
   document.getElementById('action-count').textContent = data.actionCount;
   document.getElementById('total-actions').textContent = data.totalPlayers;
   
+  let stabContainer = document.getElementById('caldero-tv-stability');
+  if (!stabContainer) {
+    const parent = document.getElementById('caldero-status')?.parentNode;
+    stabContainer = document.createElement('div');
+    stabContainer.id = 'caldero-tv-stability';
+    stabContainer.className = 'glass-panel';
+    stabContainer.style.margin = '1rem auto';
+    stabContainer.style.padding = '1rem';
+    stabContainer.style.width = '80%';
+    stabContainer.style.maxWidth = '600px';
+    stabContainer.style.textAlign = 'center';
+    stabContainer.style.borderRadius = '15px';
+    stabContainer.style.border = '2px solid rgba(255,255,255,0.2)';
+    stabContainer.innerHTML = `
+      <div style="font-size: 1.4rem; font-weight: bold; margin-bottom: 0.5rem; color: #a855f7;">🔮 Estabilidad del Caldero (Estimada)</div>
+      <div style="background: rgba(0,0,0,0.5); height: 30px; border-radius: 15px; overflow: hidden; border: 1px solid rgba(255,255,255,0.1); position: relative;">
+        <div id="caldero-tv-stability-bar" style="height: 100%; width: 100%; background: linear-gradient(90deg, #3b82f6, #a855f7, #ec4899); transition: width 1s ease-in-out;"></div>
+      </div>
+      <div id="caldero-tv-stability-text" style="margin-top: 0.5rem; font-size: 1.1rem; opacity: 0.8;">Burbujeo estable... por ahora</div>
+    `;
+    if (parent) parent.appendChild(stabContainer);
+  }
+
+  const stab = data.currentStability !== undefined ? data.currentStability : 3;
+  const pct = Math.max(10, Math.min(100, (stab / 6) * 100));
+  const barEl = document.getElementById('caldero-tv-stability-bar');
+  const txtEl = document.getElementById('caldero-tv-stability-text');
+  if (barEl && txtEl) {
+    barEl.style.width = `${pct}%`;
+    barEl.style.background = stab >= 4 ? 'linear-gradient(90deg, #10b981, #3b82f6)' : (stab >= 2 ? 'linear-gradient(90deg, #f59e0b, #d97706)' : 'linear-gradient(90deg, #ef4444, #b91c1c)');
+    txtEl.textContent = stab >= 4 ? '✨ Poción muy estable (Casi sin riesgo)' : (stab >= 2 ? '⚠️ Ebullición dudosa (Peligro moderado)' : '🚨 ¡Peligro Crítico! (A punto de estallar)');
+  }
+
   const log = document.getElementById('caldero-log');
   log.innerHTML = data.publicLog.map(entry => `<div class="log-entry">${entry.text}</div>`).join('');
   log.scrollTop = log.scrollHeight;

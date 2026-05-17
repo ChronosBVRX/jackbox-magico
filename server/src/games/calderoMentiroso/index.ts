@@ -42,19 +42,31 @@ export class CalderoMentiroso implements GameModule {
   }
 
   getTvState(state: CalderoState) {
+    const currentStability = state.baseStability + Object.entries(state.actions).reduce((sum, [id, a]) => {
+      return sum + (a.type === 'add' ? state.assignments[id].stabilityEffect : 0);
+    }, 0);
+
     return {
       phase: state.phase,
       actionCount: Object.keys(state.actions).length,
       totalPlayers: state.players.length,
       publicLog: state.publicLog,
-      results: state.results
+      results: state.results,
+      currentStability
     };
   }
 
   getPlayerState(state: CalderoState, player: Player) {
+    const ing = state.assignments[player.clientId];
+    let objective = "";
+    if (ing?.type === 'good') objective = "🎯 Objetivo: Agrégalo al caldero para ganar +120 pts (si no explota).";
+    else if (ing?.type === 'bad') objective = "🎯 Objetivo: Agrégalo para sabotear (+40 pts si explota) o descártalo.";
+    else if (ing?.type === 'explosive') objective = "🎯 Objetivo: Agrégalo para causar explosión (+80 pts) o descártalo para salvar a tu casa (+60 pts).";
+    else if (ing?.type === 'gold') objective = "🎯 Objetivo: Agrégalo para obtener la máxima gloria (+180 pts si no explota).";
+
     return {
       phase: state.phase,
-      myIngredient: state.assignments[player.clientId],
+      myIngredient: ing ? { ...ing, objective } : null,
       alreadyActed: !!state.actions[player.clientId],
       players: state.players
         .filter(p => p.clientId !== player.clientId)
