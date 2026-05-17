@@ -559,6 +559,27 @@ function renderRetratosInput(data) {
     return;
   }
   showMobileView('retratos-input');
+  
+  let clueStatusEl = document.getElementById('retratos-clue-status');
+  if (!clueStatusEl) {
+    const parent = document.getElementById('retratos-input');
+    clueStatusEl = document.createElement('div');
+    clueStatusEl.id = 'retratos-clue-status';
+    clueStatusEl.className = 'glass-panel';
+    clueStatusEl.style.margin = '1rem 0';
+    clueStatusEl.style.padding = '0.8rem';
+    clueStatusEl.style.textAlign = 'center';
+    clueStatusEl.style.fontWeight = 'bold';
+    clueStatusEl.style.borderRadius = '10px';
+    if (parent && parent.firstChild) parent.insertBefore(clueStatusEl, parent.firstChild);
+  }
+
+  const clueNum = (data.clueIndex || 0) + 1;
+  const pts = clueNum === 1 ? '100 pts' : (clueNum === 2 ? '60 pts' : '30 pts');
+  clueStatusEl.textContent = `Pista actual: #${clueNum} (${pts})`;
+  clueStatusEl.style.background = clueNum === 1 ? 'rgba(16, 185, 129, 0.2)' : (clueNum === 2 ? 'rgba(245, 158, 11, 0.2)' : 'rgba(239, 68, 68, 0.2)');
+  clueStatusEl.style.color = clueNum === 1 ? '#10b981' : (clueNum === 2 ? '#f59e0b' : '#ef4444');
+
   const container = document.getElementById('portrait-mobile-options');
   if (container && data.options) {
     container.innerHTML = '';

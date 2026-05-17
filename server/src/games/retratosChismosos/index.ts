@@ -45,7 +45,8 @@ export class RetratosChismosos implements GameModule {
       phase: state.phase,
       question: state.currentClue?.question,
       options: state.currentClue?.options || [],
-      alreadyAnswered: !!state.answeredClients[player.clientId]
+      alreadyAnswered: !!state.answeredClients[player.clientId],
+      clueIndex: state.currentClueIndex
     };
   }
 

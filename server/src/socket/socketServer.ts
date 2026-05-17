@@ -30,6 +30,39 @@ export function setupSocketServer(httpServer: HttpServer) {
 
   const activeGames: Map<string, { module: GameModule, state: any }> = new Map();
   const pendingRoomClosures: Map<string, NodeJS.Timeout> = new Map();
+  let globalUpdateGameClients: ((roomCode: string) => void) | null = null;
+
+  setInterval(() => {
+    activeGames.forEach((game, roomCode) => {
+      if (typeof game.module.onTick === 'function') {
+        const result = game.module.onTick(game.state);
+        if (result && result.state) {
+          game.state = result.state;
+          if (result.events) {
+            result.events.forEach(ev => {
+              if (ev.target === 'players') io.to(roomCode).emit(ev.type as any, ev.payload);
+              else io.to(roomCode).emit(ev.type as any, ev.payload);
+            });
+          }
+          if (result.pointEvents) {
+            roomEngine.applyPointEvents(roomCode, result.pointEvents);
+            io.to(roomCode).emit('scoreboard_state' as any, {
+              players: roomEngine.getScoreboard(roomCode),
+              houses: roomEngine.getHouseScoreboard(roomCode)
+            });
+          }
+          if (result.finished) {
+            activeGames.delete(roomCode);
+            roomEngine.resetRoomToLobby(roomCode);
+            const r = roomEngine.getRoom(roomCode);
+            if (r) io.to(roomCode).emit('room_state', r);
+          } else {
+            if (globalUpdateGameClients) globalUpdateGameClients(roomCode);
+          }
+        }
+      }
+    });
+  }, 1000);
 
   io.on('connection', (socket) => {
     socket.on('tv_create_room', () => {
@@ -493,6 +526,7 @@ export function setupSocketServer(httpServer: HttpServer) {
     });
 
     function updateGameClients(roomCode: string) {
+      if (!globalUpdateGameClients) globalUpdateGameClients = updateGameClients;
       const room = roomEngine.getRoom(roomCode);
       if (!room) return;
 
