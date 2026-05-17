@@ -218,19 +218,48 @@ export function setupSocketServer(httpServer: HttpServer) {
       const { roomCode, isTv } = socket.data;
       if (!isTv || !roomCode) return;
 
-      const result = startGameForRoom(roomCode, gameId, false);
-      if (!result.success) {
-        socket.emit('error_message', result.error || 'No se pudo iniciar el juego.');
+      const room = roomEngine.getRoom(roomCode);
+      if (!room) return;
+
+      const connectedPlayers = roomEngine.getConnectedPlayers(roomCode);
+      if (connectedPlayers.length < 4) {
+        socket.emit('error_message', 'Este minijuego requiere al menos 4 jugadores.');
+        return;
       }
+
+      roomEngine.setRoomStatus(roomCode, 'pre_instruction');
+      roomEngine.setPreInstructionGameId(roomCode, gameId, false);
+      updateGameClients(roomCode);
     });
 
     socket.on('tv_debug_start_game', (gameId) => {
       const { roomCode, isTv } = socket.data;
       if (!isTv || !roomCode) return;
 
-      const result = startGameForRoom(roomCode, gameId, true);
+      const room = roomEngine.getRoom(roomCode);
+      if (!room) return;
+
+      const connectedPlayers = roomEngine.getConnectedPlayers(roomCode);
+      if (connectedPlayers.length < 1) {
+        socket.emit('error_message', 'Entra con al menos un celular para iniciar el debug.');
+        return;
+      }
+
+      roomEngine.setRoomStatus(roomCode, 'pre_instruction');
+      roomEngine.setPreInstructionGameId(roomCode, gameId, true);
+      updateGameClients(roomCode);
+    });
+
+    socket.on('tv_pregame_start', () => {
+      const { roomCode, isTv } = socket.data;
+      if (!isTv || !roomCode) return;
+
+      const room = roomEngine.getRoom(roomCode);
+      if (!room || !room.preInstruction) return;
+
+      const result = startGameForRoom(roomCode, room.preInstruction.gameId, room.preInstruction.debug);
       if (!result.success) {
-        socket.emit('error_message', result.error || 'No se pudo iniciar el modo debug.');
+        socket.emit('error_message', result.error || 'No se pudo iniciar el juego.');
       }
     });
 
@@ -466,6 +495,36 @@ export function setupSocketServer(httpServer: HttpServer) {
     function updateGameClients(roomCode: string) {
       const room = roomEngine.getRoom(roomCode);
       if (!room) return;
+
+      if (room.status === 'pre_instruction' && room.preInstruction) {
+        const instr = INSTRUCTION_CATALOG[room.preInstruction.gameId as GameId];
+        if (instr) {
+          const tvData = {
+            phase: 'pre_instruction',
+            instructions: instr,
+            coverImage: `/assets/images/covers/${room.preInstruction.gameId}.png`
+          };
+
+          io.to(roomCode).emit('game_state' as any, tvData);
+
+          io.to(roomCode).emit('voice_cue', {
+            type: 'instruction',
+            gameId: room.preInstruction.gameId,
+            stepId: 'pre',
+            delayMs: 300,
+            interrupt: true
+          });
+
+          room.players.forEach(p => {
+            io.to(p.clientId).emit('game_player_state' as any, {
+              phase: 'story_instructions',
+              instructions: instr,
+              currentGameId: room.preInstruction!.gameId
+            });
+          });
+        }
+        return;
+      }
 
       if (room.status === 'story' && room.storyState) {
         const step = storyEngine.getCurrentStep(room.storyState);

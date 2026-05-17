@@ -226,6 +226,14 @@ export class RoomEngine {
     }
   }
 
+  setPreInstructionGameId(roomCode: string, gameId: string, debug: boolean) {
+    const room = this.getRoom(roomCode);
+    if (room) {
+      room.preInstruction = { gameId, debug };
+      this.saveBackup();
+    }
+  }
+
   resetRoomToLobby(roomCode: string) {
     const room = this.getRoom(roomCode);
     if (room) {
@@ -233,6 +241,7 @@ export class RoomEngine {
       room.currentGameId = null;
       room.phase = 'lobby';
       room.storyState = undefined;
+      room.preInstruction = undefined;
       this.saveBackup();
     }
   }

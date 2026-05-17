@@ -53,6 +53,7 @@ const viewResults = document.getElementById('view-results');
 
 let currentRoom = null;
 let currentGameId = null;
+let currentRoomStatus = null;
 let tvTimerInterval = null;
 let autoNextTriggered = false;
 let pendingGameSelection = null;
@@ -726,7 +727,11 @@ safeSetClick('btn-story-next-dialogue', () => {
 });
 
 safeSetClick('btn-story-start-game', () => {
-    socket.emit('tv_story_next');
+    if (currentRoomStatus === 'pre_instruction') {
+        socket.emit('tv_pregame_start');
+    } else {
+        socket.emit('tv_story_next');
+    }
 });
 
 safeSetClick('btn-story-next-score', () => {
@@ -859,6 +864,7 @@ socket.on('room_created', (code) => {
 
 socket.on('room_state', (state) => {
   currentGameId = state.currentGameId;
+  currentRoomStatus = state.status;
   window._debugEnabled = state.debugMode;
   
   const debugIndicator = document.getElementById('debug-mode-status');
@@ -929,6 +935,12 @@ function renderPlayers(players) {
 
 // GENERIC GAME STATE HANDLING
 socket.on('game_state', (data) => {
+  if (data.phase === 'pre_instruction') {
+    renderStoryInstructions(data);
+    showView('view-story-instructions');
+    return;
+  }
+
   if (data.phase === 'story_step') {
     renderStoryStep(data);
     return;
@@ -1049,6 +1061,20 @@ function renderStoryInstructions(data) {
     if (!instr) return;
     safeText('instr-title', instr.title);
     safeText('instr-subtitle', instr.subtitle);
+
+    const coverImg = document.getElementById('instr-cover-image');
+    const coverPlaceholder = document.getElementById('instr-cover-placeholder');
+    if (coverImg && coverPlaceholder) {
+        const imgSrc = data.coverImage || instr.coverImage;
+        if (imgSrc) {
+            coverImg.src = imgSrc;
+            coverImg.style.display = 'block';
+            coverPlaceholder.style.display = 'none';
+        } else {
+            coverImg.style.display = 'none';
+            coverPlaceholder.style.display = 'block';
+        }
+    }
     
     const rulesList = document.getElementById('instr-rules');
     rulesList.innerHTML = '';

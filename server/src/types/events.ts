@@ -32,7 +32,7 @@ export interface Player {
 
 export interface RoomState {
   roomCode: string;
-  status: 'lobby' | 'playing' | 'story' | 'results' | 'final_results';
+  status: 'lobby' | 'playing' | 'story' | 'results' | 'final_results' | 'pre_instruction';
   players: Player[];
   currentGameId: string | null;
   phase: string;
@@ -40,6 +40,7 @@ export interface RoomState {
   startedAt: number | null;
   serverTime: number;
   storyState?: StoryState;
+  preInstruction?: { gameId: string; debug: boolean };
   debugMode: boolean;
 }
 
@@ -71,6 +72,7 @@ export interface ClientToServerEvents {
   }) => void;
   tv_start_game: (gameId: string) => void;
   tv_debug_start_game: (gameId: string) => void;
+  tv_pregame_start: () => void;
   tv_select_story: (payload: string | { storyId: string; config?: any }) => void;
   tv_story_next: () => void;
   answer_submit: (data: { answer: string }) => void;
