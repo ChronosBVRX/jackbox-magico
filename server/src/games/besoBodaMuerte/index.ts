@@ -158,7 +158,8 @@ export class BesoBodaMuerte implements GameModule {
           `Dumbledore decía que el amor es la fuerza más poderosa... pero elegir casarse con ese personaje es de un valor temerario.`,
           `Una terna digna de un interrogatorio con Veritaserum. ¡Nadie se esperaba este desenlace!`
         ];
-        const randomComment = narratorComments[Math.floor(Math.random() * narratorComments.length)];
+        const randomCommentIndex = Math.floor(Math.random() * narratorComments.length);
+        const randomComment = narratorComments[randomCommentIndex];
 
         state.results = {
           targetPlayerName: state.targetPlayerName,
@@ -175,8 +176,10 @@ export class BesoBodaMuerte implements GameModule {
             {
               type: 'voice_cue',
               payload: {
-                cueKey: 'kmk_results',
-                text: `¡Las elecciones de ${state.targetPlayerName} han sido reveladas! ${randomComment}`
+                type: 'audioFile',
+                audioPath: `assets/audio/voice_lines/kmk_results_0${randomCommentIndex + 1}.mp3`,
+                interrupt: true,
+                force: true
               },
               target: 'all'
             }
