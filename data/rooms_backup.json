@@ -1,0 +1,150 @@
+[
+  [
+    "RBNW",
+    {
+      "roomCode": "RBNW",
+      "status": "lobby",
+      "players": [
+        {
+          "clientId": "c_test2",
+          "name": "Harry Potter Extra L",
+          "house": "Gryffindor",
+          "gender": "wizard",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": true
+        },
+        {
+          "clientId": "c_test3",
+          "name": "Hermione",
+          "house": "Gryffindor",
+          "gender": "witch",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": false
+        }
+      ],
+      "currentGameId": null,
+      "phase": "lobby",
+      "durationMs": 0,
+      "startedAt": null,
+      "serverTime": 1778987913626,
+      "debugMode": false
+    }
+  ],
+  [
+    "BPHS",
+    {
+      "roomCode": "BPHS",
+      "status": "lobby",
+      "players": [
+        {
+          "clientId": "c_test2",
+          "name": "Harry Potter Extra L",
+          "house": "Gryffindor",
+          "gender": "wizard",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": true
+        },
+        {
+          "clientId": "c_test3",
+          "name": "Hermione",
+          "house": "Gryffindor",
+          "gender": "witch",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": false
+        }
+      ],
+      "currentGameId": null,
+      "phase": "lobby",
+      "durationMs": 0,
+      "startedAt": null,
+      "serverTime": 1778987944532,
+      "debugMode": false
+    }
+  ],
+  [
+    "AAHY",
+    {
+      "roomCode": "AAHY",
+      "status": "lobby",
+      "players": [
+        {
+          "clientId": "c_test2",
+          "name": "Harry Potter Extra L",
+          "house": "Gryffindor",
+          "gender": "wizard",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": true
+        },
+        {
+          "clientId": "c_test3",
+          "name": "Hermione",
+          "house": "Gryffindor",
+          "gender": "witch",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": false
+        }
+      ],
+      "currentGameId": null,
+      "phase": "lobby",
+      "durationMs": 0,
+      "startedAt": null,
+      "serverTime": 1778987963359,
+      "debugMode": false
+    }
+  ],
+  [
+    "LKBN",
+    {
+      "roomCode": "LKBN",
+      "status": "lobby",
+      "players": [
+        {
+          "clientId": "c_test2",
+          "name": "Harry Potter Extra L",
+          "house": "Gryffindor",
+          "gender": "wizard",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": true
+        },
+        {
+          "clientId": "c_test3",
+          "name": "Hermione",
+          "house": "Gryffindor",
+          "gender": "witch",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": false
+        }
+      ],
+      "currentGameId": null,
+      "phase": "lobby",
+      "durationMs": 0,
+      "startedAt": null,
+      "serverTime": 1778987986062,
+      "debugMode": false
+    }
+  ]
+]

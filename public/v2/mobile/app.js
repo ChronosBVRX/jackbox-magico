@@ -143,9 +143,33 @@ socket.on('room_state', (state) => {
               btnReady.textContent = '¡ESTOY LISTO!';
           }
       }
+
+      const hostControls = document.getElementById('host-controls-container');
+      if (hostControls) {
+        hostControls.style.display = myPlayer.isHost ? 'block' : 'none';
+      }
     }
   }
 });
+
+const btnHostReset = document.getElementById('btn-host-reset');
+const btnHostNext = document.getElementById('btn-host-next');
+
+if (btnHostReset) {
+  btnHostReset.addEventListener('click', () => {
+    if (confirm('¿Estás seguro de reiniciar la sala al lobby? (Plan B de emergencia)')) {
+      socket.emit('tv_back_to_lobby');
+    }
+  });
+}
+
+if (btnHostNext) {
+  btnHostNext.addEventListener('click', () => {
+    if (confirm('¿Forzar el avance al siguiente bloque de historia?')) {
+      socket.emit('tv_story_next');
+    }
+  });
+}
 
 // Snitch Catch
 document.getElementById('btn-catch').addEventListener('click', () => {

@@ -15,13 +15,17 @@ import { INSTRUCTION_CATALOG } from '../story/instructionCatalog';
 import { SCOREBOARD_LINES, TRIVIA_TRANSITION_LINES, MINIGAME_TRANSITION_LINES, FINAL_WINNER_LINES } from '../story/storyScreenCopy';
 
 export function setupSocketServer(httpServer: HttpServer) {
+  const allowedOrigins = process.env.ALLOWED_ORIGIN 
+    ? process.env.ALLOWED_ORIGIN.split(',') 
+    : "*";
+
   const io = new Server<
     ClientToServerEvents,
     ServerToClientEvents,
     InterServerEvents,
     SocketData
   >(httpServer, {
-    cors: { origin: "*", methods: ["GET", "POST"] }
+    cors: { origin: allowedOrigins, methods: ["GET", "POST"], credentials: true }
   });
 
   const activeGames: Map<string, { module: GameModule, state: any }> = new Map();
@@ -226,8 +230,12 @@ export function setupSocketServer(httpServer: HttpServer) {
     });
 
     socket.on('tv_back_to_lobby', () => {
-      const { roomCode, isTv } = socket.data;
-      if (!isTv || !roomCode) return;
+      const { roomCode, isTv, clientId } = socket.data;
+      if (!roomCode) return;
+      if (!isTv) {
+        const player = roomEngine.getPlayer(roomCode, clientId);
+        if (!player || !player.isHost) return;
+      }
       
       roomEngine.resetRoomToLobby(roomCode);
       const room = roomEngine.getRoom(roomCode);
@@ -262,8 +270,12 @@ export function setupSocketServer(httpServer: HttpServer) {
     });
 
     socket.on('tv_story_next', () => {
-      const { roomCode, isTv } = socket.data;
-      if (!isTv || !roomCode) return;
+      const { roomCode, isTv, clientId } = socket.data;
+      if (!roomCode) return;
+      if (!isTv) {
+        const player = roomEngine.getPlayer(roomCode, clientId);
+        if (!player || !player.isHost) return;
+      }
 
       const room = roomEngine.getRoom(roomCode);
       if (!room || !room.storyState) return;

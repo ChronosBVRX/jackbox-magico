@@ -93,7 +93,8 @@ const SelectionManager = {
 
     init(stories, games) {
         this.items = [
-            ...stories.map(s => ({ ...s, type: 'story' }))
+            ...stories.map(s => ({ ...s, type: 'story' })),
+            ...games.map(g => ({ ...g, type: 'minigame' }))
         ];
         this.currentIndex = 0;
         this.active = true;
@@ -181,6 +182,14 @@ const SelectionManager = {
                 `;
                 struct.appendChild(stepEl);
             });
+        } else if (item.type === 'minigame') {
+            const stepEl = document.createElement('div');
+            stepEl.className = 'struct-step-wrapper';
+            stepEl.innerHTML = `
+                <div class="struct-step">🎮</div>
+                <span class="struct-label">${item.shortName || item.name}</span>
+            `;
+            struct.appendChild(stepEl);
         }
     },
 
@@ -212,7 +221,7 @@ const SelectionManager = {
         this.selectedItem = item;
         safeText('preamble-title', item.title || item.name);
         safeText('preamble-desc', item.desc || item.description);
-        safeText('preamble-type-label', item.type === 'story' ? 'Historia Premium' : 'Categoría de Minijuegos');
+        safeText('preamble-type-label', item.type === 'story' ? 'Historia Premium' : 'Minijuego Individual');
         
         const img = document.getElementById('preamble-image');
         if (img) {
@@ -228,6 +237,8 @@ const SelectionManager = {
                 games = item.steps.filter(s => s.type === 'minigame' || s.type === 'fixed_minigame');
             } else if (item.games) {
                 games = item.games;
+            } else if (item.type === 'minigame') {
+                games = [item];
             }
 
             safeText('preamble-game-count', games.length);
@@ -805,7 +816,7 @@ socket.on('room_created', (code) => {
     if (pendingGameSelection) {
         const item = pendingGameSelection;
         if (item.type === 'story') {
-            socket.emit('tv_select_story', item.id);
+            socket.emit('tv_select_story', { storyId: item.id, config: window.gameConfigOptions });
         } else {
             socket.emit('tv_start_game', item.id);
         }
