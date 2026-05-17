@@ -772,3 +772,132 @@ function renderKMKInput(data) {
         };
     }
 }
+
+function renderImpostorInput(data) {
+    if (data.phase === 'results') {
+        showWaitScreen('¡Mira el resultado de la misión en la TV!');
+        return;
+    }
+    if (data.alreadyVoted) {
+        showMobileView('answer-sent');
+        return;
+    }
+
+    showMobileView('impostor-input');
+
+    const roleHeader = document.getElementById('impostor-mobile-role');
+    const locCard = document.getElementById('impostor-mobile-loc-card');
+    const spyCard = document.getElementById('impostor-mobile-spy-card');
+    const catalogContainer = document.getElementById('impostor-mobile-catalog');
+    const votingContainer = document.getElementById('impostor-mobile-voting');
+    const guessingContainer = document.getElementById('impostor-mobile-guessing');
+
+    if (roleHeader) {
+        roleHeader.textContent = data.isSpy ? '⚠️ ESPÍA MORTÍFAGO ⚠️' : '🧙 MAGO LEAL 🧙';
+        roleHeader.style.color = data.isSpy ? '#ef4444' : '#10b981';
+    }
+
+    if (data.phase === 'playing') {
+        if (votingContainer) votingContainer.style.display = 'none';
+        if (guessingContainer) guessingContainer.style.display = 'none';
+
+        if (data.isSpy) {
+            if (locCard) locCard.style.display = 'none';
+            if (spyCard) spyCard.style.display = 'block';
+            if (catalogContainer) catalogContainer.style.display = 'block';
+
+            const catalogList = document.getElementById('impostor-catalog-list');
+            if (catalogList) {
+                catalogList.innerHTML = '';
+                data.locationsCatalog.forEach(loc => {
+                    const item = document.createElement('div');
+                    item.className = 'glass-panel';
+                    item.style.padding = '0.8rem 1.2rem';
+                    item.style.display = 'flex';
+                    item.style.alignItems = 'center';
+                    item.style.gap = '1rem';
+                    item.style.borderRadius = '10px';
+                    item.innerHTML = `
+                        <span style="font-size: 1.8rem;">${loc.emoji}</span>
+                        <div style="text-align: left;">
+                            <div style="font-weight: bold; color: white; font-size: 1.1rem;">${loc.name}</div>
+                            <div style="font-size: 0.85rem; color: var(--color-text-dim);">${loc.description}</div>
+                        </div>
+                    `;
+                    catalogList.appendChild(item);
+                });
+            }
+        } else {
+            if (locCard) locCard.style.display = 'block';
+            if (spyCard) spyCard.style.display = 'none';
+            if (catalogContainer) catalogContainer.style.display = 'none';
+
+            safeText('impostor-mobile-loc-name', data.location.name);
+            safeText('impostor-mobile-loc-desc', data.location.description);
+            safeText('impostor-mobile-loc-emoji', data.location.emoji);
+        }
+    } else if (data.phase === 'voting') {
+        if (locCard) locCard.style.display = 'none';
+        if (spyCard) spyCard.style.display = 'none';
+        if (catalogContainer) catalogContainer.style.display = 'none';
+
+        if (data.isSpy) {
+            if (votingContainer) votingContainer.style.display = 'none';
+            if (guessingContainer) guessingContainer.style.display = 'block';
+
+            const guessList = document.getElementById('impostor-guess-list');
+            if (guessList) {
+                guessList.innerHTML = '';
+                data.locationsCatalog.forEach(loc => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-join-premium';
+                    btn.style.width = '100%';
+                    btn.style.padding = '1rem';
+                    btn.style.display = 'flex';
+                    btn.style.alignItems = 'center';
+                    btn.style.gap = '1rem';
+                    btn.style.justifyContent = 'flex-start';
+                    btn.style.background = 'rgba(16,185,129,0.1)';
+                    btn.style.border = '1px solid #10b981';
+                    btn.style.color = 'white';
+                    btn.innerHTML = `
+                        <span style="font-size: 2rem;">${loc.emoji}</span>
+                        <div style="text-align: left;">
+                            <div style="font-weight: bold; font-size: 1.2rem;">${loc.name}</div>
+                            <div style="font-size: 0.85rem; color: var(--color-text-dim);">${loc.description}</div>
+                        </div>
+                    `;
+                    btn.onclick = () => {
+                        socket.emit('player_action', { type: 'impostor_guess', guessedLocationId: loc.id });
+                        showMobileView('answer-sent');
+                    };
+                    guessList.appendChild(btn);
+                });
+            }
+        } else {
+            if (votingContainer) votingContainer.style.display = 'block';
+            if (guessingContainer) guessingContainer.style.display = 'none';
+
+            const playersList = document.getElementById('impostor-players-list');
+            if (playersList && data.players) {
+                playersList.innerHTML = '';
+                data.players.forEach(p => {
+                    const btn = document.createElement('button');
+                    btn.className = 'btn-join-premium';
+                    btn.style.width = '100%';
+                    btn.style.padding = '1.2rem';
+                    btn.style.fontSize = '1.3rem';
+                    btn.style.background = 'rgba(239,68,68,0.1)';
+                    btn.style.border = '1px solid #ef4444';
+                    btn.style.color = 'white';
+                    btn.innerHTML = `Votar por <strong style="color:white">${escapeHTML(p.name)}</strong> <span style="font-size:0.8rem; opacity:0.7">(${p.house})</span>`;
+                    btn.onclick = () => {
+                        socket.emit('player_action', { type: 'impostor_vote', votedClientId: p.clientId });
+                        showMobileView('answer-sent');
+                    };
+                    playersList.appendChild(btn);
+                });
+            }
+        }
+    }
+}

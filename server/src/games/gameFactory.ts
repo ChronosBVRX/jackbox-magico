@@ -12,6 +12,7 @@ import { HechizoIncompleto } from './hechizoIncompleto/index';
 import { PatronusPersonalizado } from './patronusPersonalizado/index';
 import { CopaFinal } from './copaFinal/index';
 import { BesoBodaMuerte } from './besoBodaMuerte/index';
+import { ElImpostor } from './elImpostor/index';
 
 export function createGameModule(gameId: GameId): GameModule | null {
   switch (gameId) {
@@ -41,7 +42,8 @@ export function createGameModule(gameId: GameId): GameModule | null {
       return new CopaFinal();
     case 'beso_boda_muerte':
       return new BesoBodaMuerte();
-    // Remaining games will be added here as they are implemented
+    case 'el_impostor':
+      return new ElImpostor();
     default:
       return null;
   }

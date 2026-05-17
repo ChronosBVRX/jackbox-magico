@@ -320,5 +320,28 @@ export const INSTRUCTION_CATALOG: Record<GameId, Instruction> = {
     scoring: "Acierto: +100. Predicción perfecta (3 aciertos): bono de +200.",
     voiceSlot: "instructions_beso_boda_muerte",
     startButton: "Revelar secretos"
+  },
+  el_impostor: {
+    title: "El Impostor de Hogwarts",
+    subtitle: "Deducción, engaño y paranoia. Descubre quién es el mortífago infiltrado que no sabe dónde están.",
+    rules: [
+      "La TV asigna un lugar de Hogwarts a todo el grupo.",
+      "Todos ven el lugar en su celular... excepto el Espía Mortífago.",
+      "Háganse preguntas sutiles entre ustedes para detectar al impostor.",
+      "¡No sean demasiado obvios o el Espía adivinará el lugar!"
+    ],
+    tvInstructions: [
+      "Muestra el estado de la misión y el tiempo restante.",
+      "Al finalizar el tiempo, inicia la fase de votación.",
+      "Revela si el espía fue capturado o si logró engañar a todos."
+    ],
+    mobileInstructions: [
+      "Si eres un mago leal, haz preguntas que solo alguien en ese lugar entendería.",
+      "Si eres el Espía, disimula, miente y trata de adivinar el lugar secreto.",
+      "Al final, vota por quien creas que es el impostor."
+    ],
+    scoring: "Descubrir al espía: +150 a los leales. Victoria del espía (sobrevivir o adivinar): +300.",
+    voiceSlot: "instructions_el_impostor",
+    startButton: "Iniciar Misión"
   }
 };

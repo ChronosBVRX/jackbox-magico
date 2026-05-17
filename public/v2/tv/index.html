@@ -382,6 +382,78 @@
     </div>
   </div>
 
+  <!-- Impostor Screen -->
+  <div class="tv-layout" id="view-impostor" style="display: none; padding: 3rem;">
+    <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+      <div style="display: flex; align-items: center; gap: 2rem;">
+        <div style="font-size: 4rem; filter: drop-shadow(0 0 20px rgba(16,185,129,0.5));">👁️</div>
+        <div>
+          <h1 style="font-size: 2.8rem; margin: 0; color: white;">El Impostor de Hogwarts</h1>
+          <div id="impostor-phase-status" style="font-size: 1.3rem; color: var(--color-text-dim);">Fase de Interrogatorio</div>
+        </div>
+      </div>
+      <div class="glass-panel" style="padding: 1rem 2rem; border-radius: 16px; text-align: center; border: 1px solid var(--color-accent);">
+        <div style="font-size: 0.9rem; color: var(--color-text-dim); text-transform: uppercase;">Misión Secreta</div>
+        <div style="font-size: 1.5rem; font-weight: 800; color: var(--color-accent);">¡Encuentren al Espía!</div>
+      </div>
+    </header>
+
+    <div class="timer-container" style="width: 100%; margin-bottom: 3rem; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; height: 12px;">
+      <div class="timer-bar" id="impostor-timer-bar" style="height: 100%; background: linear-gradient(90deg, #10b981, #3b82f6); transition: width 0.1s linear;"></div>
+    </div>
+
+    <main style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; margin: 2rem 0;">
+      <div class="glass-panel" style="padding: 4rem; border-radius: 24px; text-align: center; max-width: 900px; box-shadow: 0 0 40px rgba(16,185,129,0.2); border: 2px solid rgba(16,185,129,0.4);">
+        <h2 style="font-size: 2.5rem; color: white; margin-bottom: 1.5rem;">🚨 ¡Hay un Mortífago Infiltrado! 🚨</h2>
+        <p style="font-size: 1.6rem; color: var(--color-text-dim); line-height: 1.5; margin-bottom: 2rem;">
+          Todos en la sala conocen el lugar secreto de Hogwarts... <span style="color: #ef4444; font-weight: bold;">excepto uno</span>.<br>
+          Háganse preguntas sutiles para descubrir quién está perdido, pero no sean obvios o el espía adivinará el lugar.
+        </p>
+        <div style="display: inline-block; background: rgba(16,185,129,0.2); border: 1px solid #10b981; color: #10b981; padding: 1rem 2.5rem; border-radius: 30px; font-size: 1.4rem; font-weight: bold;">
+          Ejemplo: "¿Irías a este lugar de noche?"
+        </div>
+      </div>
+    </main>
+
+    <footer style="margin-top: 3rem; text-align: center; font-size: 1.5rem; color: var(--color-text-dim);">
+      <span id="impostor-vote-count" style="color: var(--color-accent); font-weight: bold; font-size: 1.8rem;">0</span> magos han emitido su voto
+    </footer>
+  </div>
+
+  <!-- Impostor Results Screen -->
+  <div class="tv-layout" id="view-impostor-results" style="display: none; padding: 3rem;">
+    <header style="text-align: center; margin-bottom: 2rem;">
+      <h1 class="text-gradient-gold" style="font-size: 3.2rem; margin-bottom: 0.5rem;" id="impostor-res-title">Resultado de la Misión</h1>
+      <p id="impostor-narrator-comment" style="font-size: 1.5rem; color: var(--color-text-dim); font-style: italic;">"..."</p>
+    </header>
+
+    <div style="display: flex; justify-content: center; gap: 4rem; margin-bottom: 3rem; flex-wrap: wrap;">
+      <!-- Lugar Real -->
+      <div class="glass-panel" style="width: 380px; padding: 2.5rem; border-radius: 24px; text-align: center; border: 2px solid var(--color-accent); box-shadow: 0 0 30px rgba(251,191,36,0.3);">
+        <div style="font-size: 0.9rem; color: var(--color-text-dim); text-transform: uppercase; margin-bottom: 1rem; letter-spacing: 2px;">Lugar Secreto Real</div>
+        <div id="impostor-res-loc-emoji" style="font-size: 4.5rem; margin-bottom: 1rem;">🏰</div>
+        <h3 id="impostor-res-loc-name" style="font-size: 2.2rem; color: white; margin: 0 0 1rem 0;">Lugar</h3>
+        <p id="impostor-res-loc-desc" style="font-size: 1.1rem; color: var(--color-text-dim); line-height: 1.4; margin: 0;">Descripción</p>
+      </div>
+
+      <!-- Espía Mortífago -->
+      <div class="glass-panel" id="impostor-res-spy-card" style="width: 380px; padding: 2.5rem; border-radius: 24px; text-align: center; border: 2px solid #ef4444; box-shadow: 0 0 30px rgba(239,68,68,0.3);">
+        <div style="font-size: 0.9rem; color: #ef4444; text-transform: uppercase; margin-bottom: 1rem; letter-spacing: 2px;">Espía Mortífago</div>
+        <div style="font-size: 4.5rem; margin-bottom: 1rem;">🦹</div>
+        <h3 id="impostor-res-spy-name" style="font-size: 2.2rem; color: white; margin: 0 0 0.5rem 0;">Mago</h3>
+        <div id="impostor-res-spy-house" style="font-size: 1.1rem; color: var(--color-text-dim); margin-bottom: 1.5rem;">Slytherin</div>
+        <div id="impostor-res-spy-status" style="display: inline-block; padding: 0.8rem 2rem; border-radius: 30px; font-size: 1.3rem; font-weight: bold; text-transform: uppercase; letter-spacing: 1px;">
+          Estado
+        </div>
+      </div>
+    </div>
+
+    <h2 style="text-align: center; margin-bottom: 1.5rem; color: var(--color-accent);">Puntajes de Misión</h2>
+    <div id="impostor-ranking-list" style="display: flex; flex-direction: column; gap: 1rem; max-width: 800px; margin: 0 auto;">
+      <!-- Ranking injected by JS -->
+    </div>
+  </div>
+
   <!-- Selection Carousel View (Premium) -->
   <!-- Selection Carousel View (Premium) -->
   <div class="tv-layout" id="view-selection" style="display: none;">

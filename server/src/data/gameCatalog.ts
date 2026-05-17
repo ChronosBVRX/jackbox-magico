@@ -236,5 +236,23 @@ export const GAME_CATALOG: GameInfo[] = [
     maxPlayers: 8,
     maxPerHouse: 2,
     enabled: true
+  },
+  {
+    id: 'el_impostor',
+    name: 'El Impostor de Hogwarts',
+    shortName: 'Impostor',
+    status: 'beta',
+    mode: 'social',
+    description: 'Deducción y engaño. Todos conocen el lugar secreto en Hogwarts excepto el espía mortífago.',
+    rules: [
+      'La TV asigna un lugar secreto a todos, menos al Espía.',
+      'Hagan preguntas sutiles para descubrir quién no sabe dónde están.',
+      'Voten por quién creen que es el impostor al final del tiempo.'
+    ],
+    points: { min: 0, max: 300, description: '150 por descubrir al espía, 300 al espía si sobrevive o adivina el lugar' },
+    durationSeconds: 180,
+    maxPlayers: 8,
+    maxPerHouse: 2,
+    enabled: true
   }
 ];

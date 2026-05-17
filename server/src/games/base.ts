@@ -13,7 +13,8 @@ export type GameId =
   | 'caldero_mentiroso'
   | 'patronus_personalizado'
   | 'copa_final'
-  | 'beso_boda_muerte';
+  | 'beso_boda_muerte'
+  | 'el_impostor';
 
 export interface GameUpdateResult {
   state: any;

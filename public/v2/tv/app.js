@@ -85,7 +85,8 @@ const GAME_CATALOG_FRONT = [
     { id: 'hechizo_incompleto', name: 'Hechizo Incompleto', shortName: 'Hechizo', description: 'Completa los encantamientos que han perdido palabras.', durationSeconds: 4, mode: 'Quiz', maxPlayers: 8, enabled: true },
     { id: 'caldero_mentiroso', name: 'El Caldero Mentiroso', shortName: 'Caldero', description: 'Estrategia y engaño con ingredientes secretos.', durationSeconds: 7, mode: 'Estrategia', maxPlayers: 8, enabled: true },
     { id: 'patronus_personalizado', name: 'Patronus', shortName: 'Patronus', description: 'Creatividad y votación por el mejor protector.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true },
-    { id: 'beso_boda_muerte', name: 'Beso, Boda, Muerte', shortName: 'KMK', description: 'Predice a quién besará, con quién se casará y a quién maldecirá el protagonista.', durationSeconds: 6, mode: 'Social', maxPlayers: 8, enabled: true }
+    { id: 'beso_boda_muerte', name: 'Beso, Boda, Muerte', shortName: 'KMK', description: 'Predice a quién besará, con quién se casará y a quién maldecirá el protagonista.', durationSeconds: 6, mode: 'Social', maxPlayers: 8, enabled: true },
+    { id: 'el_impostor', name: 'El Impostor de Hogwarts', shortName: 'Impostor', description: 'Deducción y engaño. Descubre al espía mortífago.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true }
 ];
 
 // Selection Manager (Premium Carousel)
@@ -110,9 +111,9 @@ const SelectionManager = {
             {
                 id: 'group_mystery',
                 title: 'Misterios del Castillo',
-                desc: 'Exploración y sigilo. Incluye Mapa Travieso, Retratos y Patronus.',
+                desc: 'Exploración y sigilo. Incluye Mapa Travieso, Retratos, Patronus e Impostor.',
                 type: 'group',
-                games: filteredGames.filter(g => ['mapa_travieso', 'retratos_chismosos', 'patronus_personalizado'].includes(g.id)),
+                games: filteredGames.filter(g => ['mapa_travieso', 'retratos_chismosos', 'patronus_personalizado', 'el_impostor'].includes(g.id)),
                 icon: '🖼️',
                 min: 5, players: '2-8', diff: 'Media'
             },
@@ -935,6 +936,8 @@ socket.on('game_state', (data) => {
     renderCalderoView(data);
   } else if (currentGameId === 'beso_boda_muerte') {
     renderKMKView(data);
+  } else if (currentGameId === 'el_impostor') {
+    renderImpostorView(data);
   }
 });
 
@@ -1715,6 +1718,76 @@ function renderKMKResults(data) {
             card.innerHTML = `
               <div class="player-name">${escapeHTML(r.name)}</div>
               <div class="result-status ${r.perfect ? 'status-correct' : ''}" style="font-size:0.9rem">${r.perfect ? '¡PREDICCIÓN PERFECTA!' : `${r.matches} Aciertos`}</div>
+              <div class="points-gain">+${r.points} Pts</div>
+            `;
+            rankingContainer.appendChild(card);
+        });
+    }
+}
+
+function renderImpostorView(data) {
+    if (data.phase === 'results') {
+        renderImpostorResults(data);
+        return;
+    }
+    showView('view-impostor');
+    safeText('impostor-vote-count', data.votesCount || 0);
+
+    const phaseStatus = document.getElementById('impostor-phase-status');
+    if (phaseStatus) {
+        phaseStatus.textContent = data.phase === 'voting' ? 'Fase de Votación y Acusaciones' : 'Fase de Interrogatorio';
+        phaseStatus.style.color = data.phase === 'voting' ? '#ef4444' : 'var(--color-text-dim)';
+    }
+
+    // Update timer bar
+    const elapsed = Date.now() - data.startedAt;
+    const remaining = Math.max(0, data.durationMs - elapsed);
+    const pct = (remaining / data.durationMs) * 100;
+    const bar = document.getElementById('impostor-timer-bar');
+    if (bar) bar.style.width = pct + '%';
+}
+
+function renderImpostorResults(data) {
+    showView('view-impostor-results');
+    const res = data.results;
+    if (!res) return;
+
+    safeText('impostor-narrator-comment', res.narratorComment);
+    safeText('impostor-res-loc-name', res.actualLocation.name);
+    safeText('impostor-res-loc-desc', res.actualLocation.description);
+    safeText('impostor-res-loc-emoji', res.actualLocation.emoji);
+
+    safeText('impostor-res-spy-name', res.spyPlayerName);
+    safeText('impostor-res-spy-house', res.spyPlayerHouse);
+
+    const spyCard = document.getElementById('impostor-res-spy-card');
+    const spyStatus = document.getElementById('impostor-res-spy-status');
+
+    if (spyCard && spyStatus) {
+        if (res.winner === 'loyal') {
+            spyCard.style.borderColor = '#ef4444';
+            spyCard.style.boxShadow = '0 0 30px rgba(239,68,68,0.3)';
+            spyStatus.textContent = '¡ATRAPADO!';
+            spyStatus.style.background = '#ef4444';
+            spyStatus.style.color = 'white';
+        } else {
+            spyCard.style.borderColor = '#10b981';
+            spyCard.style.boxShadow = '0 0 30px rgba(16,185,129,0.3)';
+            spyStatus.textContent = res.spyGuessedCorrectly ? '¡ADIVINÓ EL LUGAR!' : '¡SOBREVIVIÓ!';
+            spyStatus.style.background = '#10b981';
+            spyStatus.style.color = 'white';
+        }
+    }
+
+    const rankingContainer = document.getElementById('impostor-ranking-list');
+    if (rankingContainer) {
+        rankingContainer.innerHTML = '';
+        res.ranking.forEach(r => {
+            const card = document.createElement('div');
+            card.className = `result-player-card glass-panel ${r.house ? r.house.toLowerCase() : ''}`;
+            card.innerHTML = `
+              <div class="player-name">${escapeHTML(r.name || 'Mago')}</div>
+              <div class="result-status" style="font-size:1rem">${escapeHTML(r.label)}</div>
               <div class="points-gain">+${r.points} Pts</div>
             `;
             rankingContainer.appendChild(card);

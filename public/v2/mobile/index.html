@@ -229,6 +229,46 @@
       <button class="btn-join-premium" id="btn-kmk-submit" style="width: 100%; padding: 1.2rem; font-size: 1.3rem;">Enviar Elecciones</button>
     </div>
 
+    <!-- Impostor Input View -->
+    <div class="game-view glass-panel mobile-view" id="impostor-input" style="display: none; padding: 1.5rem;">
+      <h2 id="impostor-mobile-role" style="text-align: center; margin-bottom: 1rem; font-size: 1.6rem; font-weight: 800;"></h2>
+      
+      <!-- Lugar Secreto (Solo Leales) -->
+      <div class="glass-panel" id="impostor-mobile-loc-card" style="display: none; padding: 1.5rem; text-align: center; border: 2px solid var(--color-accent); margin-bottom: 1.5rem; border-radius: 16px;">
+        <div style="font-size: 0.9rem; color: var(--color-text-dim); text-transform: uppercase; margin-bottom: 0.5rem;">Lugar Secreto Asignado</div>
+        <div id="impostor-mobile-loc-emoji" style="font-size: 3rem; margin-bottom: 0.5rem;">🏰</div>
+        <h3 id="impostor-mobile-loc-name" style="font-size: 1.8rem; color: white; margin: 0 0 0.5rem 0;">Lugar</h3>
+        <p id="impostor-mobile-loc-desc" style="font-size: 1rem; color: var(--color-text-dim); margin: 0;"></p>
+      </div>
+
+      <!-- Mensaje Espía (Solo Espía) -->
+      <div class="glass-panel" id="impostor-mobile-spy-card" style="display: none; padding: 1.5rem; text-align: center; border: 2px solid #ef4444; margin-bottom: 1.5rem; border-radius: 16px;">
+        <div style="font-size: 3rem; margin-bottom: 0.5rem;">🦹</div>
+        <h3 style="font-size: 1.8rem; color: #ef4444; margin: 0 0 0.5rem 0;">¡Eres el Espía Mortífago!</h3>
+        <p style="font-size: 1rem; color: var(--color-text-dim); margin: 0;">
+          No sabes dónde están. Escucha las preguntas de los demás, disimula tus respuestas y trata de adivinar el lugar secreto.
+        </p>
+      </div>
+
+      <!-- Catálogo de Lugares (Para referencia del espía en playing) -->
+      <div id="impostor-mobile-catalog" style="display: none; margin-bottom: 1.5rem;">
+        <h4 style="color: var(--color-accent); margin-bottom: 0.8rem; text-align: center;">Posibles Lugares en Hogwarts</h4>
+        <div id="impostor-catalog-list" style="display: flex; flex-direction: column; gap: 0.8rem;"></div>
+      </div>
+
+      <!-- Sección de Votación (En fase voting) -->
+      <div id="impostor-mobile-voting" style="display: none;">
+        <h3 style="color: #ef4444; margin-bottom: 1rem; text-align: center; font-size: 1.3rem;">🚨 ¿Quién es el Espía Mortífago? 🚨</h3>
+        <div id="impostor-players-list" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;"></div>
+      </div>
+
+      <!-- Sección de Adivinanza (En fase voting para el espía) -->
+      <div id="impostor-mobile-guessing" style="display: none;">
+        <h3 style="color: #10b981; margin-bottom: 1rem; text-align: center; font-size: 1.3rem;">🔮 Adivina el Lugar Secreto 🔮</h3>
+        <div id="impostor-guess-list" style="display: flex; flex-direction: column; gap: 1rem; margin-bottom: 1.5rem;"></div>
+      </div>
+    </div>
+
     <!-- Answer Sent Feedback -->
     <div class="wait-screen glass-panel mobile-view" id="answer-sent" style="display: none;">
       <div class="wand-icon">✅</div>
