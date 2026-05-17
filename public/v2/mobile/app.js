@@ -602,6 +602,46 @@ function renderHechizoInput(data) {
     return;
   }
   showMobileView('hechizo-input');
+
+  let hintEl = document.getElementById('hechizo-mobile-hint');
+  if (!hintEl) {
+    const parent = document.getElementById('hechizo-input');
+    hintEl = document.createElement('div');
+    hintEl.id = 'hechizo-mobile-hint';
+    hintEl.className = 'glass-panel';
+    hintEl.style.margin = '1rem 0';
+    hintEl.style.padding = '0.8rem';
+    hintEl.style.textAlign = 'center';
+    hintEl.style.fontWeight = 'bold';
+    hintEl.style.borderRadius = '10px';
+    hintEl.style.color = '#38bdf8';
+    hintEl.style.background = 'rgba(56, 189, 248, 0.15)';
+    if (parent && parent.firstChild) parent.insertBefore(hintEl, parent.firstChild);
+  }
+  hintEl.textContent = data.context ? `💡 ${data.context}` : '💡 Pista: Completa el encantamiento';
+
+  let streakEl = document.getElementById('hechizo-mobile-streak');
+  if (!streakEl) {
+    const parent = document.getElementById('hechizo-input');
+    streakEl = document.createElement('div');
+    streakEl.id = 'hechizo-mobile-streak';
+    streakEl.className = 'glass-panel';
+    streakEl.style.margin = '0.5rem 0 1rem 0';
+    streakEl.style.padding = '0.6rem';
+    streakEl.style.textAlign = 'center';
+    streakEl.style.fontWeight = 'bold';
+    streakEl.style.borderRadius = '10px';
+    streakEl.style.color = '#f97316';
+    streakEl.style.background = 'rgba(249, 115, 22, 0.15)';
+    if (parent && hintEl.nextSibling) parent.insertBefore(streakEl, hintEl.nextSibling);
+  }
+  if (data.streak > 1) {
+    streakEl.style.display = 'block';
+    streakEl.textContent = `🔥 ¡Racha Activa: x${data.streak}! (Bono de Puntos)`;
+  } else {
+    streakEl.style.display = 'none';
+  }
+
   const container = document.getElementById('hechizo-mobile-options');
   if (container && data.options) {
     container.innerHTML = '';

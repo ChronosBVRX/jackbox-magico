@@ -41,7 +41,8 @@ export class HechizoIncompleto implements GameModule {
       phase: state.phase,
       options: state.currentSpell?.options || [],
       alreadyAnswered: !!state.answeredClients[player.clientId],
-      streak: state.streaks[player.clientId] || 0
+      streak: state.streaks[player.clientId] || 0,
+      context: state.currentSpell?.context
     };
   }
 
