@@ -6,7 +6,7 @@ export const copaRotativaMagica: StoryDefinition = {
   shortTitle: "Torneo Rotativo",
   description: "La experiencia definitiva de Hogwarts. Cada vez que juegues, la Copa seleccionará preguntas de trivia y minijuegos completamente diferentes. ¡Ninguna partida será igual a la anterior!",
   estimatedMinutes: 45,
-  recommendedPlayers: "2 a 8 jugadores",
+  recommendedPlayers: "4 a 8 jugadores",
   difficulty: "normal",
   tone: "epic",
   steps: [

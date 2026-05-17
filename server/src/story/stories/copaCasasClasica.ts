@@ -6,7 +6,7 @@ export const copaCasasClasica: StoryDefinition = {
   shortTitle: "Copa Clásica",
   description: "Una experiencia balanceada para iniciar a cualquier grupo. Combina trivia, votaciones, clases mágicas, duelos y una gran pregunta final.",
   estimatedMinutes: 35,
-  recommendedPlayers: "2 a 8 jugadores",
+  recommendedPlayers: "4 a 8 jugadores",
   difficulty: "normal",
   tone: "epic",
   steps: [

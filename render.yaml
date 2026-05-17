@@ -10,3 +10,5 @@ services:
         value: 20
       - key: NODE_ENV
         value: production
+      - key: ALLOWED_ORIGIN
+        value: "*" # Configurar con el dominio real de Render en producción (ej: https://jackbox-magico-v2.onrender.com)

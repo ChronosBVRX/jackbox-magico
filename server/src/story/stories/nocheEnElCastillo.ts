@@ -6,7 +6,7 @@ export const nocheEnElCastillo: StoryDefinition = {
   shortTitle: "Noche en el Castillo",
   description: "Una historia más misteriosa donde las casas exploran pasillos, retratos, mapas y secretos hasta descubrir quién domina la noche.",
   estimatedMinutes: 40,
-  recommendedPlayers: "3 a 8 jugadores",
+  recommendedPlayers: "4 a 8 jugadores",
   difficulty: "normal",
   tone: "mysterious",
   steps: [

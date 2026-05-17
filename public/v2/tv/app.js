@@ -62,7 +62,7 @@ window.lastVoiceCue = null;
 
 // Catalogs for selection
 const STORY_CATALOG_FRONT = [
-    { id: 'copa_rotativa_magica', title: 'Torneo Mágico Rotativo (Infinito)', image: '/assets/images/previews/copa_casas.png', desc: 'La experiencia definitiva de Hogwarts. Cada vez que juegues, la Copa seleccionará preguntas de trivia y minijuegos completamente diferentes al azar. ¡Ninguna partida será igual a la anterior!', min: 45, players: '2-8', diff: 'Variable', steps: [
+    { id: 'copa_rotativa_magica', title: 'Torneo Mágico Rotativo (Infinito)', image: '/assets/images/previews/copa_casas.png', desc: 'La experiencia definitiva de Hogwarts. Cada vez que juegues, la Copa seleccionará preguntas de trivia y minijuegos completamente diferentes al azar. ¡Ninguna partida será igual a la anterior!', min: 45, players: '4-8', diff: 'Variable', steps: [
         { title: 'Bienvenida', type: 'story' }, { title: 'Trivia (3)', type: 'minigame' }, { title: 'Minijuego Sorpresa', type: 'minigame' }, { title: 'Trivia (2)', type: 'minigame' }, { title: 'Minijuego Sorpresa', type: 'minigame' }, { title: 'Trivia (1)', type: 'minigame' }, { title: 'Minijuego Sorpresa', type: 'minigame' }, { title: 'Copa Final', type: 'minigame' }
     ]}
 ];

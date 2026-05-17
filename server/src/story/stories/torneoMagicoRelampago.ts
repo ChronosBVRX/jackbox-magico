@@ -6,7 +6,7 @@ export const torneoMagicoRelampago: StoryDefinition = {
   shortTitle: "Torneo Relámpago",
   description: "Una versión rápida, intensa y divertida para grupos que quieren acción inmediata. Menos historia, más caos mágico.",
   estimatedMinutes: 20,
-  recommendedPlayers: "2 a 8 jugadores",
+  recommendedPlayers: "4 a 8 jugadores",
   difficulty: "familiar",
   tone: "comedy",
   steps: [
