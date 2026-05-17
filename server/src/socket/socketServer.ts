@@ -366,6 +366,13 @@ export function setupSocketServer(httpServer: HttpServer) {
       if (game) {
         const result = game.module.handleHostAction(game.state, 'next');
         game.state = result.state;
+
+        if (result.events) {
+          result.events.forEach(ev => {
+            if (ev.target === 'players') socket.emit(ev.type as any, ev.payload);
+            else io.to(roomCode).emit(ev.type as any, ev.payload);
+          });
+        }
         
         if (result.pointEvents) {
           roomEngine.applyPointEvents(roomCode, result.pointEvents);
@@ -411,6 +418,13 @@ export function setupSocketServer(httpServer: HttpServer) {
 
         const result = game.module.handleHostAction(game.state, data?.action || 'next');
         game.state = result.state;
+
+        if (result.events) {
+          result.events.forEach(ev => {
+            if (ev.target === 'players') socket.emit(ev.type as any, ev.payload);
+            else io.to(roomCode).emit(ev.type as any, ev.payload);
+          });
+        }
         
         if (result.pointEvents) {
           roomEngine.applyPointEvents(roomCode, result.pointEvents);
