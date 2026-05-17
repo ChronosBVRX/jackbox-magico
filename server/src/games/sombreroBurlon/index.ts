@@ -9,6 +9,11 @@ export class SombreroBurlon implements GameModule {
   name = 'El Sombrero Burlón';
 
   init(players: Player[]): SombreroState {
+    const cumulativeScores: Record<string, { name: string; house: string; votes: number; points: number; reasons: string[] }> = {};
+    players.forEach(p => {
+      cumulativeScores[p.clientId] = { name: p.name, house: p.house || 'Gryffindor', votes: 0, points: 0, reasons: [] };
+    });
+
     return {
       phase: 'prompt',
       roundNumber: 0,
@@ -21,7 +26,8 @@ export class SombreroBurlon implements GameModule {
       startedAt: Date.now(),
       durationMs: 25000,
       usedPromptIds: [],
-      players
+      players,
+      cumulativeScores
     };
   }
 
@@ -108,6 +114,14 @@ export class SombreroBurlon implements GameModule {
     const playerIds = state.players.map(p => p.clientId);
     const roundScores = calculateRoundScores(state.votes, playerIds);
     
+    roundScores.forEach(rs => {
+      if (state.cumulativeScores[rs.clientId]) {
+        state.cumulativeScores[rs.clientId].votes += rs.votes;
+        state.cumulativeScores[rs.clientId].points += rs.points;
+        state.cumulativeScores[rs.clientId].reasons.push(rs.reason);
+      }
+    });
+
     const pointEvents = roundScores.map(rs => {
       const player = state.players.find(p => p.clientId === rs.clientId)!;
       return {
@@ -134,10 +148,28 @@ export class SombreroBurlon implements GameModule {
   private finalizeGame(state: SombreroState): GameUpdateResult {
     state.phase = 'final_results';
     
-    // In a real implementation we'd aggregate all rounds, 
-    // but here we rely on the pointEvents sent each round to the engine.
-    // We just show the winner of the last round or a summary.
+    const ranking = Object.values(state.cumulativeScores).sort((a, b) => b.points - a.points);
+    const winner = ranking[0];
+
+    state.finalResults = {
+      correctAnswer: winner ? `¡${winner.name} es el favorito del Sombrero!` : "El Sombrero Burlón",
+      narratorComment: winner ? `"${winner.name} ha sido coronado como el mago más notorio de la noche."` : '"Nadie destacó ante el sombrero."',
+      ranking
+    };
     
-    return { state, finished: true };
+    return { 
+      state, 
+      finished: true,
+      events: [
+        {
+          type: 'voice_cue',
+          payload: {
+            cueKey: 'sombrero_final',
+            text: winner ? `¡El sombrero burlón ha dictado su sentencia final! ${winner.name} se lleva la corona de la noche.` : 'El sombrero ha terminado su juicio.'
+          },
+          target: 'all'
+        }
+      ]
+    };
   }
 }

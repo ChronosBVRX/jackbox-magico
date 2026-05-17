@@ -1436,18 +1436,19 @@ function renderPocionesView(data) {
 
 function renderSombreroResults(data) {
   showView('view-results');
-  const results = data.roundResults || data.finalResults;
-  document.getElementById('correct-answer').textContent = results.ranking[0].votes > 0 ? results.ranking[0].name : 'Nadie';
-  document.getElementById('narrator-comment').textContent = results.hatLine || "El sombrero ha hablado.";
+  const results = data.finalResults || data.roundResults;
+  const isFinal = !!data.finalResults;
+  document.getElementById('correct-answer').textContent = isFinal ? results.correctAnswer : (results.ranking[0]?.votes > 0 ? results.ranking[0].name : 'Nadie');
+  document.getElementById('narrator-comment').textContent = results.narratorComment || results.hatLine || "El sombrero ha hablado.";
   
   const resultsContainer = document.getElementById('results-list');
   resultsContainer.innerHTML = '';
   results.ranking.forEach(res => {
     const card = document.createElement('div');
-    card.className = 'result-player-card glass-panel';
+    card.className = `result-player-card glass-panel ${res.house ? res.house.toLowerCase() : ''}`;
     card.innerHTML = `
       <div class="player-name">${res.name}</div>
-      <div class="result-status status-correct">${res.votes} Votos</div>
+      <div class="result-status status-correct">${isFinal ? `${res.votes} Votos Totales` : `${res.votes} Votos`}</div>
       <div class="points-gain">+${res.points}</div>
     `;
     resultsContainer.appendChild(card);

@@ -22,4 +22,5 @@ export interface SombreroState {
   durationMs: number;
   usedPromptIds: string[];
   players: Player[];
+  cumulativeScores: Record<string, { name: string; house: string; votes: number; points: number; reasons: string[] }>;
 }
