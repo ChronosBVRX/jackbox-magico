@@ -14,7 +14,8 @@ export type GameId =
   | 'patronus_personalizado'
   | 'copa_final'
   | 'beso_boda_muerte'
-  | 'el_impostor';
+  | 'el_impostor'
+  | 'el_tiburon';
 
 export interface GameUpdateResult {
   state: any;

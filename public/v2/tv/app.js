@@ -938,6 +938,8 @@ socket.on('game_state', (data) => {
     renderKMKView(data);
   } else if (currentGameId === 'el_impostor') {
     renderImpostorView(data);
+  } else if (currentGameId === 'el_tiburon') {
+    renderTiburonView(data);
   }
 });
 
@@ -1793,4 +1795,70 @@ function renderImpostorResults(data) {
             rankingContainer.appendChild(card);
         });
     }
+}
+
+function renderTiburonView(data) {
+    if (data.phase === 'results') {
+        renderTiburonResults(data);
+        return;
+    }
+    if (data.phase === 'pitching') {
+        showView('view-tiburon-pitching');
+        safeText('tiburon-pitch-prompt', data.currentCreation ? data.currentCreation.prompt : '');
+        safeText('tiburon-pitch-index', (data.currentPitchIndex || 0) + 1);
+        safeText('tiburon-pitch-total', data.totalCreations || 8);
+        safeText('tiburon-investors-count', `${data.investorsCount || 0} Tiburones han invertido`);
+
+        const imgTop = document.getElementById('tiburon-pitch-img-top');
+        const imgBottom = document.getElementById('tiburon-pitch-img-bottom');
+        const authorTop = document.getElementById('tiburon-author-top');
+        const authorBottom = document.getElementById('tiburon-author-bottom');
+
+        if (imgTop && data.currentCreation) imgTop.src = data.currentCreation.topLines || '';
+        if (imgBottom && data.currentCreation) imgBottom.src = data.currentCreation.bottomLines || '';
+        if (authorTop && data.currentCreation) authorTop.textContent = `Parte Sup: ${data.currentCreation.topAuthorName} (${data.currentCreation.topAuthorHouse})`;
+        if (authorBottom && data.currentCreation) authorBottom.textContent = `Parte Inf: ${data.currentCreation.bottomAuthorName} (${data.currentCreation.bottomAuthorHouse})`;
+        return;
+    }
+
+    showView('view-tiburon');
+    safeText('tiburon-phase-status', data.phase === 'drawing_top' ? 'Fase 1: Dibujando Parte Superior (Cabeza/Torso)' : 'Fase 2: Dibujando Parte Inferior (Modo Complemento)');
+    safeText('tiburon-submitted-status', `${data.submittedCount || 0} / ${data.totalPlayers || 8} Magos han terminado su parte`);
+}
+
+function renderTiburonResults(data) {
+    showView('view-tiburon-results');
+    const res = data.results;
+    if (!res || !res.ranking) return;
+
+    const container = document.getElementById('tiburon-ranking-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    res.ranking.forEach((r, idx) => {
+        const card = document.createElement('div');
+        card.className = `result-player-card glass-panel ${idx === 0 ? 'status-correct' : ''}`;
+        card.style.display = 'flex';
+        card.style.alignItems = 'center';
+        card.style.justifyContent = 'space-between';
+        card.style.padding = '1.5rem';
+        card.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 2rem;">
+                <div style="font-size: 2.5rem; font-weight: bold; color: var(--color-accent);">${idx + 1}</div>
+                <div style="width: 80px; height: 80px; background: white; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; border: 2px solid var(--color-accent);">
+                    <img src="${r.topLines || ''}" style="width: 100%; height: 50%; object-fit: cover; border-bottom: 1px dashed #ccc;">
+                    <img src="${r.bottomLines || ''}" style="width: 100%; height: 50%; object-fit: cover;">
+                </div>
+                <div>
+                    <div style="font-size: 1.4rem; color: white; font-weight: bold; margin-bottom: 0.3rem;">${escapeHTML(r.prompt)}</div>
+                    <div style="font-size: 0.9rem; color: var(--color-text-dim);">Autores: ${escapeHTML(r.topAuthorName)} & ${escapeHTML(r.bottomAuthorName)}</div>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 1.8rem; font-weight: bold; color: #10b981;">${r.totalInvestment} Galeones</div>
+                <div style="font-size: 0.8rem; color: var(--color-text-dim); text-transform: uppercase;">Inversión Total</div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
 }

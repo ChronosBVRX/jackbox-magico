@@ -454,6 +454,75 @@
     </div>
   </div>
 
+  <!-- Tiburon Active View -->
+  <div class="tv-layout" id="view-tiburon" style="display: none; padding: 3rem;">
+    <header style="text-align: center; margin-bottom: 2rem;">
+      <h1 class="text-gradient-gold" style="font-size: 3.5rem; margin-bottom: 0.5rem;" id="tiburon-title">El Tiburón de los Negocios Mágicos</h1>
+      <p id="tiburon-phase-status" style="font-size: 1.8rem; color: var(--color-text-dim);">Fase de Dibujo en Equipo (Gartic Phone Complemento)</p>
+    </header>
+
+    <main style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: 1; margin: 2rem 0;">
+      <div class="glass-panel" style="padding: 4rem; border-radius: 24px; text-align: center; max-width: 900px; box-shadow: 0 0 40px rgba(251,191,36,0.2); border: 2px solid rgba(251,191,36,0.4);">
+        <div style="font-size: 5rem; margin-bottom: 1.5rem;">🦈💼</div>
+        <h2 style="font-size: 2.8rem; color: white; margin-bottom: 1.5rem;">¡Magos Trabajando en sus Inventos!</h2>
+        <p style="font-size: 1.6rem; color: var(--color-text-dim); line-height: 1.5; margin-bottom: 2rem;">
+          Miren sus celulares. El primer jugador dibuja la parte superior de un concepto extraño.<br>
+          Luego, el lienzo pasará a otro mago que solo verá el corte final y deberá completar la parte inferior.
+        </p>
+        <div style="font-size: 2.2rem; color: var(--color-accent); font-weight: bold;" id="tiburon-submitted-status">
+          0 / 8 Inventos en Progreso
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- Tiburon Pitching View -->
+  <div class="tv-layout" id="view-tiburon-pitching" style="display: none; padding: 3rem; background: url('/assets/images/tiburon/tiburon_stage.png') center/cover no-repeat;">
+    <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.75); backdrop-filter: blur(10px); z-index: 0;"></div>
+    
+    <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; flex-direction: column;">
+      <header style="text-align: center; margin-bottom: 2rem;">
+        <div style="font-size: 1.2rem; color: var(--color-accent); text-transform: uppercase; letter-spacing: 3px; margin-bottom: 0.5rem;">Tanque de Tiburones Mágicos</div>
+        <h1 class="text-gradient-gold" style="font-size: 3.2rem; margin-bottom: 0.5rem;" id="tiburon-pitch-prompt">Concepto Original</h1>
+        <p style="font-size: 1.4rem; color: var(--color-text-dim);">Presentando invento <span id="tiburon-pitch-index" style="color: white; font-weight: bold;">1</span> de <span id="tiburon-pitch-total">8</span></p>
+      </header>
+
+      <main style="display: flex; flex: 1; align-items: center; justify-content: center; gap: 4rem;">
+        <div class="glass-panel" style="padding: 2rem; border-radius: 24px; border: 3px solid var(--color-accent); box-shadow: 0 0 50px rgba(251,191,36,0.4); background: white; width: 450px; height: 450px; display: flex; flex-direction: column;">
+          <!-- Top Drawing -->
+          <div style="flex: 1; width: 100%; border-bottom: 3px dashed #cbd5e1; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+            <img id="tiburon-pitch-img-top" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+            <div id="tiburon-author-top" style="position: absolute; top: 10px; left: 10px; background: rgba(0,0,0,0.8); color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem;">Autor Superior</div>
+          </div>
+          <!-- Bottom Drawing -->
+          <div style="flex: 1; width: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; position: relative;">
+            <img id="tiburon-pitch-img-bottom" src="" style="max-width: 100%; max-height: 100%; object-fit: contain;">
+            <div id="tiburon-author-bottom" style="position: absolute; bottom: 10px; right: 10px; background: rgba(0,0,0,0.8); color: white; padding: 0.4rem 1rem; border-radius: 20px; font-size: 0.9rem;">Autor Inferior</div>
+          </div>
+        </div>
+
+        <div class="glass-panel" style="padding: 3rem; border-radius: 24px; max-width: 450px; text-align: center;">
+          <h3 style="font-size: 2.2rem; color: white; margin-bottom: 1rem;">¿Invertirán en este producto?</h3>
+          <p style="font-size: 1.3rem; color: var(--color-text-dim); margin-bottom: 2rem;">Tiburones en sus móviles, elijan cuántos Galeones apostar por esta creación.</p>
+          <div style="font-size: 4rem; margin-bottom: 1rem;">💰</div>
+          <div style="font-size: 2rem; color: var(--color-accent); font-weight: bold;" id="tiburon-investors-count">0 Tiburones han invertido</div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Tiburon Results View -->
+  <div class="tv-layout" id="view-tiburon-results" style="display: none; padding: 3rem;">
+    <header style="text-align: center; margin-bottom: 2rem;">
+      <h1 class="text-gradient-gold" style="font-size: 3.5rem; margin-bottom: 0.5rem;">Magnates del Mundo Mágico</h1>
+      <p style="font-size: 1.6rem; color: var(--color-text-dim);">Las creaciones con mayor inversión en el Tanque de Tiburones</p>
+    </header>
+
+    <div id="tiburon-ranking-list" style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 800px; margin: 0 auto; flex: 1; overflow-y: auto;">
+      <!-- Inject ranking -->
+    </div>
+  </div>
+
   <!-- Selection Carousel View (Premium) -->
   <!-- Selection Carousel View (Premium) -->
   <div class="tv-layout" id="view-selection" style="display: none;">

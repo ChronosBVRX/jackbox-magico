@@ -343,5 +343,27 @@ export const INSTRUCTION_CATALOG: Record<GameId, Instruction> = {
     scoring: "Descubrir al espía: +150 a los leales. Victoria del espía (sobrevivir o adivinar): +300.",
     voiceSlot: "instructions_el_impostor",
     startButton: "Iniciar Misión"
+  },
+  el_tiburon: {
+    title: "El Tiburón de los Negocios Mágicos",
+    subtitle: "Gartic Phone Modo Complemento. Porque Hagrid y los gemelos Weasley necesitan nuevos inventos absurdos.",
+    rules: [
+      "Dibuja la parte superior de un concepto extraño.",
+      "Pasa el lienzo a otro jugador que solo verá las líneas finales y completará la parte inferior.",
+      "Presenta las creaciones en el Tanque de Tiburones y voten con sus Galeones."
+    ],
+    tvInstructions: [
+      "Muestra el progreso de los dibujantes en tiempo real.",
+      "Presenta las creaciones combinadas en el Tanque de Tiburones.",
+      "Revela el ranking de productos con mayor inversión."
+    ],
+    mobileInstructions: [
+      "Dibuja la parte superior o inferior según te indique el juego.",
+      "Si dibujas la parte inferior, adivina qué era a partir del corte.",
+      "Invierte tus Galeones en los inventos más graciosos."
+    ],
+    scoring: "Autores del invento ganador: +300. Retorno de inversión para los tiburones que apostaron por el ganador.",
+    voiceSlot: "instructions_el_tiburon",
+    startButton: "Abrir Negocios Mágicos"
   }
 };

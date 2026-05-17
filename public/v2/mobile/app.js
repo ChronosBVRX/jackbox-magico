@@ -252,6 +252,10 @@ socket.on('game_player_state', (data) => {
     renderCalderoInput(data);
   } else if (currentGameId === 'beso_boda_muerte') {
     renderKMKInput(data);
+  } else if (currentGameId === 'el_impostor') {
+    renderImpostorInput(data);
+  } else if (currentGameId === 'el_tiburon') {
+    renderTiburonInput(data);
   } else if (currentGameId === 'atrapa_snitch') {
     showMobileView('snitch-input');
   } else if (currentGameId === 'duelo_hechizos') {
@@ -899,5 +903,149 @@ function renderImpostorInput(data) {
                 });
             }
         }
+    }
+}
+
+let tiburonCanvasCtx = null;
+let isDrawingTiburon = false;
+let lastDrawX = 0;
+let lastDrawY = 0;
+
+function initTiburonCanvas() {
+    const canvas = document.getElementById('tiburon-canvas');
+    if (!canvas) return;
+    
+    if (!tiburonCanvasCtx) {
+        tiburonCanvasCtx = canvas.getContext('2d');
+        tiburonCanvasCtx.fillStyle = '#ffffff';
+        tiburonCanvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+
+        const startDraw = (e) => {
+            isDrawingTiburon = true;
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            lastDrawX = ((clientX - rect.left) / rect.width) * canvas.width;
+            lastDrawY = ((clientY - rect.top) / rect.height) * canvas.height;
+        };
+
+        const draw = (e) => {
+            if (!isDrawingTiburon) return;
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+            const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+            const currentX = ((clientX - rect.left) / rect.width) * canvas.width;
+            const currentY = ((clientY - rect.top) / rect.height) * canvas.height;
+
+            tiburonCanvasCtx.beginPath();
+            tiburonCanvasCtx.moveTo(lastDrawX, lastDrawY);
+            tiburonCanvasCtx.lineTo(currentX, currentY);
+            tiburonCanvasCtx.strokeStyle = '#000000';
+            tiburonCanvasCtx.lineWidth = 6;
+            tiburonCanvasCtx.lineCap = 'round';
+            tiburonCanvasCtx.lineJoin = 'round';
+            tiburonCanvasCtx.stroke();
+
+            lastDrawX = currentX;
+            lastDrawY = currentY;
+        };
+
+        const stopDraw = () => {
+            isDrawingTiburon = false;
+        };
+
+        canvas.addEventListener('mousedown', startDraw);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDraw);
+        canvas.addEventListener('mouseleave', stopDraw);
+
+        canvas.addEventListener('touchstart', startDraw, { passive: false });
+        canvas.addEventListener('touchmove', draw, { passive: false });
+        canvas.addEventListener('touchend', stopDraw);
+    } else {
+        tiburonCanvasCtx.fillStyle = '#ffffff';
+        tiburonCanvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+    }
+}
+
+function renderTiburonInput(data) {
+    if (data.phase === 'results') {
+        showWaitScreen('¡Mira qué invento se llevó la mayor inversión en la TV!');
+        return;
+    }
+    if (data.phase === 'pitching') {
+        if (data.alreadyInvested) {
+            showMobileView('answer-sent');
+            return;
+        }
+        showMobileView('tiburon-input');
+        document.getElementById('tiburon-mobile-drawing').style.display = 'none';
+        document.getElementById('tiburon-mobile-investing').style.display = 'flex';
+        safeText('tiburon-mobile-title', 'Tanque de Tiburones');
+        safeText('tiburon-mobile-subtitle', 'Analiza la creación en la TV y decide tu inversión');
+        safeText('tiburon-my-galeones', data.myGaleones || 0);
+
+        document.querySelectorAll('.btn-tiburon-invest').forEach(btn => {
+            const amount = parseInt(btn.getAttribute('data-amount'), 10);
+            btn.disabled = amount > (data.myGaleones || 0);
+            btn.style.opacity = btn.disabled ? '0.4' : '1';
+            btn.onclick = () => {
+                socket.emit('player_action', { type: 'tiburon_invest', amount });
+                showMobileView('answer-sent');
+            };
+        });
+        return;
+    }
+
+    if (data.alreadySubmitted) {
+        showMobileView('answer-sent');
+        return;
+    }
+
+    showMobileView('tiburon-input');
+    document.getElementById('tiburon-mobile-drawing').style.display = 'flex';
+    document.getElementById('tiburon-mobile-investing').style.display = 'none';
+
+    const prevContainer = document.getElementById('tiburon-prev-container');
+    const prevImg = document.getElementById('tiburon-prev-img');
+
+    if (data.phase === 'drawing_top') {
+        safeText('tiburon-mobile-title', 'Fase 1: Parte Superior');
+        safeText('tiburon-mobile-subtitle', `Dibuja: "${data.prompt}"`);
+        if (prevContainer) prevContainer.style.display = 'none';
+    } else {
+        safeText('tiburon-mobile-title', 'Fase 2: Modo Complemento');
+        safeText('tiburon-mobile-subtitle', '¡Completa la parte inferior sin saber qué era!');
+        if (prevContainer) {
+            prevContainer.style.display = 'block';
+            if (prevImg) prevImg.src = data.topLines || '';
+        }
+    }
+
+    initTiburonCanvas();
+
+    const btnClear = document.getElementById('btn-tiburon-clear');
+    const btnSubmit = document.getElementById('btn-tiburon-submit-draw');
+
+    if (btnClear) {
+        btnClear.onclick = () => {
+            const canvas = document.getElementById('tiburon-canvas');
+            if (canvas && tiburonCanvasCtx) {
+                tiburonCanvasCtx.fillStyle = '#ffffff';
+                tiburonCanvasCtx.fillRect(0, 0, canvas.width, canvas.height);
+            }
+        };
+    }
+
+    if (btnSubmit) {
+        btnSubmit.onclick = () => {
+            const canvas = document.getElementById('tiburon-canvas');
+            if (canvas) {
+                const lines = canvas.toDataURL('image/png');
+                socket.emit('player_action', { type: 'tiburon_submit_draw', lines });
+                showMobileView('answer-sent');
+            }
+        };
     }
 }

@@ -269,6 +269,45 @@
       </div>
     </div>
 
+    <!-- Tiburon Input View -->
+    <div class="game-view glass-panel mobile-view" id="tiburon-input" style="display: none; padding: 1.5rem; flex-direction: column; align-items: center;">
+      <h2 id="tiburon-mobile-title" class="text-gradient-gold" style="text-align: center; margin-bottom: 0.5rem; font-size: 1.6rem; font-weight: 800;"></h2>
+      <p id="tiburon-mobile-subtitle" style="text-align: center; font-size: 1rem; color: var(--color-text-dim); margin-bottom: 1.5rem;"></p>
+
+      <!-- Drawing Section -->
+      <div id="tiburon-mobile-drawing" style="display: none; width: 100%; flex-direction: column; align-items: center;">
+        <div id="tiburon-prev-container" style="display: none; width: 300px; height: 150px; border: 2px solid var(--color-accent); border-bottom: 2px dashed #ef4444; background: white; border-top-left-radius: 16px; border-top-right-radius: 16px; overflow: hidden; position: relative;">
+          <img id="tiburon-prev-img" src="" style="width: 100%; height: 100%; object-fit: cover; object-position: bottom;">
+          <div style="position: absolute; top: 5px; left: 5px; background: rgba(0,0,0,0.8); color: white; padding: 0.2rem 0.6rem; border-radius: 10px; font-size: 0.75rem;">Parte Superior</div>
+        </div>
+
+        <div style="position: relative; width: 300px; height: 300px; background: white; border: 2px solid var(--color-accent); border-radius: 16px; overflow: hidden; box-shadow: 0 0 20px rgba(251,191,36,0.3); margin-bottom: 1.5rem;" id="tiburon-canvas-wrapper">
+          <canvas id="tiburon-canvas" width="300" height="300" style="width: 100%; height: 100%; display: block; touch-action: none;"></canvas>
+        </div>
+
+        <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem; width: 300px;">
+          <button class="btn-join-premium" id="btn-tiburon-clear" style="flex: 1; padding: 0.8rem; background: #ef4444; border-color: #dc2626; font-size: 1rem;">Borrar Lienzo</button>
+          <button class="btn-join-premium" id="btn-tiburon-submit-draw" style="flex: 2; padding: 0.8rem; font-size: 1rem;">Terminar Dibujo</button>
+        </div>
+      </div>
+
+      <!-- Pitching / Investing Section -->
+      <div id="tiburon-mobile-investing" style="display: none; width: 100%; flex-direction: column; align-items: center;">
+        <div class="glass-panel" style="padding: 1.5rem; text-align: center; border: 2px solid var(--color-accent); margin-bottom: 1.5rem; border-radius: 16px; width: 100%;">
+          <div style="font-size: 3rem; margin-bottom: 0.5rem;">💰</div>
+          <h3 style="font-size: 1.5rem; color: white; margin-bottom: 0.5rem;">¿Cuánto invertirás en este producto?</h3>
+          <p style="font-size: 1rem; color: var(--color-text-dim); margin-bottom: 1.5rem;">Tienes <span id="tiburon-my-galeones" style="color: var(--color-accent); font-weight: bold; font-size: 1.2rem;">100</span> Galeones disponibles en tu cuenta.</p>
+
+          <div style="display: flex; flex-direction: column; gap: 1rem; max-width: 250px; margin: 0 auto;">
+            <button class="btn-join-premium btn-tiburon-invest" data-amount="0" style="padding: 1rem; font-size: 1.1rem; background: #64748b; border-color: #475569;">No invertir (0 Galeones)</button>
+            <button class="btn-join-premium btn-tiburon-invest" data-amount="25" style="padding: 1rem; font-size: 1.1rem;">Invertir 25 Galeones</button>
+            <button class="btn-join-premium btn-tiburon-invest" data-amount="50" style="padding: 1rem; font-size: 1.1rem;">Invertir 50 Galeones</button>
+            <button class="btn-join-premium btn-tiburon-invest" data-amount="100" style="padding: 1rem; font-size: 1.1rem;">¡Invertir TODO (100)!</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Answer Sent Feedback -->
     <div class="wait-screen glass-panel mobile-view" id="answer-sent" style="display: none;">
       <div class="wand-icon">✅</div>

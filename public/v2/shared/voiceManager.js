@@ -39,7 +39,8 @@ window.VoiceManagerV2 = (function() {
         copa_final: "dumbledore",
         cierre_ganador: "sombrero",
         beso_boda_muerte: "luna",
-        el_impostor: "sombrero"
+        el_impostor: "sombrero",
+        el_tiburon: "hagrid"
     };
 
     const GAME_ID_ALIASES = {
@@ -57,7 +58,8 @@ window.VoiceManagerV2 = (function() {
         copa: "copa_final",
         story_ready: "intro_general",
         kmk: "beso_boda_muerte",
-        impostor: "el_impostor"
+        impostor: "el_impostor",
+        tiburon: "el_tiburon"
     };
 
     const EVENT_OVERRIDES_BY_AUDIO_FILE = {

@@ -254,5 +254,23 @@ export const GAME_CATALOG: GameInfo[] = [
     maxPlayers: 8,
     maxPerHouse: 2,
     enabled: true
+  },
+  {
+    id: 'el_tiburon',
+    name: 'El Tiburón de los Negocios Mágicos',
+    shortName: 'Tiburón',
+    status: 'beta',
+    mode: 'social',
+    description: 'Gartic Phone Modo Complemento. Dibuja criaturas extrañas y productos defectuosos en equipo sin saber qué era originalmente.',
+    rules: [
+      'Dibuja la parte superior de un concepto extraño.',
+      'Pasa el lienzo a otro jugador que solo verá las líneas finales y completará la parte inferior.',
+      'Presenta las creaciones en el Tanque de Tiburones y voten con sus Galeones.'
+    ],
+    points: { min: 0, max: 500, description: '300 a los autores ganadores + retornos de inversión en Galeones' },
+    durationSeconds: 120,
+    maxPlayers: 8,
+    maxPerHouse: 2,
+    enabled: true
   }
 ];
