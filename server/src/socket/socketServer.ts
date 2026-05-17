@@ -96,7 +96,12 @@ export function setupSocketServer(httpServer: HttpServer) {
         }
 
         const updatedState = roomEngine.getRoom(roomCode);
-        if (updatedState) io.to(roomCode).emit('room_state', updatedState);
+        if (updatedState) {
+          io.to(roomCode).emit('room_state', updatedState);
+          if (updatedState.status !== 'lobby') {
+            updateGameClients(roomCode);
+          }
+        }
       } else {
         socket.emit('error_message', result.error || 'Error al unirse');
       }

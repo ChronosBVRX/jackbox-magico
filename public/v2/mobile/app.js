@@ -183,6 +183,8 @@ socket.on('room_state', (state) => {
       if (hostControls) {
         hostControls.style.display = myPlayer.isHost ? 'block' : 'none';
       }
+    } else if (state.status === 'playing' || state.status === 'story') {
+      showGameInfo('Sigue las instrucciones en la TV.', 'Partida en Curso');
     }
   }
 });

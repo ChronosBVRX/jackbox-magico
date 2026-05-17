@@ -294,5 +294,42 @@
       "serverTime": 1778990182133,
       "debugMode": false
     }
+  ],
+  [
+    "MVRO",
+    {
+      "roomCode": "MVRO",
+      "status": "lobby",
+      "players": [
+        {
+          "clientId": "c_test2",
+          "name": "Harry Potter Extra L",
+          "house": "Gryffindor",
+          "gender": "wizard",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": true
+        },
+        {
+          "clientId": "c_test3",
+          "name": "Hermione",
+          "house": "Gryffindor",
+          "gender": "witch",
+          "points": 0,
+          "streak": 0,
+          "isConnected": true,
+          "isReady": false,
+          "isHost": false
+        }
+      ],
+      "currentGameId": null,
+      "phase": "lobby",
+      "durationMs": 0,
+      "startedAt": null,
+      "serverTime": 1778990680328,
+      "debugMode": false
+    }
   ]
 ]
