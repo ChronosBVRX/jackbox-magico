@@ -12,7 +12,11 @@ const STORY_MINIGAME_POOL: GameId[] = [
   "caldero_mentiroso",
   "retratos_chismosos",
   "hechizo_incompleto",
-  "patronus_personalizado"
+  "patronus_personalizado",
+  "beso_boda_muerte",
+  "el_impostor",
+  "el_tiburon",
+  "dictado_magico"
 ];
 
 export class StoryEngine {
@@ -48,7 +52,13 @@ export class StoryEngine {
       } else if (nextStep.type === 'fixed_minigame') {
         state.selectedMinigame = nextStep.gameId;
       } else if (nextStep.type === 'instructions') {
-        state.selectedMinigame = nextStep.instructionGameId;
+        if (nextStep.instructionGameId === 'random') {
+          const picked = this.pickRandomMinigame(state, (nextStep as any).pool);
+          state.selectedMinigame = picked;
+          nextStep.instructionGameId = picked;
+        } else {
+          state.selectedMinigame = nextStep.instructionGameId;
+        }
       } else if (nextStep.type === 'copa_final') {
         state.selectedMinigame = 'copa_final';
       } else if (nextStep.type === 'trivia_block') {

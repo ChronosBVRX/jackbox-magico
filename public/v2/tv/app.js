@@ -62,6 +62,9 @@ window.lastVoiceCue = null;
 
 // Catalogs for selection
 const STORY_CATALOG_FRONT = [
+    { id: 'copa_rotativa_magica', title: 'Torneo Mágico Rotativo (Infinito)', image: '/assets/images/previews/copa_casas.png', desc: 'La experiencia definitiva de Hogwarts. Cada vez que juegues, la Copa seleccionará preguntas de trivia y minijuegos completamente diferentes al azar. ¡Ninguna partida será igual a la anterior!', min: 45, players: '2-8', diff: 'Variable', steps: [
+        { title: 'Bienvenida', type: 'story' }, { title: 'Trivia (3)', type: 'minigame' }, { title: 'Minijuego Sorpresa', type: 'minigame' }, { title: 'Trivia (2)', type: 'minigame' }, { title: 'Minijuego Sorpresa', type: 'minigame' }, { title: 'Trivia (1)', type: 'minigame' }, { title: 'Minijuego Sorpresa', type: 'minigame' }, { title: 'Copa Final', type: 'minigame' }
+    ]},
     { id: 'copa_casas_clasica', title: 'Copa de las Casas Clásica', image: '/assets/images/previews/copa_casas.png', desc: 'La experiencia definitiva de Jackbox Mágico. Un viaje por el Gran Comedor, clases y la gran final.', min: 35, players: '2-8', diff: 'Normal', steps: [
         { title: 'Bienvenida', type: 'story' }, { title: 'Trivia Mágica', type: 'minigame' }, { title: 'Pociones', type: 'minigame' }, { title: 'Duelo', type: 'minigame' }, { title: 'Copa Final', type: 'minigame' }
     ]},
@@ -86,7 +89,9 @@ const GAME_CATALOG_FRONT = [
     { id: 'caldero_mentiroso', name: 'El Caldero Mentiroso', shortName: 'Caldero', description: 'Estrategia y engaño con ingredientes secretos.', durationSeconds: 7, mode: 'Estrategia', maxPlayers: 8, enabled: true },
     { id: 'patronus_personalizado', name: 'Patronus', shortName: 'Patronus', description: 'Creatividad y votación por el mejor protector.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true },
     { id: 'beso_boda_muerte', name: 'Beso, Boda, Muerte', shortName: 'KMK', description: 'Predice a quién besará, con quién se casará y a quién maldecirá el protagonista.', durationSeconds: 6, mode: 'Social', maxPlayers: 8, enabled: true },
-    { id: 'el_impostor', name: 'El Impostor de Hogwarts', shortName: 'Impostor', description: 'Deducción y engaño. Descubre al espía mortífago.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true }
+    { id: 'el_impostor', name: 'El Impostor de Hogwarts', shortName: 'Impostor', description: 'Deducción y engaño. Descubre al espía mortífago.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true },
+    { id: 'el_tiburon', name: 'El Tiburón de los Negocios Mágicos', shortName: 'Tiburón', description: 'Gartic Phone Modo Complemento. Inventos absurdos para Sortilegios Weasley.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true },
+    { id: 'dictado_magico', name: 'Dictado Mágico', shortName: 'Dictado', description: 'Contrarreloj auditivo. Transcribe exactamente lo que escuches.', durationSeconds: 8, mode: 'Quiz', maxPlayers: 8, enabled: true }
 ];
 
 // Selection Manager (Premium Carousel)
@@ -1627,6 +1632,8 @@ window.confirm = (msg) => {
     return false; 
 };
 
+let kmkTvTimerInterval = null;
+
 function renderKMKView(data) {
     if (data.phase === 'results') {
         renderKMKResults(data);
@@ -1664,12 +1671,30 @@ function renderKMKView(data) {
         });
     }
 
-    // Update timer bar
-    const elapsed = Date.now() - data.startedAt;
-    const remaining = Math.max(0, data.durationMs - elapsed);
-    const pct = (remaining / data.durationMs) * 100;
+    if (kmkTvTimerInterval) clearInterval(kmkTvTimerInterval);
+    autoNextTriggered = false;
+
     const bar = document.getElementById('kmk-timer-bar');
-    if (bar) bar.style.width = pct + '%';
+    if (bar && data.startedAt && data.durationMs) {
+        const updateTimer = () => {
+            const elapsed = Date.now() - data.startedAt;
+            const remaining = Math.max(0, data.durationMs - elapsed);
+            const percent = (remaining / data.durationMs) * 100;
+            
+            bar.style.transition = 'none';
+            bar.style.width = `${percent}%`;
+
+            if (remaining <= 0 && !autoNextTriggered) {
+                autoNextTriggered = true;
+                clearInterval(kmkTvTimerInterval);
+                console.log('KMK Timer finished, auto-resolving...');
+                socket.emit('tv_next_round');
+            }
+        };
+
+        updateTimer();
+        kmkTvTimerInterval = setInterval(updateTimer, 100);
+    }
 }
 
 function renderKMKResults(data) {

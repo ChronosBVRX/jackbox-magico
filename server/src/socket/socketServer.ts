@@ -8,7 +8,7 @@ import {
 } from '../types/events';
 import { roomEngine } from '../engine/roomEngine';
 import { createGameModule } from '../games/gameFactory';
-import { GameModule } from '../games/base';
+import { GameModule, GameId } from '../games/base';
 import { storyEngine } from '../story/storyEngine';
 import { STORY_CATALOG } from '../story/storyCatalog';
 import { INSTRUCTION_CATALOG } from '../story/instructionCatalog';
@@ -260,12 +260,21 @@ export function setupSocketServer(httpServer: HttpServer) {
       const room = roomEngine.getRoom(roomCode);
       if (!room || !room.storyState) return;
 
-      const step = storyEngine.getCurrentStep(room.storyState);
-      if (!step) return;
+      // If story complete, reset
+      if (room.storyState.storyCompleted) {
+        roomEngine.resetRoomToLobby(roomCode);
+        const updated = roomEngine.getRoom(roomCode);
+        if (updated) io.to(roomCode).emit('room_state', updated);
+        return;
+      }
 
-      // Handle transition based on current step
-      if (step.type === 'instructions' || step.type === 'trivia_block' || step.type === 'fixed_minigame' || step.type === 'minigame_random' || step.type === 'copa_final') {
-        const gameId = room.storyState.selectedMinigame;
+      // Move to next step
+      const nextState = storyEngine.nextStep(room.storyState);
+      roomEngine.setStoryState(roomCode, nextState);
+
+      const nextStep = storyEngine.getCurrentStep(nextState);
+      if (nextStep && (nextStep.type === 'trivia_block' || nextStep.type === 'fixed_minigame' || nextStep.type === 'minigame_random' || nextStep.type === 'copa_final')) {
+        const gameId = nextState.selectedMinigame;
         if (gameId) {
           const module = createGameModule(gameId as any);
           if (module) {
@@ -280,17 +289,6 @@ export function setupSocketServer(httpServer: HttpServer) {
         }
       }
 
-      // If story complete, reset
-      if (room.storyState.storyCompleted) {
-        roomEngine.resetRoomToLobby(roomCode);
-        const updated = roomEngine.getRoom(roomCode);
-        if (updated) io.to(roomCode).emit('room_state', updated);
-        return;
-      }
-
-      // Move to next step
-      const nextState = storyEngine.nextStep(room.storyState);
-      roomEngine.setStoryState(roomCode, nextState);
       updateGameClients(roomCode);
     });
 
@@ -390,7 +388,7 @@ export function setupSocketServer(httpServer: HttpServer) {
           
           // Enrich data
           if (step.type === 'instructions' && step.instructionGameId) {
-            tvData.instructions = INSTRUCTION_CATALOG[step.instructionGameId];
+            tvData.instructions = INSTRUCTION_CATALOG[step.instructionGameId as GameId];
           }
           if (step.type === 'scoreboard') {
             tvData.scoreboard = {
@@ -455,7 +453,7 @@ export function setupSocketServer(httpServer: HttpServer) {
              const mobileData: any = { phase: mobilePhase };
              if (step.type === 'instructions' && step.instructionGameId) {
                  mobileData.phase = 'story_instructions';
-                 mobileData.instructions = INSTRUCTION_CATALOG[step.instructionGameId];
+                 mobileData.instructions = INSTRUCTION_CATALOG[step.instructionGameId as GameId];
              }
              if (step.type === 'scoreboard') {
                  mobileData.phase = 'story_personal_score';

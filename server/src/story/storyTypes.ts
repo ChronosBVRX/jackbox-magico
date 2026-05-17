@@ -31,7 +31,7 @@ export type StoryStep = {
   visual?: string;
   voiceSlot?: string;
   scoreboardTitle?: string;
-  instructionGameId?: GameId;
+  instructionGameId?: GameId | 'random';
 };
 
 export type StoryDefinition = {

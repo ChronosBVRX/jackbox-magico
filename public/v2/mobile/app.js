@@ -684,10 +684,12 @@ function renderStoryScoreMobile(data) {
 }
 
 let currentKMKChoices = {};
+let currentKMKTarget = null;
 
 function renderKMKInput(data) {
     if (data.phase === 'results') {
         showWaitScreen('¡Mira las escandalosas revelaciones en la TV!');
+        currentKMKTarget = null;
         return;
     }
     if (data.alreadySubmitted) {
@@ -705,7 +707,8 @@ function renderKMKInput(data) {
     }
 
     const container = document.getElementById('kmk-mobile-characters');
-    if (container) {
+    if (container && data.targetPlayerName !== currentKMKTarget) {
+        currentKMKTarget = data.targetPlayerName;
         container.innerHTML = '';
         currentKMKChoices = {};
 
