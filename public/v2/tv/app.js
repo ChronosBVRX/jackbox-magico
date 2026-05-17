@@ -84,7 +84,8 @@ const GAME_CATALOG_FRONT = [
     { id: 'retratos_chismosos', name: 'Retratos Chismosos', shortName: 'Retratos', description: 'Adivina el personaje basándote en los chismes.', durationSeconds: 4, mode: 'Quiz', maxPlayers: 8, enabled: true },
     { id: 'hechizo_incompleto', name: 'Hechizo Incompleto', shortName: 'Hechizo', description: 'Completa los encantamientos que han perdido palabras.', durationSeconds: 4, mode: 'Quiz', maxPlayers: 8, enabled: true },
     { id: 'caldero_mentiroso', name: 'El Caldero Mentiroso', shortName: 'Caldero', description: 'Estrategia y engaño con ingredientes secretos.', durationSeconds: 7, mode: 'Estrategia', maxPlayers: 8, enabled: true },
-    { id: 'patronus_personalizado', name: 'Patronus', shortName: 'Patronus', description: 'Creatividad y votación por el mejor protector.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true }
+    { id: 'patronus_personalizado', name: 'Patronus', shortName: 'Patronus', description: 'Creatividad y votación por el mejor protector.', durationSeconds: 10, mode: 'Social', maxPlayers: 8, enabled: true },
+    { id: 'beso_boda_muerte', name: 'Beso, Boda, Muerte', shortName: 'KMK', description: 'Predice a quién besará, con quién se casará y a quién maldecirá el protagonista.', durationSeconds: 6, mode: 'Social', maxPlayers: 8, enabled: true }
 ];
 
 // Selection Manager (Premium Carousel)
@@ -118,9 +119,9 @@ const SelectionManager = {
             {
                 id: 'group_knowledge',
                 title: 'Clases y Pociones',
-                desc: 'Pruebas de memoria y conocimiento. Incluye Pociones, Caldero y Hechizos.',
+                desc: 'Pruebas de memoria y conocimiento. Incluye Pociones, Caldero, Hechizos y KMK.',
                 type: 'group',
-                games: filteredGames.filter(g => ['clase_pociones', 'caldero_mentiroso', 'hechizo_incompleto', 'sombrero_burlon'].includes(g.id)),
+                games: filteredGames.filter(g => ['clase_pociones', 'caldero_mentiroso', 'hechizo_incompleto', 'sombrero_burlon', 'beso_boda_muerte'].includes(g.id)),
                 icon: '🧪',
                 min: 5, players: '2-8', diff: 'Media'
             }
@@ -147,7 +148,8 @@ const SelectionManager = {
             'duelo_hechizos': '🪄', 'sombrero_burlon': '🎩', 'clase_pociones': '🧪',
             'mapa_travieso': '🏰', 'retratos_chismosos': '🖼️', 'hechizo_incompleto': '📜',
             'caldero_mentiroso': '🍯', 'patronus_personalizado': '🦌',
-            'copa_casas_clasica': '🏆', 'noche_en_el_castillo': '🌙', 'torneo_magico_relampago': '⚡'
+            'copa_casas_clasica': '🏆', 'noche_en_el_castillo': '🌙', 'torneo_magico_relampago': '⚡',
+            'beso_boda_muerte': '💋'
         };
 
         this.items.forEach((item, i) => {
@@ -931,6 +933,8 @@ socket.on('game_state', (data) => {
     renderMapaView(data);
   } else if (currentGameId === 'caldero_mentiroso') {
     renderCalderoView(data);
+  } else if (currentGameId === 'beso_boda_muerte') {
+    renderKMKView(data);
   }
 });
 
@@ -1615,3 +1619,92 @@ window.confirm = (msg) => {
     ModalManager.show('Confirmación', msg, true);
     return false; 
 };
+
+function renderKMKView(data) {
+    if (data.phase === 'results') {
+        renderKMKResults(data);
+        return;
+    }
+    showView('view-kmk');
+    safeText('kmk-target-name', data.targetPlayerName);
+    safeText('kmk-target-house', data.targetPlayerHouse);
+    safeText('kmk-pred-count', data.predictionsCount || 0);
+
+    const statusEl = document.getElementById('kmk-target-status');
+    if (statusEl) {
+        statusEl.textContent = data.targetAnswered ? '¡El Protagonista ya ha elegido su destino!' : 'Esperando las elecciones del Protagonista...';
+        statusEl.style.color = data.targetAnswered ? 'var(--color-accent)' : 'var(--color-text-dim)';
+    }
+
+    const grid = document.getElementById('kmk-tv-characters');
+    if (grid) {
+        grid.innerHTML = '';
+        data.characters.forEach(char => {
+            const card = document.createElement('div');
+            card.className = 'kmk-char-card glass-panel';
+            card.innerHTML = `
+                <div class="char-emoji">${char.emoji}</div>
+                <h3>${char.name}</h3>
+                <div class="char-title">${char.movieTitle}</div>
+                <p class="char-desc">${char.description}</p>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    // Update timer bar
+    const elapsed = Date.now() - data.startedAt;
+    const remaining = Math.max(0, data.durationMs - elapsed);
+    const pct = (remaining / data.durationMs) * 100;
+    const bar = document.getElementById('kmk-timer-bar');
+    if (bar) bar.style.width = pct + '%';
+}
+
+function renderKMKResults(data) {
+    showView('view-kmk-results');
+    const res = data.results;
+    if (!res) return;
+
+    safeText('kmk-res-target', res.targetPlayerName);
+    safeText('kmk-narrator-comment', res.narratorComment);
+
+    const grid = document.getElementById('kmk-res-choices');
+    if (grid) {
+        grid.innerHTML = '';
+        res.characters.forEach(char => {
+            const choice = res.targetChoices[char.id];
+            const choiceMap = {
+                kiss: { label: '💋 BESO', color: '#ec4899' },
+                marry: { label: '💍 BODA', color: '#3b82f6' },
+                kill: { label: '💀 AVADA KEDAVRA', color: '#10b981' }
+            };
+            const cInfo = choiceMap[choice] || { label: choice, color: '#fff' };
+
+            const card = document.createElement('div');
+            card.className = 'kmk-res-card glass-panel';
+            card.innerHTML = `
+                <div class="char-emoji">${char.emoji}</div>
+                <h3>${char.name}</h3>
+                <div class="choice-badge" style="background: ${cInfo.color}; color: black; font-weight: 800; padding: 0.5rem 1.5rem; border-radius: 20px; margin-top: 1rem; font-size: 1.3rem;">
+                    ${cInfo.label}
+                </div>
+            `;
+            grid.appendChild(card);
+        });
+    }
+
+    const rankingContainer = document.getElementById('kmk-ranking-list');
+    if (rankingContainer) {
+        rankingContainer.innerHTML = '';
+        res.ranking.forEach(r => {
+            const card = document.createElement('div');
+            card.className = `result-player-card glass-panel ${r.house ? r.house.toLowerCase() : ''}`;
+            card.innerHTML = `
+              <div class="player-name">${escapeHTML(r.name)}</div>
+              <div class="result-status ${r.perfect ? 'status-correct' : ''}" style="font-size:0.9rem">${r.perfect ? '¡PREDICCIÓN PERFECTA!' : `${r.matches} Aciertos`}</div>
+              <div class="points-gain">+${r.points} Pts</div>
+            `;
+            rankingContainer.appendChild(card);
+        });
+    }
+}

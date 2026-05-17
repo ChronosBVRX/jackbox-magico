@@ -250,6 +250,8 @@ socket.on('game_player_state', (data) => {
     renderMapaInput(data);
   } else if (currentGameId === 'caldero_mentiroso') {
     renderCalderoInput(data);
+  } else if (currentGameId === 'beso_boda_muerte') {
+    renderKMKInput(data);
   } else if (currentGameId === 'atrapa_snitch') {
     showMobileView('snitch-input');
   } else if (currentGameId === 'duelo_hechizos') {
@@ -673,4 +675,96 @@ function renderStoryInstructionsMobile(data) {
 
 function renderStoryScoreMobile(data) {
     safeText('story-personal-points', data.points || 0);
+}
+
+let currentKMKChoices = {};
+
+function renderKMKInput(data) {
+    if (data.phase === 'results') {
+        showWaitScreen('¡Mira las escandalosas revelaciones en la TV!');
+        return;
+    }
+    if (data.alreadySubmitted) {
+        showMobileView('answer-sent');
+        return;
+    }
+
+    showMobileView('kmk-input');
+    const headerEl = document.getElementById('kmk-mobile-role');
+    if (headerEl) {
+        headerEl.textContent = data.isTarget 
+            ? '¡ERES EL PROTAGONISTA! Elige tu destino para cada personaje:' 
+            : `¡PREDICE LAS ELECCIONES DE ${data.targetPlayerName.toUpperCase()}!`;
+        headerEl.className = data.isTarget ? 'text-gradient-gold' : 'text-gradient';
+    }
+
+    const container = document.getElementById('kmk-mobile-characters');
+    if (container) {
+        container.innerHTML = '';
+        currentKMKChoices = {};
+
+        data.characters.forEach(char => {
+            const card = document.createElement('div');
+            card.className = 'kmk-mobile-char-card glass-panel';
+            card.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
+                    <span style="font-size: 2rem;">${char.emoji}</span>
+                    <div>
+                        <h3 style="margin:0; font-size: 1.2rem;">${char.name}</h3>
+                        <div style="font-size: 0.8rem; opacity:0.7;">${char.movieTitle}</div>
+                    </div>
+                </div>
+                <div class="kmk-btn-group" id="group-${char.id}" style="display: flex; gap: 0.5rem;">
+                    <button class="btn-kmk-choice" data-char="${char.id}" data-choice="kiss" style="flex:1; padding: 0.8rem; border-radius: 10px; border: 1px solid #ec4899; background: rgba(236,72,153,0.1); color: #ec4899; font-weight: bold;">💋 Beso</button>
+                    <button class="btn-kmk-choice" data-char="${char.id}" data-choice="marry" style="flex:1; padding: 0.8rem; border-radius: 10px; border: 1px solid #3b82f6; background: rgba(59,130,246,0.1); color: #3b82f6; font-weight: bold;">💍 Boda</button>
+                    <button class="btn-kmk-choice" data-char="${char.id}" data-choice="kill" style="flex:1; padding: 0.8rem; border-radius: 10px; border: 1px solid #10b981; background: rgba(16,185,129,0.1); color: #10b981; font-weight: bold;">💀 Muerte</button>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+
+        document.querySelectorAll('.btn-kmk-choice').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const charId = btn.getAttribute('data-char');
+                const choice = btn.getAttribute('data-choice');
+                
+                // Verificar si esta elección ya fue asignada a otro personaje
+                Object.entries(currentKMKChoices).forEach(([otherChar, otherChoice]) => {
+                    if (otherChar !== charId && otherChoice === choice) {
+                        delete currentKMKChoices[otherChar];
+                        // Limpiar botones de ese otro personaje
+                        const otherGroup = document.getElementById(`group-${otherChar}`);
+                        if (otherGroup) {
+                            otherGroup.querySelectorAll('.btn-kmk-choice').forEach(b => b.classList.remove('selected'));
+                        }
+                    }
+                });
+
+                currentKMKChoices[charId] = choice;
+
+                // Actualizar UI del grupo actual
+                const group = document.getElementById(`group-${charId}`);
+                group.querySelectorAll('.btn-kmk-choice').forEach(b => b.classList.remove('selected'));
+                btn.classList.add('selected');
+
+                // Habilitar botón de enviar si ya eligió los 3
+                const btnSubmit = document.getElementById('btn-kmk-submit');
+                if (btnSubmit) {
+                    const keys = Object.keys(currentKMKChoices);
+                    btnSubmit.disabled = keys.length < 3;
+                }
+            });
+        });
+    }
+
+    const btnSubmit = document.getElementById('btn-kmk-submit');
+    if (btnSubmit) {
+        btnSubmit.disabled = true;
+        btnSubmit.onclick = () => {
+            if (Object.keys(currentKMKChoices).length === 3) {
+                socket.emit('player_action', { type: 'kmk_submit', choices: currentKMKChoices });
+                showMobileView('answer-sent');
+            }
+        };
+    }
 }

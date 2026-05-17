@@ -297,5 +297,28 @@ export const INSTRUCTION_CATALOG: Record<GameId, Instruction> = {
     scoring: "Correcta: suma apuesta. Incorrecta: pierde apuesta. Todo o nada: puede tener bono especial. Sin respuesta: pierde apuesta si apostó.",
     voiceSlot: "instructions_copa_final",
     startButton: "Levantar la Copa"
+  },
+  beso_boda_muerte: {
+    title: "Beso, Boda, Muerte",
+    subtitle: "El juego donde descubrimos los oscuros gustos y terribles decisiones del protagonista.",
+    rules: [
+      "La TV elegirá a un jugador como Protagonista.",
+      "El Protagonista asigna Beso, Boda o Muerte a 3 personajes de las películas.",
+      "Los demás jugadores intentan predecir exactamente qué eligió el Protagonista.",
+      "Adivinar correctamente suma muchos puntos."
+    ],
+    tvInstructions: [
+      "Presenta al Protagonista y a los 3 personajes.",
+      "Espera a que todos hagan sus predicciones.",
+      "Revela el escandaloso resultado."
+    ],
+    mobileInstructions: [
+      "Si eres el Protagonista, elige tu destino para cada personaje.",
+      "Si no lo eres, predice las elecciones del Protagonista.",
+      "Tus elecciones se bloquean al enviarlas."
+    ],
+    scoring: "Acierto: +100. Predicción perfecta (3 aciertos): bono de +200.",
+    voiceSlot: "instructions_beso_boda_muerte",
+    startButton: "Revelar secretos"
   }
 };

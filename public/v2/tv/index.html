@@ -335,6 +335,53 @@
     </div>
   </div>
 
+  <!-- KMK Screen -->
+  <div class="tv-layout" id="view-kmk" style="display: none; padding: 3rem;">
+    <header style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+      <div style="display: flex; align-items: center; gap: 2rem;">
+        <img src="/assets/images/kmk_logo.png" alt="KMK Logo" style="height: 100px; filter: drop-shadow(0 0 20px rgba(236,72,153,0.5));">
+        <div>
+          <h1 style="font-size: 2.5rem; margin: 0; color: white;">Beso, Boda, Muerte</h1>
+          <div id="kmk-target-status" style="font-size: 1.3rem; color: var(--color-text-dim);">Esperando al Protagonista...</div>
+        </div>
+      </div>
+      <div class="glass-panel" style="padding: 1rem 2rem; border-radius: 16px; text-align: center;">
+        <div style="font-size: 0.9rem; color: var(--color-text-dim); text-transform: uppercase;">Protagonista</div>
+        <div id="kmk-target-name" style="font-size: 1.8rem; font-weight: 800; color: var(--color-accent);">Mago</div>
+        <div id="kmk-target-house" style="font-size: 0.8rem; opacity: 0.7;">Gryffindor</div>
+      </div>
+    </header>
+
+    <div class="timer-container" style="width: 100%; margin-bottom: 3rem; background: rgba(0,0,0,0.5); border-radius: 10px; overflow: hidden; height: 12px;">
+      <div class="timer-bar" id="kmk-timer-bar" style="height: 100%; background: linear-gradient(90deg, #ec4899, #3b82f6, #10b981); transition: width 0.1s linear;"></div>
+    </div>
+
+    <div id="kmk-tv-characters" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5rem; margin-top: 2rem;">
+      <!-- Characters injected by JS -->
+    </div>
+
+    <footer style="margin-top: 3rem; text-align: center; font-size: 1.3rem; color: var(--color-text-dim);">
+      <span id="kmk-pred-count" style="color: var(--color-accent); font-weight: bold;">0</span> magos han hecho su predicción
+    </footer>
+  </div>
+
+  <!-- KMK Results Screen -->
+  <div class="tv-layout" id="view-kmk-results" style="display: none; padding: 3rem;">
+    <header style="text-align: center; margin-bottom: 2rem;">
+      <h1 class="text-gradient-gold" style="font-size: 3rem; margin-bottom: 0.5rem;">Elecciones de <span id="kmk-res-target">Mago</span></h1>
+      <p id="kmk-narrator-comment" style="font-size: 1.4rem; color: var(--color-text-dim); font-style: italic;">"..."</p>
+    </header>
+
+    <div id="kmk-res-choices" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2.5rem; margin-bottom: 3rem;">
+      <!-- Choices injected by JS -->
+    </div>
+
+    <h2 style="text-align: center; margin-bottom: 1.5rem; color: var(--color-accent);">Puntajes de Predicción</h2>
+    <div id="kmk-ranking-list" style="display: flex; flex-direction: column; gap: 1rem; max-width: 800px; margin: 0 auto;">
+      <!-- Ranking injected by JS -->
+    </div>
+  </div>
+
   <!-- Selection Carousel View (Premium) -->
   <!-- Selection Carousel View (Premium) -->
   <div class="tv-layout" id="view-selection" style="display: none;">

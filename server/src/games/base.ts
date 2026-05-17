@@ -12,7 +12,8 @@ export type GameId =
   | 'hechizo_incompleto'
   | 'caldero_mentiroso'
   | 'patronus_personalizado'
-  | 'copa_final';
+  | 'copa_final'
+  | 'beso_boda_muerte';
 
 export interface GameUpdateResult {
   state: any;

@@ -37,7 +37,8 @@ window.VoiceManagerV2 = (function() {
         caldero_mentiroso: "dobby",
         patronus_personalizado: "luna",
         copa_final: "dumbledore",
-        cierre_ganador: "sombrero"
+        cierre_ganador: "sombrero",
+        beso_boda_muerte: "luna"
     };
 
     const GAME_ID_ALIASES = {
@@ -53,7 +54,8 @@ window.VoiceManagerV2 = (function() {
         caldero: "caldero_mentiroso",
         patronus: "patronus_personalizado",
         copa: "copa_final",
-        story_ready: "intro_general"
+        story_ready: "intro_general",
+        kmk: "beso_boda_muerte"
     };
 
     const EVENT_OVERRIDES_BY_AUDIO_FILE = {

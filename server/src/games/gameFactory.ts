@@ -11,6 +11,7 @@ import { RetratosChismosos } from './retratosChismosos/index';
 import { HechizoIncompleto } from './hechizoIncompleto/index';
 import { PatronusPersonalizado } from './patronusPersonalizado/index';
 import { CopaFinal } from './copaFinal/index';
+import { BesoBodaMuerte } from './besoBodaMuerte/index';
 
 export function createGameModule(gameId: GameId): GameModule | null {
   switch (gameId) {
@@ -38,6 +39,8 @@ export function createGameModule(gameId: GameId): GameModule | null {
       return new PatronusPersonalizado();
     case 'copa_final':
       return new CopaFinal();
+    case 'beso_boda_muerte':
+      return new BesoBodaMuerte();
     // Remaining games will be added here as they are implemented
     default:
       return null;
