@@ -1871,3 +1871,24 @@ button:focus {
         min-width: 200px !important;
     }
 }
+
+/* Theme Artes Ridículas (Boggart / Ropero Mágico) */
+.theme-artes-ridiculas {
+    background: radial-gradient(circle at center, #2e1065 0%, #0f172a 100%) !important;
+}
+
+.theme-artes-ridiculas .trivia-panel {
+    border-color: #c084fc !important;
+    box-shadow: 0 0 50px rgba(192, 132, 252, 0.3) !important;
+}
+
+.theme-artes-ridiculas .trivia-question::before {
+    content: '🚪 💥 ';
+    font-size: 1.2em;
+}
+
+.theme-artes-ridiculas .text-gradient-gold {
+    background: linear-gradient(135deg, #e9d5ff 0%, #c084fc 100%) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}

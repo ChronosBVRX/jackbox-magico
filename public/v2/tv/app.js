@@ -1588,6 +1588,18 @@ function renderQuizView(data) {
   safeText('trivia-category', data.category || 'Preparando pregunta');
   const diffStr = data.difficulty ? ` (${data.difficulty.toUpperCase()})` : '';
   safeText('trivia-round', `Ronda ${data.roundNumber || 1}/${data.totalRounds || 5}${diffStr}`);
+
+  const viewEl = document.getElementById('view-trivia');
+  const hintEl = document.getElementById('artes-hint-container');
+  if (viewEl) {
+    if (currentGameId === 'artes_ridiculas') {
+      viewEl.classList.add('theme-artes-ridiculas');
+      if (hintEl) hintEl.style.display = 'block';
+    } else {
+      viewEl.classList.remove('theme-artes-ridiculas');
+      if (hintEl) hintEl.style.display = 'none';
+    }
+  }
   
   if (!data.question || options.length === 0) {
     safeText('trivia-question', 'Preparando pregunta mágica...');

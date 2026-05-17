@@ -143,11 +143,12 @@ export class ArtesRidiculas implements GameModule {
           labels.push('+30 Rapidez');
         }
       } else {
-        points = -20;
-        labels.push('-20 Error');
         if (isFunny) {
-          points += 20;
-          labels.push('+20 Falsa Graciosa');
+          points = 40;
+          labels.push('+40 Respuesta Graciosa');
+        } else {
+          points = 0;
+          labels.push('0 Incorrecta');
         }
       }
 
