@@ -1437,15 +1437,15 @@ function renderDictadoInput(data) {
                 btnFunny.style.marginTop = '0.5rem';
                 
                 if (sub.isFunny) {
-                    btnFunny.textContent = '✅ Bono Hilarante Otorgado (+300)';
+                    btnFunny.textContent = '✅ Bono Hilarante Otorgado (+150)';
                     btnFunny.style.background = '#d4af37';
                     btnFunny.style.borderColor = '#b4932b';
                     btnFunny.disabled = true;
                 } else {
-                    btnFunny.textContent = '😂 ¡Respuesta Hilarante! (+300)';
+                    btnFunny.textContent = '😂 ¡Respuesta Hilarante! (+150)';
                     btnFunny.onclick = () => {
                         socket.emit('player_action', { type: 'award_funny', targetClientId: sub.clientId });
-                        btnFunny.textContent = '✅ Bono Hilarante Otorgado (+300)';
+                        btnFunny.textContent = '✅ Bono Hilarante Otorgado (+150)';
                         btnFunny.style.background = '#d4af37';
                         btnFunny.style.borderColor = '#b4932b';
                         btnFunny.disabled = true;
@@ -1488,9 +1488,77 @@ function renderDictadoInput(data) {
         document.getElementById('dictado-mobile-playing').style.display = 'flex';
         document.getElementById('dictado-mobile-voting-host').style.display = 'none';
 
+        const playingContainer = document.getElementById('dictado-mobile-playing');
+        let barControlsEl = document.getElementById('dictado-bar-controls');
+        if (!barControlsEl) {
+            barControlsEl = document.createElement('div');
+            barControlsEl.id = 'dictado-bar-controls';
+            barControlsEl.style.display = 'flex';
+            barControlsEl.style.flexDirection = 'column';
+            barControlsEl.style.gap = '0.8rem';
+            barControlsEl.style.width = '100%';
+            barControlsEl.style.marginBottom = '1rem';
+            if (playingContainer && playingContainer.firstChild) {
+                playingContainer.insertBefore(barControlsEl, playingContainer.firstChild);
+            } else if (playingContainer) {
+                playingContainer.appendChild(barControlsEl);
+            }
+        }
+
+        if (barControlsEl) {
+            barControlsEl.innerHTML = '';
+            if (data.isHost) {
+                const btnRepeat = document.createElement('button');
+                btnRepeat.className = 'btn-join-premium';
+                btnRepeat.style.padding = '0.8rem';
+                btnRepeat.style.background = '#3b82f6';
+                btnRepeat.style.borderColor = '#2563eb';
+                btnRepeat.style.fontSize = '1rem';
+                btnRepeat.innerHTML = `🔊 Repetir Audio en TV (${data.audioRepeatCount || 0})`;
+                btnRepeat.onclick = () => {
+                    socket.emit('player_action', { type: 'repeat_dictado_audio' });
+                };
+                barControlsEl.appendChild(btnRepeat);
+            }
+
+            const btnHint = document.createElement('button');
+            btnHint.className = 'btn-join-premium';
+            btnHint.style.padding = '0.8rem';
+            btnHint.style.background = '#8b5cf6';
+            btnHint.style.borderColor = '#7c3aed';
+            btnHint.style.fontSize = '1rem';
+            btnHint.innerHTML = `👁️ Mostrar Subtítulo (Modo Bar Ruidoso)`;
+            btnHint.onclick = () => {
+                const hintDiv = document.getElementById('dictado-noisy-hint');
+                if (hintDiv) {
+                    hintDiv.style.display = hintDiv.style.display === 'none' ? 'block' : 'none';
+                }
+            };
+            barControlsEl.appendChild(btnHint);
+
+            let hintDiv = document.getElementById('dictado-noisy-hint');
+            if (!hintDiv) {
+                hintDiv = document.createElement('div');
+                hintDiv.id = 'dictado-noisy-hint';
+                hintDiv.className = 'glass-panel';
+                hintDiv.style.display = 'none';
+                hintDiv.style.padding = '1rem';
+                hintDiv.style.borderRadius = '10px';
+                hintDiv.style.background = 'rgba(139,92,246,0.2)';
+                hintDiv.style.border = '1px solid #8b5cf6';
+                hintDiv.style.color = 'white';
+                hintDiv.style.fontStyle = 'italic';
+                hintDiv.style.fontSize = '0.95rem';
+                barControlsEl.appendChild(hintDiv);
+            }
+            if (hintDiv) {
+                hintDiv.textContent = data.noisyBarText || '';
+            }
+        }
+
         const textarea = document.getElementById('dictado-textarea');
         if (textarea) {
-            textarea.value = '';
+            if (!textarea.value) textarea.value = '';
             textarea.focus();
         }
 

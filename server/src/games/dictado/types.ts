@@ -2,8 +2,10 @@ export interface DictadoStory {
   id: number;
   title: string;
   originalText: string;
+  noisyBarText: string;
   voiceId: string;
   audioUrl: string;
+  durationMs: number;
 }
 
 export interface DictadoSubmission {
@@ -22,6 +24,7 @@ export interface DictadoState {
   submissions: Record<string, DictadoSubmission>;
   startedAt: number;
   durationMs: number;
+  audioRepeatCount: number;
   results: {
     ranking: DictadoSubmission[];
     winner: DictadoSubmission | null;

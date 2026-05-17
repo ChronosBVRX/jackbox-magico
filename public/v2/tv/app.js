@@ -2162,6 +2162,7 @@ function renderTiburonResults(data) {
 let dictadoTvTimerInterval = null;
 let currentDictadoAudioUrl = null;
 let dictadoAudioEl = null;
+let currentDictadoRepeatCount = 0;
 
 function renderDictadoView(data) {
     if (data.phase === 'results') {
@@ -2188,10 +2189,34 @@ function renderDictadoView(data) {
 
     if (data.audioUrl && data.audioUrl !== currentDictadoAudioUrl) {
         currentDictadoAudioUrl = data.audioUrl;
+        currentDictadoRepeatCount = data.audioRepeatCount || 0;
         if (dictadoAudioEl) dictadoAudioEl.pause();
         const path = data.audioUrl.startsWith('/') ? data.audioUrl : '/' + data.audioUrl;
         dictadoAudioEl = new Audio(path);
         dictadoAudioEl.play().catch(e => console.warn("No se pudo reproducir audio de dictado en TV:", e));
+    } else if (dictadoAudioEl && data.audioRepeatCount !== currentDictadoRepeatCount) {
+        currentDictadoRepeatCount = data.audioRepeatCount || 0;
+        dictadoAudioEl.currentTime = 0;
+        dictadoAudioEl.play().catch(e => console.warn("No se pudo repetir audio en TV:", e));
+    }
+
+    let tvHintEl = document.getElementById('dictado-tv-noisy-hint');
+    if (!tvHintEl) {
+        tvHintEl = document.createElement('div');
+        tvHintEl.id = 'dictado-tv-noisy-hint';
+        tvHintEl.className = 'glass-panel';
+        tvHintEl.style.margin = '1.5rem auto 0 auto';
+        tvHintEl.style.padding = '1.5rem 2.5rem';
+        tvHintEl.style.maxWidth = '800px';
+        tvHintEl.style.textAlign = 'center';
+        tvHintEl.style.background = 'rgba(139,92,246,0.25)';
+        tvHintEl.style.border = '2px solid #8b5cf6';
+        tvHintEl.style.borderRadius = '20px';
+        const container = document.getElementById('view-dictado');
+        if (container) container.appendChild(tvHintEl);
+    }
+    if (tvHintEl) {
+        tvHintEl.innerHTML = `<div style="color:#c084fc; font-weight:bold; font-size:1.2rem; margin-bottom:0.5rem;">👁️ MODO BAR RUIDOSO (Subtítulo Parcial)</div><div style="color:white; font-size:1.4rem; font-style:italic; line-height:1.4;">"${escapeHTML(data.noisyBarText || '')}"</div>`;
     }
 
     const bar = document.getElementById('dictado-timer-bar');
