@@ -19,8 +19,17 @@ const STORY_MINIGAME_POOL: GameId[] = [
   "dictado_magico"
 ];
 
+const ACTION_MINIGAME_POOL: GameId[] = [
+  "atrapa_snitch", "duelo_hechizos", "artes_ridiculas", "caldero_mentiroso"
+];
+
+const SOCIAL_MINIGAME_POOL: GameId[] = [
+  "sombrero_burlon", "mapa_travieso", "retratos_chismosos", "patronus_personalizado",
+  "beso_boda_muerte", "el_impostor", "el_tiburon", "dictado_magico"
+];
+
 export class StoryEngine {
-  initStory(storyId: string): StoryState | null {
+  initStory(storyId: string, config?: any): StoryState | null {
     const story = getStoryById(storyId);
     if (!story) return null;
 
@@ -29,7 +38,8 @@ export class StoryEngine {
       currentStepIndex: 0,
       usedMinigames: [],
       recentMinigames: [],
-      storyCompleted: false
+      storyCompleted: false,
+      config
     };
   }
 
@@ -74,7 +84,12 @@ export class StoryEngine {
   }
 
   private pickRandomMinigame(state: StoryState, pool?: GameId[]): GameId {
-    const availablePool = pool || STORY_MINIGAME_POOL;
+    let availablePool = pool || STORY_MINIGAME_POOL;
+    if (!pool && state.config?.minigameMode === 'action') {
+      availablePool = ACTION_MINIGAME_POOL;
+    } else if (!pool && state.config?.minigameMode === 'social') {
+      availablePool = SOCIAL_MINIGAME_POOL;
+    }
     
     // Filter out recent ones
     let options = availablePool.filter(id => !state.recentMinigames.includes(id));

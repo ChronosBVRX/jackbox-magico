@@ -64,15 +64,6 @@ window.lastVoiceCue = null;
 const STORY_CATALOG_FRONT = [
     { id: 'copa_rotativa_magica', title: 'Torneo Mágico Rotativo (Infinito)', image: '/assets/images/previews/copa_casas.png', desc: 'La experiencia definitiva de Hogwarts. Cada vez que juegues, la Copa seleccionará preguntas de trivia y minijuegos completamente diferentes al azar. ¡Ninguna partida será igual a la anterior!', min: 45, players: '2-8', diff: 'Variable', steps: [
         { title: 'Bienvenida', type: 'story' }, { title: 'Trivia (3)', type: 'minigame' }, { title: 'Minijuego Sorpresa', type: 'minigame' }, { title: 'Trivia (2)', type: 'minigame' }, { title: 'Minijuego Sorpresa', type: 'minigame' }, { title: 'Trivia (1)', type: 'minigame' }, { title: 'Minijuego Sorpresa', type: 'minigame' }, { title: 'Copa Final', type: 'minigame' }
-    ]},
-    { id: 'copa_casas_clasica', title: 'Copa de las Casas Clásica', image: '/assets/images/previews/copa_casas.png', desc: 'La experiencia definitiva de Jackbox Mágico. Un viaje por el Gran Comedor, clases y la gran final.', min: 35, players: '2-8', diff: 'Normal', steps: [
-        { title: 'Bienvenida', type: 'story' }, { title: 'Trivia Mágica', type: 'minigame' }, { title: 'Pociones', type: 'minigame' }, { title: 'Duelo', type: 'minigame' }, { title: 'Copa Final', type: 'minigame' }
-    ]},
-    { id: 'noche_en_el_castillo', title: 'Noche en el Castillo', image: '/assets/images/previews/noche_castillo.png', desc: 'Explora los pasillos prohibidos. Una historia de misterio y sigilo con pruebas de memoria visual.', min: 40, players: '3-8', diff: 'Difícil', steps: [
-        { title: 'Intro Nocturna', type: 'story' }, { title: 'Mapa Travieso', type: 'minigame' }, { title: 'Retratos', type: 'minigame' }, { title: 'Hechizo', type: 'minigame' }, { title: 'Final', type: 'minigame' }
-    ]},
-    { id: 'torneo_magico_relampago', title: 'Torneo Mágico Relámpago', image: '/assets/images/previews/torneo_relampago.png', desc: 'Sin diálogos largos, solo acción pura. Perfecto para partidas rápidas y competitivas.', min: 15, players: '2-8', diff: 'Fácil', steps: [
-        { title: 'Inicio', type: 'story' }, { title: 'Snitch', type: 'minigame' }, { title: 'Artes Ridículas', type: 'minigame' }, { title: 'Final', type: 'minigame' }
     ]}
 ];
 
@@ -101,41 +92,8 @@ const SelectionManager = {
     active: false,
 
     init(stories, games) {
-        const filteredGames = games.filter(g => g.enabled && g.id !== 'copa_final' && g.id !== 'trivia_magica');
-        
-        const gameGroups = [
-            {
-                id: 'group_action',
-                title: 'Duelos y Acción',
-                desc: 'Pruebas de reflejos y rapidez. Incluye Snitch, Duelos y Artes Ridículas.',
-                type: 'group',
-                games: filteredGames.filter(g => ['atrapa_snitch', 'duelo_hechizos', 'artes_ridiculas'].includes(g.id)),
-                icon: '🪄',
-                min: 5, players: '2-8', diff: 'Media'
-            },
-            {
-                id: 'group_mystery',
-                title: 'Misterios del Castillo',
-                desc: 'Exploración y sigilo. Incluye Mapa Travieso, Retratos, Patronus e Impostor.',
-                type: 'group',
-                games: filteredGames.filter(g => ['mapa_travieso', 'retratos_chismosos', 'patronus_personalizado', 'el_impostor'].includes(g.id)),
-                icon: '🖼️',
-                min: 5, players: '2-8', diff: 'Media'
-            },
-            {
-                id: 'group_knowledge',
-                title: 'Clases y Pociones',
-                desc: 'Pruebas de memoria y conocimiento. Incluye Pociones, Caldero, Hechizos y KMK.',
-                type: 'group',
-                games: filteredGames.filter(g => ['clase_pociones', 'caldero_mentiroso', 'hechizo_incompleto', 'sombrero_burlon', 'beso_boda_muerte'].includes(g.id)),
-                icon: '🧪',
-                min: 5, players: '2-8', diff: 'Media'
-            }
-        ];
-
         this.items = [
-            ...stories.map(s => ({ ...s, type: 'story' })),
-            ...gameGroups
+            ...stories.map(s => ({ ...s, type: 'story' }))
         ];
         this.currentIndex = 0;
         this.render();
@@ -294,13 +252,31 @@ const SelectionManager = {
         if (!this.selectedItem) return;
         const finalItem = this.selectedItem;
         
+        const configOptions = {
+            minigameMode: document.getElementById('opt-minigame-mode')?.value || 'random',
+            humorMode: document.getElementById('opt-humor-mode')?.value === 'true',
+            timerSpeed: Number(document.getElementById('opt-timer-speed')?.value || 1),
+            narratorMode: document.getElementById('opt-narrator-mode')?.value || 'immersive'
+        };
+
+        window.gameConfigOptions = configOptions;
+        localStorage.setItem('jackbox_magico_game_config', JSON.stringify(configOptions));
+
+        if (window.VoiceManagerV2) {
+            if (configOptions.narratorMode === 'none') {
+                window.VoiceManagerV2.setVoiceEnabled(false);
+            } else {
+                window.VoiceManagerV2.setVoiceEnabled(true);
+            }
+        }
+
         if (!currentRoom) {
             pendingGameSelection = finalItem;
             socket.emit('tv_create_room');
             showLoadingScreen(`Preparando: ${finalItem.title || finalItem.name}...`, 40);
         } else {
             if (finalItem.type === 'story') {
-                socket.emit('tv_select_story', finalItem.id);
+                socket.emit('tv_select_story', { storyId: finalItem.id, config: configOptions });
             } else {
                 socket.emit('tv_start_game', finalItem.id);
             }

@@ -132,6 +132,9 @@ export function setupSocketServer(httpServer: HttpServer) {
         : room.players;
 
       const state = module.init(playersForGame);
+      if (room.storyState?.config?.timerSpeed && state.durationMs) {
+        state.durationMs = Math.round(state.durationMs * room.storyState.config.timerSpeed);
+      }
       activeGames.set(roomCode, { module, state });
 
       roomEngine.setRoomStatus(roomCode, 'playing');
@@ -234,9 +237,14 @@ export function setupSocketServer(httpServer: HttpServer) {
       }
     });
 
-    socket.on('tv_select_story', (storyId) => {
+    socket.on('tv_select_story', (payload) => {
       const { roomCode, isTv } = socket.data;
       if (!isTv || !roomCode) return;
+
+      const storyId = typeof payload === 'string' ? payload : payload?.storyId;
+      const config = typeof payload === 'object' ? payload?.config : undefined;
+
+      if (!storyId) return;
 
       const connectedPlayers = roomEngine.getConnectedPlayers(roomCode);
       if (connectedPlayers.length < 4) {
@@ -244,7 +252,7 @@ export function setupSocketServer(httpServer: HttpServer) {
         return;
       }
 
-      const storyState = storyEngine.initStory(storyId);
+      const storyState = storyEngine.initStory(storyId, config);
       if (!storyState) return;
 
       roomEngine.setRoomStatus(roomCode, 'story');
@@ -279,6 +287,9 @@ export function setupSocketServer(httpServer: HttpServer) {
           const module = createGameModule(gameId as any);
           if (module) {
             const state = module.init(room.players);
+            if (room.storyState?.config?.timerSpeed && state.durationMs) {
+              state.durationMs = Math.round(state.durationMs * room.storyState.config.timerSpeed);
+            }
             activeGames.set(roomCode, { module, state });
             roomEngine.setRoomStatus(roomCode, 'playing');
             roomEngine.setCurrentGameId(roomCode, gameId);
