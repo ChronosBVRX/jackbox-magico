@@ -7,6 +7,7 @@ export function calculateCopaPoints(correct: boolean, wager: number, isAllIn: bo
   if (correct) {
     return wager + (isAllIn ? COPA_SCORING.ALL_IN_BONUS : 0);
   } else {
-    return -wager;
+    // Red de seguridad / Piso de dignidad para no destruir la partida
+    return isAllIn ? -Math.round(wager / 2) : -wager;
   }
 }

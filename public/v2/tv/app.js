@@ -1247,18 +1247,62 @@ function renderPatronusResults(data) {
 
 function renderCopaResults(data) {
   showView('view-results');
-  safeText('correct-answer', data.results?.correctAnswer);
-  safeText('narrator-comment', data.results ? `"${data.results.explanation}" - ${data.results.narrator}` : '');
+  safeText('correct-answer', '🔒 Revelando Respuesta Final...');
+  safeText('narrator-comment', '');
   
   const list = document.getElementById('results-list');
   if (!list || !data.results?.ranking) return;
   list.innerHTML = '';
+  
+  // Create hidden cards
+  const cards = [];
   data.results.ranking.forEach(res => {
     const card = document.createElement('div');
     card.className = 'result-player-card glass-panel';
-    card.innerHTML = `<div class="player-name">${escapeHTML(res.name)}</div><div class="result-status ${res.correct?'status-correct':'status-wrong'}">${res.correct?'¡ACERTÓ!':'FALLÓ'}</div><div class="points-gain">${res.correct?'+':''}${res.points} (Apostó ${res.wager})</div>`;
+    card.style.opacity = '0';
+    card.style.transform = 'translateY(20px)';
+    card.style.transition = 'all 0.6s cubic-bezier(0.4, 0, 0.2, 1)';
+    card.innerHTML = `<div class="player-name">${escapeHTML(res.name)} <small style="opacity:0.7">(${escapeHTML(res.house)})</small></div><div class="result-status ${res.correct?'status-correct':'status-wrong'}">${res.correct?'¡ACERTÓ!':'FALLÓ'}</div><div class="points-gain" style="font-size:1.3rem; font-weight:bold; color:${res.correct?'#10b981':'#ef4444'}">${res.correct?'+':''}${res.points} <small style="font-size:0.75rem; opacity:0.8">(Apostó ${res.wager}${res.isAllIn?' 🔥ALL-IN':''})</small></div>`;
     list.appendChild(card);
+    cards.push(card);
   });
+
+  // Step 1: Reveal Correct Answer after 1.5s
+  setTimeout(() => {
+    safeText('correct-answer', `✨ ${data.results?.correctAnswer}`);
+    safeText('narrator-comment', data.results ? `"${data.results.explanation}" - ${data.results.narrator}` : '');
+    
+    // Step 2: Reveal Players one by one
+    cards.forEach((card, idx) => {
+      setTimeout(() => {
+        card.style.opacity = '1';
+        card.style.transform = 'translateY(0)';
+      }, (idx + 1) * 800);
+    });
+
+    // Step 3: Announce Winner House with fanfare
+    setTimeout(() => {
+      let winnerBannerEl = document.getElementById('copa-winner-banner');
+      if (!winnerBannerEl) {
+        const parent = list.parentNode;
+        winnerBannerEl = document.createElement('div');
+        winnerBannerEl.id = 'copa-winner-banner';
+        winnerBannerEl.className = 'glass-panel';
+        winnerBannerEl.style.margin = '2rem auto 0 auto';
+        winnerBannerEl.style.padding = '1.5rem';
+        winnerBannerEl.style.textAlign = 'center';
+        winnerBannerEl.style.background = 'linear-gradient(135deg, #d4af37, #f59e0b)';
+        winnerBannerEl.style.color = '#000';
+        winnerBannerEl.style.borderRadius = '15px';
+        winnerBannerEl.style.fontWeight = 'bold';
+        winnerBannerEl.style.boxShadow = '0 10px 25px rgba(245,158,11,0.5)';
+        winnerBannerEl.style.animation = 'pulse 2s infinite';
+        if (parent) parent.appendChild(winnerBannerEl);
+      }
+      winnerBannerEl.innerHTML = `<div style="font-size:1.2rem; text-transform:uppercase; letter-spacing:2px;">🏆 ¡Copa Magica Conquistada! 🏆</div><div style="font-size:2.5rem; margin:0.5rem 0;">¡Felicidades ${escapeHTML(data.results?.winnerHouse || 'Magos')}!</div><div style="font-size:1rem; opacity:0.9;">¡Han demostrado ser los magos más grandes del torneo!</div>`;
+    }, (cards.length + 1) * 800 + 500);
+
+  }, 1500);
 }
 
 function renderRetratosView(data) {

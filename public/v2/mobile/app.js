@@ -537,13 +537,29 @@ function renderCopaInput(data) {
     const scoreEl = document.getElementById('copa-my-score');
     if (scoreEl) scoreEl.textContent = data.myScore || 0;
     
+    let tipEl = document.getElementById('copa-wager-tip');
+    if (!tipEl) {
+      tipEl = document.createElement('div');
+      tipEl.id = 'copa-wager-tip';
+      tipEl.className = 'glass-panel';
+      tipEl.style.margin = '1rem 0';
+      tipEl.style.padding = '0.8rem';
+      tipEl.style.textAlign = 'center';
+      tipEl.style.fontSize = '0.9rem';
+      tipEl.style.color = '#38bdf8';
+      tipEl.style.background = 'rgba(56, 189, 248, 0.15)';
+      tipEl.style.borderRadius = '8px';
+      if (wagerArea && wagerArea.firstChild) wagerArea.insertBefore(tipEl, wagerArea.firstChild);
+    }
+    tipEl.textContent = '💡 Estrategia: Si aciertas la pregunta final, sumas lo apostado. Si fallas, restas lo apostado (o el 50% en All-In). ¡Elige con sabiduría!';
+
     const container = document.getElementById('copa-wager-options');
     if (container && data.wagerOptions) {
       container.innerHTML = '';
       data.wagerOptions.forEach(opt => {
         const btn = document.createElement('button');
         btn.className = 'btn-target';
-        btn.textContent = `${opt} Pts`;
+        btn.innerHTML = `<span>${opt} Pts</span><small style="display:block; opacity:0.7; font-size:0.75rem;">Acierto: +${opt} | Fallo: -${opt}</small>`;
         btn.onclick = () => {
           socket.emit('player_action', { type: 'final_wager', amount: opt });
           showMobileView('answer-sent');
@@ -555,7 +571,7 @@ function renderCopaInput(data) {
           const btnAll = document.createElement('button');
           btnAll.className = 'btn-target';
           btnAll.style.borderLeft = '5px solid #d4af37';
-          btnAll.textContent = `¡TODO O NADA! (${data.myScore})`;
+          btnAll.innerHTML = `<span>¡TODO O NADA! (${data.myScore} Pts)</span><small style="display:block; opacity:0.8; font-size:0.75rem; color:#f59e0b;">Acierto: +${data.myScore + 200} (Bono) | Fallo: -${Math.round(data.myScore/2)} (Red de seguridad)</small>`;
           btnAll.onclick = () => {
               socket.emit('player_action', { type: 'final_wager', amount: data.myScore });
               showMobileView('answer-sent');

@@ -37,12 +37,13 @@ export class CopaFinal implements GameModule {
   }
 
   getPlayerState(state: CopaFinalState, player: Player) {
+    const wagerOptions = player.points < 100 ? [0, 100] : COPA_SCORING.WAGER_CHOICES.filter(w => w <= player.points);
     return {
       phase: state.phase,
       myScore: player.points,
       alreadyWagered: !!state.wagers[player.clientId],
       alreadyAnswered: !!state.answers[player.clientId],
-      wagerOptions: COPA_SCORING.WAGER_CHOICES.filter(w => w <= player.points),
+      wagerOptions,
       options: state.phase === 'question' ? state.question?.options : []
     };
   }
@@ -53,8 +54,8 @@ export class CopaFinal implements GameModule {
       let amount = parseInt(action.amount);
       if (isNaN(amount)) return { state };
       
-      // Limit wager to player's score
-      amount = Math.max(0, Math.min(amount, player.points));
+      const maxAllowed = Math.max(100, player.points);
+      amount = Math.max(0, Math.min(amount, maxAllowed));
       state.wagers[player.clientId] = amount;
       
       return { state, events: [{ type: 'answer_ack', payload: { success: true }, target: 'players' }] };
