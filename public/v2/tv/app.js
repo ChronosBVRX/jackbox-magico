@@ -2067,12 +2067,59 @@ function renderTiburonView(data) {
         if (imgBottom && data.currentCreation) imgBottom.src = data.currentCreation.bottomLines || '';
         if (authorTop && data.currentCreation) authorTop.textContent = `Parte Sup: ${data.currentCreation.topAuthorName} (${data.currentCreation.topAuthorHouse})`;
         if (authorBottom && data.currentCreation) authorBottom.textContent = `Parte Inf: ${data.currentCreation.bottomAuthorName} (${data.currentCreation.bottomAuthorHouse})`;
+
+        let hostTipEl = document.getElementById('tiburon-pitch-host-tip');
+        if (!hostTipEl) {
+            hostTipEl = document.createElement('div');
+            hostTipEl.id = 'tiburon-pitch-host-tip';
+            hostTipEl.className = 'glass-panel';
+            hostTipEl.style.margin = '1.5rem auto 0 auto';
+            hostTipEl.style.padding = '1rem 2rem';
+            hostTipEl.style.maxWidth = '700px';
+            hostTipEl.style.textAlign = 'center';
+            hostTipEl.style.background = 'rgba(245,158,11,0.2)';
+            hostTipEl.style.border = '2px solid #f59e0b';
+            hostTipEl.style.borderRadius = '30px';
+            hostTipEl.innerHTML = `<span style="color:#f59e0b; font-weight:bold; font-size:1.1rem;">👑 HOST: Cuando la mesa haya terminado de debatir e invertir, presiona NEXT para la siguiente creación.</span>`;
+            const container = document.getElementById('view-tiburon-pitching');
+            if (container) container.appendChild(hostTipEl);
+        }
+
         return;
     }
 
     showView('view-tiburon');
     safeText('tiburon-phase-status', data.phase === 'drawing_top' ? 'Fase 1: Dibujando Parte Superior (Cabeza/Torso)' : 'Fase 2: Dibujando Parte Inferior (Modo Complemento)');
     safeText('tiburon-submitted-status', `${data.submittedCount || 0} / ${data.totalPlayers || 8} Magos han terminado su parte`);
+
+    let gridEl = document.getElementById('tiburon-tv-players-grid');
+    if (!gridEl) {
+        gridEl = document.createElement('div');
+        gridEl.id = 'tiburon-tv-players-grid';
+        gridEl.style.display = 'grid';
+        gridEl.style.gridTemplateColumns = 'repeat(4, 1fr)';
+        gridEl.style.gap = '1.5rem';
+        gridEl.style.maxWidth = '1000px';
+        gridEl.style.margin = '2rem auto 0 auto';
+        const container = document.getElementById('view-tiburon');
+        if (container) container.appendChild(gridEl);
+    }
+
+    if (gridEl && data.playersStatus) {
+        gridEl.innerHTML = '';
+        data.playersStatus.forEach(p => {
+            const card = document.createElement('div');
+            card.className = `glass-panel ${p.done ? 'status-correct' : ''}`;
+            card.style.padding = '1.2rem';
+            card.style.borderRadius = '12px';
+            card.style.display = 'flex';
+            card.style.alignItems = 'center';
+            card.style.justifyContent = 'space-between';
+            card.style.border = p.done ? '2px solid #10b981' : '1px solid rgba(255,255,255,0.2)';
+            card.innerHTML = `<span style="font-size:1.2rem; font-weight:bold; color:white;">${escapeHTML(p.name)}</span><span style="font-size:1.5rem;">${p.done ? '✅' : '⏳'}</span>`;
+            gridEl.appendChild(card);
+        });
+    }
 }
 
 function renderTiburonResults(data) {

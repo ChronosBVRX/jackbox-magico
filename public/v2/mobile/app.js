@@ -1301,14 +1301,35 @@ function renderTiburonInput(data) {
         document.getElementById('tiburon-mobile-drawing').style.display = 'none';
         document.getElementById('tiburon-mobile-investing').style.display = 'flex';
         safeText('tiburon-mobile-title', 'Tanque de Tiburones');
-        safeText('tiburon-mobile-subtitle', 'Analiza la creación en la TV y decide tu inversión');
+        safeText('tiburon-mobile-subtitle', data.isAuthor ? '¡ES TU PROPIA CREACIÓN! Defiéndela ante los tiburones' : 'Analiza la creación en la TV y decide tu inversión');
         safeText('tiburon-my-galeones', data.myGaleones || 0);
+
+        const investContainer = document.querySelector('#tiburon-mobile-investing .glass-panel');
+        let authorMsgEl = document.getElementById('tiburon-author-msg');
+        if (!authorMsgEl) {
+            authorMsgEl = document.createElement('div');
+            authorMsgEl.id = 'tiburon-author-msg';
+            authorMsgEl.className = 'glass-panel';
+            authorMsgEl.style.padding = '1.5rem';
+            authorMsgEl.style.textAlign = 'center';
+            authorMsgEl.style.borderRadius = '16px';
+            authorMsgEl.style.background = 'rgba(239,68,68,0.2)';
+            authorMsgEl.style.border = '2px solid #ef4444';
+            authorMsgEl.style.width = '100%';
+            authorMsgEl.style.marginBottom = '1.5rem';
+            authorMsgEl.innerHTML = `<div style="font-weight:bold; color:#ef4444; font-size:1.4rem; margin-bottom:0.5rem;">🦈 ¡ERES CO-AUTOR DE ESTA OBRA! 🦈</div><div style="font-size:1.1rem; opacity:0.9; color:white; line-height:1.4;">Por reglas del Gremio de Comercio Mágico, no puedes invertir en tu propio invento. ¡Aprovecha para convencer a los demás tiburones de que te den sus galeones!</div>`;
+            const parent = document.getElementById('tiburon-mobile-investing');
+            if (parent) parent.appendChild(authorMsgEl);
+        }
+        if (authorMsgEl) authorMsgEl.style.display = data.isAuthor ? 'block' : 'none';
+        if (investContainer) investContainer.style.display = data.isAuthor ? 'none' : 'block';
 
         document.querySelectorAll('.btn-tiburon-invest').forEach(btn => {
             const amount = parseInt(btn.getAttribute('data-amount'), 10);
-            btn.disabled = amount > (data.myGaleones || 0);
+            btn.disabled = data.isAuthor || amount > (data.myGaleones || 0);
             btn.style.opacity = btn.disabled ? '0.4' : '1';
             btn.onclick = () => {
+                if (data.isAuthor) return;
                 socket.emit('player_action', { type: 'tiburon_invest', amount });
                 showMobileView('answer-sent');
             };
@@ -1360,7 +1381,8 @@ function renderTiburonInput(data) {
         btnSubmit.onclick = () => {
             const canvas = document.getElementById('tiburon-canvas');
             if (canvas) {
-                const lines = canvas.toDataURL('image/png');
+                // Exportar como JPEG con compresión 0.6 para no saturar el socket con base64 pesados
+                const lines = canvas.toDataURL('image/jpeg', 0.6);
                 socket.emit('player_action', { type: 'tiburon_submit_draw', lines });
                 showMobileView('answer-sent');
             }

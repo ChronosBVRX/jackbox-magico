@@ -73,10 +73,17 @@ export class ElTiburon implements GameModule {
       return state.phase === 'drawing_top' ? c.topLines !== '' : c.bottomLines !== '';
     }).length;
 
+    const playersStatus = Object.values(state.creations).map(c => ({
+      name: state.phase === 'drawing_top' ? c.topAuthorName : c.bottomAuthorName,
+      house: state.phase === 'drawing_top' ? c.topAuthorHouse : c.bottomAuthorHouse,
+      done: state.phase === 'drawing_top' ? c.topLines !== '' : c.bottomLines !== ''
+    }));
+
     return {
       phase: state.phase,
       submittedCount,
       totalPlayers: Object.keys(state.creations).length,
+      playersStatus,
       startedAt: state.startedAt,
       durationMs: state.durationMs
     };
@@ -89,12 +96,20 @@ export class ElTiburon implements GameModule {
       const creationList = Object.values(state.creations);
       const currentCreation = creationList[state.currentPitchIndex] || null;
       const myInvestment = currentCreation ? (currentCreation.investments[player.clientId] || 0) : 0;
+      const alreadyInvested = myInvestment > 0;
+      const myGaleones = Math.max(500, player.points);
+      const isAuthor = currentCreation ? (currentCreation.topAuthorId === player.clientId || currentCreation.bottomAuthorId === player.clientId) : false;
+      const canInvest = !isAuthor && !alreadyInvested && myGaleones >= 100;
+
       return {
         phase: 'pitching',
         currentCreationPrompt: currentCreation ? currentCreation.prompt : '',
         currentCreationCategory: currentCreation ? currentCreation.category : '',
         myInvestment,
-        isAuthor: currentCreation ? (currentCreation.topAuthorId === player.clientId || currentCreation.bottomAuthorId === player.clientId) : false
+        alreadyInvested,
+        myGaleones,
+        isAuthor,
+        canInvest
       };
     }
 
@@ -142,6 +157,10 @@ export class ElTiburon implements GameModule {
       const creationList = Object.values(state.creations);
       const currentCreation = creationList[state.currentPitchIndex];
       if (currentCreation) {
+        const isAuthor = currentCreation.topAuthorId === player.clientId || currentCreation.bottomAuthorId === player.clientId;
+        if (isAuthor) return { state };
+        if (currentCreation.investments[player.clientId]) return { state };
+
         const amount = Number(action.amount) || 100;
         currentCreation.investments[player.clientId] = amount;
         currentCreation.totalInvestment = Object.values(currentCreation.investments).reduce((a, b) => a + b, 0);
