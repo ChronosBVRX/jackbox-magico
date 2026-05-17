@@ -104,6 +104,18 @@ export class ElImpostor implements GameModule {
       }
     }
 
+  onTick(state: ImpostorState): GameUpdateResult {
+    if (state.phase === 'playing') {
+      const elapsed = Date.now() - state.startedAt;
+      if (elapsed >= state.durationMs) {
+        return this.handleHostAction(state, 'next');
+      }
+    } else if (state.phase === 'voting') {
+      const elapsed = Date.now() - state.startedAt;
+      if (elapsed >= state.durationMs) {
+        return this.handleHostAction(state, 'next');
+      }
+    }
     return { state };
   }
 
@@ -111,6 +123,8 @@ export class ElImpostor implements GameModule {
     if (action === 'next') {
       if (state.phase === 'playing') {
         state.phase = 'voting';
+        state.startedAt = Date.now();
+        state.durationMs = 45000;
         return { 
           state, 
           events: [

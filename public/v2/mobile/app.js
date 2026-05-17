@@ -1015,7 +1015,7 @@ function renderKMKInput(data) {
             card.innerHTML = `
                 <div style="display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1.2rem;">
                     <div style="position: relative; width: 80px; height: 80px; flex-shrink: 0; border-radius: 50%; overflow: hidden; border: 2px solid var(--color-accent);">
-                        <img src="${char.image || '/assets/images/snitch/snitch.png'}" alt="${char.name}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <img src="${char.image || '/assets/images/snitch/snitch.png'}" onerror="this.onerror=null; this.src='/assets/images/snitch/snitch.png';" alt="${char.name}" style="width: 100%; height: 100%; object-fit: cover;">
                         <div style="position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 0.2rem; font-size: 1rem;">${char.emoji}</div>
                     </div>
                     <div>

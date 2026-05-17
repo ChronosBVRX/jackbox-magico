@@ -1846,7 +1846,7 @@ function renderKMKView(data) {
             card.style.padding = '1.5rem';
             card.innerHTML = `
                 <div class="char-portrait-container" style="position: relative; width: 150px; height: 150px; margin: 0 auto 1rem auto; border-radius: 50%; overflow: hidden; border: 3px solid var(--color-accent); box-shadow: 0 0 20px rgba(251,191,36,0.4);">
-                    <img src="${char.image || '/assets/images/snitch/snitch.png'}" alt="${char.name}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <img src="${char.image || '/assets/images/snitch/snitch.png'}" onerror="this.onerror=null; this.src='/assets/images/snitch/snitch.png';" alt="${char.name}" style="width: 100%; height: 100%; object-fit: cover;">
                     <div class="char-emoji-badge" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 0.3rem; font-size: 1.5rem;">${char.emoji}</div>
                 </div>
                 <h3 style="margin: 0.5rem 0; font-size: 1.6rem; color: white;">${char.name}</h3>
@@ -1911,7 +1911,7 @@ function renderKMKResults(data) {
             card.style.boxShadow = `0 0 30px ${cInfo.shadow}`;
             card.innerHTML = `
                 <div class="char-portrait-container" style="position: relative; width: 180px; height: 180px; margin: 0 auto 1.5rem auto; border-radius: 50%; overflow: hidden; border: 4px solid ${cInfo.color};">
-                    <img src="${char.image || '/assets/images/snitch/snitch.png'}" alt="${char.name}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <img src="${char.image || '/assets/images/snitch/snitch.png'}" onerror="this.onerror=null; this.src='/assets/images/snitch/snitch.png';" alt="${char.name}" style="width: 100%; height: 100%; object-fit: cover;">
                     <div class="char-emoji-badge" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 0.4rem; font-size: 1.8rem;">${char.emoji}</div>
                 </div>
                 <h3 style="margin: 0.5rem 0; font-size: 1.8rem; color: white;">${char.name}</h3>
@@ -1953,6 +1953,42 @@ function renderImpostorView(data) {
         phaseStatus.textContent = data.phase === 'voting' ? 'Fase de Votación y Acusaciones' : 'Fase de Interrogatorio';
         phaseStatus.style.color = data.phase === 'voting' ? '#ef4444' : 'var(--color-text-dim)';
     }
+
+    let instEl = document.getElementById('impostor-tv-instructions');
+    if (!instEl) {
+        const parent = phaseStatus ? phaseStatus.parentNode : document.getElementById('view-impostor');
+        instEl = document.createElement('div');
+        instEl.id = 'impostor-tv-instructions';
+        instEl.className = 'glass-panel';
+        instEl.style.margin = '1.5rem auto';
+        instEl.style.padding = '1.5rem';
+        instEl.style.maxWidth = '900px';
+        instEl.style.textAlign = 'center';
+        instEl.style.borderRadius = '15px';
+        instEl.style.boxShadow = '0 10px 25px rgba(0,0,0,0.5)';
+        instEl.style.animation = 'pulse 2s infinite';
+        if (parent) parent.appendChild(instEl);
+    }
+    instEl.innerHTML = data.phase === 'voting' 
+        ? `<div style="font-size:1.4rem; color:#ef4444; font-weight:bold; margin-bottom:0.5rem;">🚨 ¡HORA DE VOTAR EN SU CELULAR! 🚨</div><div style="font-size:1.1rem; opacity:0.9;">¿Quién hizo preguntas extrañas o titubeó al responder? ¡Voten por el sospechoso! El Espía Mortífago también puede intentar adivinar el lugar secreto para ganar.</div>`
+        : `<div style="font-size:1.4rem; color:#38bdf8; font-weight:bold; margin-bottom:0.5rem;">🗣️ ¡FASE DE INTERROGATORIO EN LA MESA! 🗣️</div><div style="font-size:1.1rem; opacity:0.9;">Háganse preguntas por turnos sobre el lugar secreto (ej. "¿Hace frío aquí?", "¿Huele feo?"). Todos conocen el lugar excepto el Espía Mortífago. ¡Descubran quién está mintiendo o titubeando!</div>`;
+
+    let sugEl = document.getElementById('impostor-tv-questions');
+    if (!sugEl) {
+        const parent = instEl ? instEl.parentNode : document.getElementById('view-impostor');
+        sugEl = document.createElement('div');
+        sugEl.id = 'impostor-tv-questions';
+        sugEl.className = 'glass-panel';
+        sugEl.style.margin = '1.5rem auto 0 auto';
+        sugEl.style.padding = '1.5rem';
+        sugEl.style.maxWidth = '900px';
+        sugEl.style.textAlign = 'left';
+        sugEl.style.borderRadius = '15px';
+        sugEl.style.background = 'rgba(255,255,255,0.05)';
+        sugEl.innerHTML = `<div style="font-size:1.2rem; font-weight:bold; color:#f59e0b; margin-bottom:1rem; text-align:center;">💡 Preguntas Sugeridas para la Mesa 💡</div><div style="display:grid; grid-template-columns:1fr 1fr; gap:1.5rem;"><div style="background:rgba(59,130,246,0.1); padding:1rem; border-radius:10px; border-left:4px solid #3b82f6;"><div style="font-weight:bold; color:#3b82f6; margin-bottom:0.5rem;">🛡️ Para Magos Leales</div><ul style="margin:0; padding-left:1.2rem; font-size:0.95rem; opacity:0.9;"><li>¿Qué ropa te pondrías para venir aquí?</li><li>¿Qué criatura mágica podrías encontrar en este lugar?</li><li>¿Es un buen lugar para una cita romántica?</li></ul></div><div style="background:rgba(239,68,68,0.1); padding:1rem; border-radius:10px; border-left:4px solid #ef4444;"><div style="font-weight:bold; color:#ef4444; margin-bottom:0.5rem;">🕵️‍♂️ Para el Espía Mortífago</div><ul style="margin:0; padding-left:1.2rem; font-size:0.95rem; opacity:0.9;"><li>¿Te trae buenos recuerdos este lugar?</li><li>¿Recomendarías este lugar a un estudiante de primer año?</li><li>¿Qué palabra describe mejor el ambiente aquí?</li></ul></div></div>`;
+        if (parent) parent.appendChild(sugEl);
+    }
+    if (sugEl) sugEl.style.display = data.phase === 'voting' ? 'none' : 'block';
 
     // Update timer bar
     const elapsed = Date.now() - data.startedAt;
