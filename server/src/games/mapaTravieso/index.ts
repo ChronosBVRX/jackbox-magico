@@ -78,8 +78,10 @@ export class MapaTravieso implements GameModule {
             {
               type: 'voice_cue',
               payload: {
-                cueKey: 'mapa_answer_phase',
-                text: `¡El mapa se ha cerrado! ¿Dónde estaba el objeto? ¡Respondan rápido en sus celulares!`
+                type: 'audioFile',
+                audioPath: 'assets/audio/voice_lines/explanation_luna_exp_rara.mp3',
+                force: true,
+                interrupt: true
               },
               target: 'all'
             }
