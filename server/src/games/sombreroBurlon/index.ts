@@ -151,14 +151,48 @@ export class SombreroBurlon implements GameModule {
     const ranking = Object.values(state.cumulativeScores).sort((a, b) => b.points - a.points);
     const winner = ranking[0];
 
+    const pointEvents: any[] = [];
+    if (winner && winner.points > 0) {
+      winner.points += SOMBRERO_SCORING.OVERALL_WINNER;
+      const winnerClientId = Object.keys(state.cumulativeScores).find(id => state.cumulativeScores[id].name === winner.name);
+      if (winnerClientId) {
+        pointEvents.push({
+          clientId: winnerClientId,
+          points: SOMBRERO_SCORING.OVERALL_WINNER,
+          reason: '¡Ganador Global del Sombrero Burlón!',
+          house: winner.house
+        });
+      }
+    }
+
+    const titles = [
+      "El más sospechoso 🧐",
+      "El más dramático 🎭",
+      "El elegido… para hacer el ridículo 🤡",
+      "Mago del Caos 🔥",
+      "Experto en Chisme 📢",
+      "Muggle Honorario 🏷️",
+      "Intenso Certificado ⚡",
+      "Sobreviviente Burlón 🛡️"
+    ];
+
+    const rankingWithTitles = ranking.map((r, idx) => {
+      const title = titles[idx % titles.length];
+      return {
+        ...r,
+        finalTitle: title
+      };
+    });
+
     state.finalResults = {
       correctAnswer: winner ? `¡${winner.name} es el favorito del Sombrero!` : "El Sombrero Burlón",
       narratorComment: winner ? `"${winner.name} ha sido coronado como el mago más notorio de la noche."` : '"Nadie destacó ante el sombrero."',
-      ranking
+      ranking: rankingWithTitles
     };
     
     return { 
       state, 
+      pointEvents,
       finished: true,
       events: [
         {

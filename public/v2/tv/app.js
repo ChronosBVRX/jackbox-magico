@@ -1315,6 +1315,33 @@ function renderRetratosView(data) {
   document.getElementById('portrait-name').textContent = data.currentClue?.portraitName || 'Escuchando...';
   document.getElementById('portrait-clue').textContent = `"${data.currentClue?.clue}"`;
   
+  let clueValuesEl = document.getElementById('retratos-tv-clue-values');
+  if (!clueValuesEl) {
+    clueValuesEl = document.createElement('div');
+    clueValuesEl.id = 'retratos-tv-clue-values';
+    clueValuesEl.className = 'glass-panel';
+    clueValuesEl.style.display = 'flex';
+    clueValuesEl.style.justifyContent = 'center';
+    clueValuesEl.style.gap = '1.5rem';
+    clueValuesEl.style.margin = '1.5rem auto 1rem auto';
+    clueValuesEl.style.padding = '0.8rem 1.5rem';
+    clueValuesEl.style.maxWidth = '700px';
+    clueValuesEl.style.borderRadius = '15px';
+    clueValuesEl.style.background = 'rgba(139,92,246,0.2)';
+    clueValuesEl.style.border = '1px solid #8b5cf6';
+    const container = document.getElementById('view-retratos');
+    if (container) container.insertBefore(clueValuesEl, document.getElementById('portrait-options'));
+  }
+  if (clueValuesEl) {
+    const values = data.clueValues || [150, 100, 60];
+    const currIdx = data.clueIndex || 0;
+    clueValuesEl.innerHTML = values.map((val, idx) => `
+      <div style="padding: 0.5rem 1rem; border-radius: 8px; font-weight: bold; font-size: 1.1rem; background: ${idx === currIdx ? '#8b5cf6' : 'rgba(0,0,0,0.3)'}; color: ${idx === currIdx ? 'white' : '#a78bfa'}; border: 1px solid ${idx === currIdx ? '#c084fc' : 'transparent'};">
+        Pista #${idx + 1}: ${val} pts
+      </div>
+    `).join('');
+  }
+
   const options = document.getElementById('portrait-options');
   options.innerHTML = data.currentClue?.options.map(opt => `
     <div class="option-card glass-panel">

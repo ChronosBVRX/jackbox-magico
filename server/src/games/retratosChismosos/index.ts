@@ -36,7 +36,8 @@ export class RetratosChismosos implements GameModule {
       answerCount: Object.keys(state.answeredClients).length,
       totalPlayers: state.players.length,
       results: state.results,
-      clueIndex: state.currentClueIndex
+      clueIndex: state.currentClueIndex,
+      clueValues: RETRATOS_SCORING.POINTS_BY_CLUE
     };
   }
 

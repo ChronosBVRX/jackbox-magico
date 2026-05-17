@@ -31,6 +31,14 @@ export const SOMBRERO_PROMPTS_BANK: Record<string, string[]> = {
     "¿Quién haría una entrada dramática aunque solo va al baño?",
     "¿Quién narraría su propia derrota como película épica?",
     "¿Quién se ofendería porque el Sombrero dijo la verdad?"
+  ],
+  filoso: [
+    "¿Quién más probablemente desaparece cuando llega la cuenta?",
+    "¿Quién sería expulsado de Hogwarts por andar de intenso?",
+    "¿Quién no estudió pero exige repetir la trivia?",
+    "¿Quién vendería a su casa por una cerveza de mantequilla?",
+    "¿Quién usaría un Giratiempo solo para volver a dormir?",
+    "¿Quién le mandaría un mensaje borracho a su ex mortífago?"
   ]
 };
 
