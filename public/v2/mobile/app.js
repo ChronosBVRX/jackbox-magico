@@ -97,22 +97,57 @@ socket.on('game_started', (gameId) => {
   currentGameId = gameId;
 });
 
-// Helper for wait screen modes
-function showWaitScreen(inGameMsg) {
-    showMobileView('wait-screen');
-    const lobbyContainer = document.getElementById('lobby-ready-container');
-    const statusEl = document.getElementById('wait-screen-status');
-    const myName = localStorage.getItem('v2_playerName') || 'Mago';
-    
-    if (!inGameMsg) {
-        // Lobby mode
-        if (lobbyContainer) lobbyContainer.style.display = 'block';
-        if (statusEl) statusEl.innerHTML = `<strong id="player-name-display">${myName}</strong><br>Tu varita ya está conectada.`;
-    } else {
-        // In-game waiting mode
-        if (lobbyContainer) lobbyContainer.style.display = 'none';
-        if (statusEl) statusEl.innerHTML = `<strong id="player-name-display">${myName}</strong><br><span style="color:var(--color-accent); font-size:1.1rem; display:block; margin-top:0.5rem;">${inGameMsg}</span>`;
-    }
+function escapeHTML(str) {
+  if (!str) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function showLobbyWait() {
+  showMobileView('wait-screen');
+
+  const lobbyContainer = document.getElementById('lobby-ready-container');
+  const hostControls = document.getElementById('host-controls-container');
+  const statusEl = document.getElementById('wait-screen-status');
+  const myName = localStorage.getItem('v2_playerName') || 'Mago';
+
+  if (lobbyContainer) lobbyContainer.style.display = 'block';
+  if (hostControls) hostControls.style.display = 'none';
+
+  if (statusEl) {
+    statusEl.innerHTML = `
+      <strong id="player-name-display">${escapeHTML(myName)}</strong><br>
+      Tu varita ya está conectada.
+    `;
+  }
+}
+
+function showGameInfo(message, title = 'Mira la TV') {
+  showMobileView('wait-screen');
+
+  const lobbyContainer = document.getElementById('lobby-ready-container');
+  const hostControls = document.getElementById('host-controls-container');
+  const statusEl = document.getElementById('wait-screen-status');
+  const myName = localStorage.getItem('v2_playerName') || 'Mago';
+
+  if (lobbyContainer) lobbyContainer.style.display = 'none';
+  if (hostControls) hostControls.style.display = 'none';
+
+  if (statusEl) {
+    statusEl.innerHTML = `
+      <strong>${escapeHTML(title)}</strong><br>
+      <span style="color:var(--color-accent); font-size:1.05rem; display:block; margin-top:0.5rem;">
+        ${escapeHTML(message)}
+      </span>
+      <small style="display:block; margin-top:1rem; opacity:0.7;">
+        Varita conectada como ${escapeHTML(myName)}
+      </small>
+    `;
+  }
 }
 
 socket.on('room_state', (state) => {
@@ -125,7 +160,7 @@ socket.on('room_state', (state) => {
     localStorage.setItem('v2_playerGender', myPlayer.gender);
 
     if (state.status === 'lobby') {
-      showWaitScreen();
+      showLobbyWait();
       const waitScreenEl = document.getElementById('wait-screen');
       if (waitScreenEl) waitScreenEl.className = `wait-screen glass-panel theme-${myPlayer.house.toLowerCase()}`;
       if (playerNameDisplay) playerNameDisplay.textContent = myPlayer.name;
@@ -206,92 +241,143 @@ document.getElementById('btn-pociones-clear').addEventListener('click', () => {
 
 // GENERIC GAME PLAYER STATE
 socket.on('game_player_state', (data) => {
+  // 1. Estados de historia
   if (data.phase === 'story_wait') {
     showMobileView('story-wait-screen');
     return;
   }
+
   if (data.phase === 'story_instructions') {
     renderStoryInstructionsMobile(data);
     showMobileView('story-instructions-mobile');
     return;
   }
+
   if (data.phase === 'story_personal_score') {
     renderStoryScoreMobile(data);
     showMobileView('story-personal-score');
     return;
   }
 
-  if (data.phase === 'question' || data.phase === 'threat') {
-    if (data.alreadyAnswered) showMobileView('answer-sent');
-    else renderTriviaInput(data);
-  } else if (data.phase === 'playing') {
-    showMobileView('snitch-input');
-    const attemptsEl = document.getElementById('snitch-attempts');
-    const btnCatch = document.getElementById('btn-catch');
-    if (attemptsEl) attemptsEl.textContent = `Intentos restantes: ${data.attemptsRemaining}`;
-    if (btnCatch) {
-        if (!data.canCatch || data.attemptsRemaining <= 0) {
-            btnCatch.disabled = true;
-            btnCatch.style.opacity = '0.5';
-            btnCatch.textContent = '¡AGOTADO!';
-        } else {
-            btnCatch.disabled = false;
-            btnCatch.style.opacity = '1';
-            btnCatch.textContent = '¡ATRAPAR!';
+  // 2. Resolver primero por minijuego activo
+  switch (currentGameId) {
+    case 'trivia_magica':
+    case 'artes_ridiculas':
+      if (data.phase === 'question' || data.phase === 'threat') {
+        if (data.alreadyAnswered) showMobileView('answer-sent');
+        else renderTriviaInput(data);
+      } else if (data.phase === 'results') {
+        showGameInfo('Revisa la respuesta correcta y los puntos en la TV.', 'Resultados');
+      } else {
+        showGameInfo('Prepárate para la siguiente pregunta.');
+      }
+      return;
+
+    case 'atrapa_snitch':
+      if (data.phase === 'playing') {
+        showMobileView('snitch-input');
+        const attemptsEl = document.getElementById('snitch-attempts');
+        const btnCatch = document.getElementById('btn-catch');
+
+        if (attemptsEl) attemptsEl.textContent = `Intentos restantes: ${data.attemptsRemaining}`;
+
+        if (btnCatch) {
+          const disabled = !data.canCatch || data.attemptsRemaining <= 0;
+          btnCatch.disabled = disabled;
+          btnCatch.style.opacity = disabled ? '0.5' : '1';
+          btnCatch.textContent = disabled ? '¡AGOTADO!' : '¡ATRAPAR!';
         }
-    }
-  } else if (data.phase === 'selection') {
-    if (data.isDuelist) {
-        if (data.alreadyChosen) showMobileView('answer-sent');
-        else showMobileView('duelo-input');
-    } else {
-        showWaitScreen('¡Duelo Mágico! Mira el enfrentamiento en la TV.');
-    }
-  } else if (data.phase === 'clash') {
-    if (data.isDuelist) showMobileView('clash-input');
-    else showWaitScreen('¡Choque de Hechizos! Apoya a tu compañero en la TV.');
-  } else if (data.phase === 'prompt') {
-    if (data.alreadyVoted) showMobileView('answer-sent');
-    else renderSombreroVoting(data);
-  } else if (data.phase === 'round_results' || data.phase === 'final_results') {
-    showWaitScreen('¡Revisando los resultados en la TV!');
-  } else if (data.phase === 'memorize') {
-    showWaitScreen('¡Memoriza la secuencia mágica en la TV!');
-  } else if (data.phase === 'mix') {
-    if (data.alreadySubmitted) showMobileView('answer-sent');
-    else renderPocionesInput(data);
-  } else if (data.phase === 'results') {
-    showWaitScreen('¡Revisando los puntajes y ganadores en la TV!');
-  } else if (currentGameId === 'retratos_chismosos') {
-    renderRetratosInput(data);
-  } else if (currentGameId === 'hechizo_incompleto') {
-    renderHechizoInput(data);
-  } else if (currentGameId === 'patronus_personalizado') {
-    renderPatronusInput(data);
-  } else if (currentGameId === 'copa_final') {
-    renderCopaInput(data);
-  } else if (currentGameId === 'mapa_travieso') {
-    renderMapaInput(data);
-  } else if (currentGameId === 'caldero_mentiroso') {
-    renderCalderoInput(data);
-  } else if (currentGameId === 'beso_boda_muerte') {
-    renderKMKInput(data);
-  } else if (currentGameId === 'el_impostor') {
-    renderImpostorInput(data);
-  } else if (currentGameId === 'el_tiburon') {
-    renderTiburonInput(data);
-  } else if (currentGameId === 'dictado_magico') {
-    renderDictadoInput(data);
-  } else if (currentGameId === 'atrapa_snitch') {
-    showMobileView('snitch-input');
-  } else if (currentGameId === 'duelo_hechizos') {
-    if (data.phase === 'selection') {
-        if (data.alreadyChosen) showMobileView('answer-sent');
-        else showMobileView('duelo-input');
-    } else if (data.phase === 'clash') {
-        showMobileView('clash-input');
-    }
+      } else {
+        showGameInfo('Mira en la TV quién atrapó la Snitch.', 'Resultados de Quidditch');
+      }
+      return;
+
+    case 'duelo_hechizos':
+      if (data.phase === 'selection') {
+        if (!data.isDuelist) {
+          showGameInfo('Hay un duelo en curso. Observa a los duelistas en la TV.', 'Duelo Mágico');
+        } else if (data.alreadyChosen) {
+          showMobileView('answer-sent');
+        } else {
+          showMobileView('duelo-input');
+        }
+      } else if (data.phase === 'clash') {
+        if (data.isDuelist) showMobileView('clash-input');
+        else showGameInfo('Choque de varitas en curso. Sigue el enfrentamiento en la TV.', 'Choque de Hechizos');
+      } else {
+        showGameInfo('Revisa el resultado del duelo en la TV.', 'Resultado del Duelo');
+      }
+      return;
+
+    case 'sombrero_burlon':
+      if (data.phase === 'prompt') {
+        if (data.alreadyVoted) showMobileView('answer-sent');
+        else renderSombreroVoting(data);
+      } else {
+        showGameInfo('El Sombrero está revelando los resultados en la TV.', 'Sombrero Burlón');
+      }
+      return;
+
+    case 'clase_pociones':
+      if (data.phase === 'memorize') {
+        showGameInfo('Memoriza la secuencia de ingredientes en la TV.', 'Clase de Pociones');
+      } else if (data.phase === 'mix') {
+        if (data.alreadySubmitted) showMobileView('answer-sent');
+        else renderPocionesInput(data);
+      } else {
+        showGameInfo('Revisa si tu poción salió perfecta en la TV.', 'Resultados de Pociones');
+      }
+      return;
+
+    case 'mapa_travieso':
+      renderMapaInput(data);
+      return;
+
+    case 'retratos_chismosos':
+      renderRetratosInput(data);
+      return;
+
+    case 'hechizo_incompleto':
+      renderHechizoInput(data);
+      return;
+
+    case 'patronus_personalizado':
+      renderPatronusInput(data);
+      return;
+
+    case 'copa_final':
+      renderCopaInput(data);
+      return;
+
+    case 'caldero_mentiroso':
+      renderCalderoInput(data);
+      return;
+
+    case 'beso_boda_muerte':
+      renderKMKInput(data);
+      return;
+
+    case 'el_impostor':
+      renderImpostorInput(data);
+      return;
+
+    case 'el_tiburon':
+      renderTiburonInput(data);
+      return;
+
+    case 'dictado_magico':
+      renderDictadoInput(data);
+      return;
   }
+
+  // 3. Fallback seguro: nunca mostrar lobby si ya hay juego
+  if (currentGameId) {
+    showGameInfo('Sigue las instrucciones en la TV.');
+    return;
+  }
+
+  // 4. Sin juego activo: lobby
+  showLobbyWait();
 });
 
 let mobileTimerInterval = null;
@@ -515,13 +601,16 @@ function renderMapaInput(data) {
     showMobileView('answer-sent');
     return;
   }
+
   if (data.phase === 'observe') {
-    showMobileView('wait-screen');
-    const statusTextEl = document.querySelector('#wait-screen .status-text');
-    if (statusTextEl) statusTextEl.innerHTML = 'Observa el Mapa en la TV...';
-  } else if (data.phase === 'answer') {
+    showGameInfo('Observa el Mapa Travieso en la TV. Memoriza la ubicación antes de responder.', 'Mapa Travieso');
+    return;
+  }
+
+  if (data.phase === 'answer') {
     showMobileView('mapa-input');
     const container = document.getElementById('mapa-zones');
+
     if (container && data.options) {
       container.innerHTML = '';
       data.options.forEach(zone => {
@@ -535,9 +624,10 @@ function renderMapaInput(data) {
         container.appendChild(btn);
       });
     }
-  } else {
-    showMobileView('wait-screen');
+    return;
   }
+
+  showGameInfo('Sigue la acción en la TV.', 'Mapa Travieso');
 }
 
 function renderCalderoInput(data) {
@@ -712,7 +802,7 @@ let currentKMKTarget = null;
 
 function renderKMKInput(data) {
     if (data.phase === 'results') {
-        showWaitScreen('¡Mira las escandalosas revelaciones en la TV!');
+        showGameInfo('¡Mira las escandalosas revelaciones en la TV!', 'Beso, Boda, Muerte');
         currentKMKTarget = null;
         return;
     }
@@ -808,7 +898,7 @@ function renderKMKInput(data) {
 
 function renderImpostorInput(data) {
     if (data.phase === 'results') {
-        showWaitScreen('¡Mira el resultado de la misión en la TV!');
+        showGameInfo('¡Mira el resultado de la misión en la TV!', 'El Impostor');
         return;
     }
     if (data.alreadyVoted) {
@@ -1000,7 +1090,7 @@ function initTiburonCanvas() {
 
 function renderTiburonInput(data) {
     if (data.phase === 'results') {
-        showWaitScreen('¡Mira qué invento se llevó la mayor inversión en la TV!');
+        showGameInfo('¡Mira qué invento se llevó la mayor inversión en la TV!', 'Tanque de Tiburones');
         return;
     }
     if (data.phase === 'pitching') {
@@ -1081,7 +1171,7 @@ function renderTiburonInput(data) {
 
 function renderDictadoInput(data) {
     if (data.phase === 'results') {
-        showMobileView('answer-sent');
+        showGameInfo('¡Mira las transcripciones ganadoras en la TV!', 'Dictado Mágico');
         return;
     }
 
