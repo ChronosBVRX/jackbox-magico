@@ -15,6 +15,8 @@ window.VoiceManagerV2 = (function() {
     let lastPlayedClip = null;
     let lastPlayedAt = 0;
     let eventCooldowns = {};
+    let currentUIAudio = null;
+    let lastUISoundAt = 0;
     
     // Catalogs (Loaded Lazy)
     let voiceCatalog = [];
@@ -161,6 +163,10 @@ window.VoiceManagerV2 = (function() {
         if (currentAudio) {
             currentAudio.pause();
             currentAudio = null;
+        }
+        if (currentUIAudio) {
+            currentUIAudio.pause();
+            currentUIAudio = null;
         }
         audioQueue = [];
         isProcessingQueue = false;
@@ -326,10 +332,27 @@ window.VoiceManagerV2 = (function() {
 
     function playUISound(path) {
         if (!audioUnlocked || !isVoiceEnabled()) return;
+        
+        // Prevent two Dumbledores: If main story/scoreboard audio is currently playing, ignore UI speech sounds
+        if (currentAudio && !currentAudio.paused) return;
+
+        const now = Date.now();
+        // Cooldown to prevent spamming navigation keys
+        if (now - lastUISoundAt < 300) return;
+        lastUISoundAt = now;
+
         try {
+            if (currentUIAudio) {
+                currentUIAudio.pause();
+                currentUIAudio = null;
+            }
             const audio = new Audio(path);
+            currentUIAudio = audio;
             audio.volume = 0.8;
             audio.play().catch(err => console.warn("VoiceManagerV2: UI sound play error", err));
+            audio.onended = () => {
+                if (currentUIAudio === audio) currentUIAudio = null;
+            };
         } catch (e) {
             console.warn("VoiceManagerV2: UI sound init error", e);
         }
