@@ -13,6 +13,7 @@ interface TriviaState {
   durationMs: number;
   results: any | null;
   playerCount: number;
+  usedQuestionIds: Set<string>;
 }
 
 export class TriviaMagica implements GameModule {
@@ -22,6 +23,9 @@ export class TriviaMagica implements GameModule {
   init(players: Player[], options?: any): TriviaState {
     const totalRounds = options?.questionCount || 5;
     const firstQuestion = triviaQuestions[Math.floor(Math.random() * triviaQuestions.length)];
+    const usedQuestionIds = new Set<string>();
+    if (firstQuestion) usedQuestionIds.add(firstQuestion.id);
+
     return {
       roundNumber: 1,
       totalRounds,
@@ -31,7 +35,8 @@ export class TriviaMagica implements GameModule {
       startedAt: Date.now(),
       durationMs: 20000,
       results: null,
-      playerCount: players.length
+      playerCount: players.length,
+      usedQuestionIds
     };
   }
 
@@ -43,6 +48,7 @@ export class TriviaMagica implements GameModule {
       roundNumber: state.roundNumber,
       totalRounds: state.totalRounds,
       category: state.currentQuestion?.category,
+      difficulty: state.currentQuestion?.difficulty || 'facil',
       question: state.currentQuestion?.question,
       options: state.currentQuestion?.options || [],
       durationMs: state.durationMs,
@@ -111,7 +117,17 @@ export class TriviaMagica implements GameModule {
     state.results = null;
     state.answeredClients.clear();
     state.roundAnswers = [];
-    state.currentQuestion = triviaQuestions[Math.floor(Math.random() * triviaQuestions.length)];
+
+    let availableQuestions = triviaQuestions.filter(q => !state.usedQuestionIds.has(q.id));
+    if (availableQuestions.length === 0) {
+      state.usedQuestionIds.clear();
+      availableQuestions = triviaQuestions;
+    }
+
+    const nextQ = availableQuestions[Math.floor(Math.random() * availableQuestions.length)];
+    state.currentQuestion = nextQ;
+    if (nextQ) state.usedQuestionIds.add(nextQ.id);
+
     state.startedAt = Date.now();
 
     return { state };
@@ -155,8 +171,12 @@ export class TriviaMagica implements GameModule {
       });
     });
 
+    // Ordenar para tener el mini ranking de la ronda
+    results.sort((a, b) => b.points - a.points);
+
     state.results = {
       correctAnswer: state.currentQuestion.correctAnswer,
+      difficulty: state.currentQuestion.difficulty || 'facil',
       narratorComment: state.currentQuestion.narratorComment,
       results
     };

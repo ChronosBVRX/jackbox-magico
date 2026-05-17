@@ -1586,7 +1586,8 @@ function renderQuizView(data) {
   const options = Array.isArray(data.options) ? data.options : [];
   
   safeText('trivia-category', data.category || 'Preparando pregunta');
-  safeText('trivia-round', `Ronda ${data.roundNumber || 1}/${data.totalRounds || 5}`);
+  const diffStr = data.difficulty ? ` (${data.difficulty.toUpperCase()})` : '';
+  safeText('trivia-round', `Ronda ${data.roundNumber || 1}/${data.totalRounds || 5}${diffStr}`);
   
   if (!data.question || options.length === 0) {
     safeText('trivia-question', 'Preparando pregunta mágica...');
@@ -1642,12 +1643,14 @@ function renderQuizView(data) {
 
 function renderResultsView(data) {
   showView('view-results');
-  document.getElementById('correct-answer').textContent = data.correctAnswer;
+  const diffStr = data.difficulty ? ` (${data.difficulty.toUpperCase()})` : '';
+  document.getElementById('correct-answer').textContent = data.correctAnswer + diffStr;
   document.getElementById('narrator-comment').textContent = data.narratorComment || "...";
   
   const resultsContainer = document.getElementById('results-list');
   resultsContainer.innerHTML = '';
-  data.results.results.forEach(res => {
+  const resultsArray = Array.isArray(data.results) ? data.results : (data.results?.results || []);
+  resultsArray.forEach(res => {
     const card = document.createElement('div');
     card.className = `result-player-card glass-panel ${res.house ? res.house.toLowerCase() : ''}`;
     card.innerHTML = `
