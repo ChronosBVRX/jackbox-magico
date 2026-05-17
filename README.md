@@ -1,8 +1,21 @@
-# Hogwarts Game Night / Torneo Mágico Interactivo (Versión 1.0 Estable)
+# Hogwarts Game Night 1.0
 
-Hogwarts Game Night es una experiencia interactiva tipo Jackbox para noches sociales en bar, diseñada para grupos de 4 a 8 jugadores.
+Versión estable de producción para operación en bar.
 
-Este es el núcleo estable del proyecto, basado en una arquitectura autoritativa en tiempo real con WebSockets y diseñado específicamente para operación comercial y entretenimiento en vivo.
+Hogwarts Game Night es una experiencia interactiva tipo Jackbox para grupos de 4 a 8 jugadores, diseñada para noches sociales, cumpleaños, reuniones y dinámicas en vivo.
+
+Incluye:
+- TV como pantalla principal.
+- Celulares como controles.
+- Código de sala.
+- Minijuegos sociales, de trivia, acción, memoria y estrategia.
+- Modo Torneo Mágico Rotativo.
+- Copa Final.
+- Experiencias premium como Dictado Mágico, Tiburón y Beso/Boda/Muerte.
+
+Dominio de producción:
+https://app.hogwartslzc.com.mx/v2/tv/
+
 
 ## Stack Tecnológico
 - **Backend**: Node.js + TypeScript + Express + Socket.IO

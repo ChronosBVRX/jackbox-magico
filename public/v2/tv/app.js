@@ -1,4 +1,5 @@
 const socket = io();
+const IS_PRODUCTION = window.location.hostname === 'app.hogwartslzc.com.mx';
 
 // Global Overrides to replace native browser UI with Hogwarts Game Night custom modals
 window.alert = (msg) => {
@@ -513,33 +514,40 @@ function showView(viewId) {
 // Global Key Listeners for TV Remote
 window.addEventListener('keydown', (e) => {
     console.log("TV Key Pressed:", e.key, e.code);
+
     switch(e.key) {
         case 'd':
         case 'D':
+            if (IS_PRODUCTION) return;
             if (currentRoom) {
                 console.log("Toggling debug mode...");
                 socket.emit('tv_toggle_debug', !window._debugEnabled);
             }
             break;
+
         case 'p':
         case 'P':
+            if (IS_PRODUCTION) return;
             DebugManager.toggle(true);
             return;
+
         case 'ArrowLeft':
         case 'ArrowUp':
             NavigationManager.navigate('left');
             break;
+
         case 'ArrowRight':
         case 'ArrowDown':
             NavigationManager.navigate('right');
             break;
+
         case 'Enter':
             if (window.MusicManager) window.MusicManager.play();
             NavigationManager.confirm();
             break;
+
         case 'Escape':
         case 'Backspace':
-            // Logic for going back
             if (document.getElementById('view-modal').style.display !== 'none') {
                 ModalManager.close(false);
             } else if (NavigationManager.activeView === 'view-selection') {
@@ -559,11 +567,11 @@ window.addEventListener('keydown', (e) => {
                 }, 500);
             }
             break;
+
         case 'm':
         case 'M':
         case 'h':
         case 'H':
-            // Home / Menu key
             ModalManager.show('Menú Principal', '¿Deseas abandonar la partida actual?', true, (ok) => {
                 if (ok) {
                     socket.emit('tv_close_room');
@@ -571,7 +579,6 @@ window.addEventListener('keydown', (e) => {
                     showView('view-init');
                 }
             });
-            break;
             break;
     }
 });
