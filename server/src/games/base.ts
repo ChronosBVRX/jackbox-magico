@@ -15,7 +15,8 @@ export type GameId =
   | 'copa_final'
   | 'beso_boda_muerte'
   | 'el_impostor'
-  | 'el_tiburon';
+  | 'el_tiburon'
+  | 'dictado_magico';
 
 export interface GameUpdateResult {
   state: any;

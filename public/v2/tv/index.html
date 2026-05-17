@@ -523,6 +523,80 @@
     </div>
   </div>
 
+  <!-- Dictado Active View -->
+  <div class="tv-layout" id="view-dictado" style="display: none; padding: 3rem; background: url('/assets/images/dictado/dictado_lobby.png') center/cover no-repeat;">
+    <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 0;"></div>
+    <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; flex-direction: column;">
+      <header style="text-align: center; margin-bottom: 2rem;">
+        <h1 class="text-gradient-gold" style="font-size: 3.5rem; margin-bottom: 0.5rem;">Dictado Mágico</h1>
+        <p id="dictado-story-title" style="font-size: 1.8rem; color: var(--color-accent); font-weight: bold;"></p>
+      </header>
+
+      <main style="display: flex; flex: 1; align-items: center; justify-content: center; gap: 4rem;">
+        <div style="width: 350px; height: 350px; border-radius: 24px; overflow: hidden; border: 3px solid var(--color-accent); box-shadow: 0 0 40px rgba(251,191,36,0.4);">
+          <img src="/assets/images/dictado/dictado_hermione.png" style="width: 100%; height: 100%; object-fit: cover;">
+        </div>
+
+        <div class="glass-panel" style="padding: 4rem; border-radius: 24px; text-align: center; max-width: 600px; flex: 1;">
+          <div style="font-size: 4rem; margin-bottom: 1.5rem;">🎙️📜</div>
+          <h2 style="font-size: 2.5rem; color: white; margin-bottom: 1.5rem;">¡Escucha y Escribe!</h2>
+          <p style="font-size: 1.4rem; color: var(--color-text-dim); line-height: 1.5; margin-bottom: 2.5rem;">
+            Presta mucha atención al audio clasificado que está sonando.<br>
+            Transcribe exactamente lo que escuches en tu celular antes de que el tiempo se agote.
+          </p>
+
+          <!-- Timer Bar -->
+          <div style="width: 100%; background: rgba(255,255,255,0.1); border-radius: 20px; height: 30px; overflow: hidden; border: 2px solid var(--color-accent); margin-bottom: 1.5rem;">
+            <div id="dictado-timer-bar" style="width: 100%; height: 100%; background: var(--color-accent); transition: width 0.1s linear;"></div>
+          </div>
+          <div style="font-size: 1.5rem; color: white; font-weight: bold;" id="dictado-timer-count">40s</div>
+
+          <div style="font-size: 1.8rem; color: var(--color-accent); font-weight: bold; margin-top: 2rem;" id="dictado-submitted-status">
+            0 / 8 Magos han terminado
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <!-- Dictado Host Voting View -->
+  <div class="tv-layout" id="view-dictado-voting" style="display: none; padding: 3rem; background: url('/assets/images/dictado/dictado_lobby.png') center/cover no-repeat;">
+    <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 0;"></div>
+    <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+      <header style="text-align: center; margin-bottom: 3rem;">
+        <h1 class="text-gradient-gold" style="font-size: 4rem; margin-bottom: 0.5rem;">Votación del Host</h1>
+        <p style="font-size: 1.8rem; color: var(--color-text-dim);">Premiando las respuestas más hilarantes</p>
+      </header>
+
+      <div class="glass-panel" style="padding: 4rem; border-radius: 24px; text-align: center; max-width: 800px; border: 2px solid var(--color-accent); box-shadow: 0 0 50px rgba(251,191,36,0.3);">
+        <div style="font-size: 5rem; margin-bottom: 1.5rem;">👑🪄</div>
+        <h2 style="font-size: 2.8rem; color: white; margin-bottom: 1.5rem;">El Host tiene la última palabra</h2>
+        <p style="font-size: 1.6rem; color: var(--color-text-dim); line-height: 1.5; margin-bottom: 2rem;">
+          Host, revisa las transcripciones de los magos en tu celular.<br>
+          Si alguna respuesta rota o mal escrita te pareció absolutamente graciosa, otórgale el bono de respuesta hilarante.
+        </p>
+        <div style="font-size: 2rem; color: var(--color-accent); font-weight: bold;" id="dictado-voting-count">
+          Esperando decisión del Host...
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Dictado Results View -->
+  <div class="tv-layout" id="view-dictado-results" style="display: none; padding: 3rem; background: url('/assets/images/dictado/dictado_lobby.png') center/cover no-repeat;">
+    <div style="position: absolute; inset: 0; background: rgba(0,0,0,0.6); backdrop-filter: blur(8px); z-index: 0;"></div>
+    <div style="position: relative; z-index: 1; width: 100%; height: 100%; display: flex; flex-direction: column;">
+      <header style="text-align: center; margin-bottom: 2rem;">
+        <h1 class="text-gradient-gold" style="font-size: 3.8rem; margin-bottom: 0.5rem;">Oídos de Hogwarts</h1>
+        <p style="font-size: 1.6rem; color: var(--color-text-dim);">Resultados de precisión en el Dictado Mágico</p>
+      </header>
+
+      <div id="dictado-ranking-list" style="display: flex; flex-direction: column; gap: 1.5rem; max-width: 900px; margin: 0 auto; flex: 1; overflow-y: auto; width: 100%;">
+        <!-- Inject ranking -->
+      </div>
+    </div>
+  </div>
+
   <!-- Selection Carousel View (Premium) -->
   <!-- Selection Carousel View (Premium) -->
   <div class="tv-layout" id="view-selection" style="display: none;">

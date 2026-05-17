@@ -40,7 +40,8 @@ window.VoiceManagerV2 = (function() {
         cierre_ganador: "sombrero",
         beso_boda_muerte: "luna",
         el_impostor: "sombrero",
-        el_tiburon: "hagrid"
+        el_tiburon: "hagrid",
+        dictado_magico: "hermione"
     };
 
     const GAME_ID_ALIASES = {
@@ -59,7 +60,8 @@ window.VoiceManagerV2 = (function() {
         story_ready: "intro_general",
         kmk: "beso_boda_muerte",
         impostor: "el_impostor",
-        tiburon: "el_tiburon"
+        tiburon: "el_tiburon",
+        dictado: "dictado_magico"
     };
 
     const EVENT_OVERRIDES_BY_AUDIO_FILE = {

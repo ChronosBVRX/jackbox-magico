@@ -940,6 +940,8 @@ socket.on('game_state', (data) => {
     renderImpostorView(data);
   } else if (currentGameId === 'el_tiburon') {
     renderTiburonView(data);
+  } else if (currentGameId === 'dictado_magico') {
+    renderDictadoView(data);
   }
 });
 
@@ -1857,6 +1859,99 @@ function renderTiburonResults(data) {
             <div style="text-align: right;">
                 <div style="font-size: 1.8rem; font-weight: bold; color: #10b981;">${r.totalInvestment} Galeones</div>
                 <div style="font-size: 0.8rem; color: var(--color-text-dim); text-transform: uppercase;">Inversión Total</div>
+            </div>
+        `;
+        container.appendChild(card);
+    });
+}
+
+let dictadoTvTimerInterval = null;
+let currentDictadoAudioUrl = null;
+let dictadoAudioEl = null;
+
+function renderDictadoView(data) {
+    if (data.phase === 'results') {
+        renderDictadoResults(data);
+        return;
+    }
+    if (data.phase === 'voting_host') {
+        showView('view-dictado-voting');
+        safeText('dictado-voting-count', `El Host está revisando ${data.submissionsCount || 0} transcripciones...`);
+        if (dictadoAudioEl) {
+            dictadoAudioEl.pause();
+            dictadoAudioEl = null;
+        }
+        if (dictadoTvTimerInterval) {
+            clearInterval(dictadoTvTimerInterval);
+            dictadoTvTimerInterval = null;
+        }
+        return;
+    }
+
+    showView('view-dictado');
+    safeText('dictado-story-title', data.currentStoryTitle || 'Anécdota Clasificada');
+    safeText('dictado-submitted-status', `${data.submittedCount || 0} / ${data.totalPlayers || 8} Magos han terminado`);
+
+    if (data.audioUrl && data.audioUrl !== currentDictadoAudioUrl) {
+        currentDictadoAudioUrl = data.audioUrl;
+        if (dictadoAudioEl) dictadoAudioEl.pause();
+        const path = data.audioUrl.startsWith('/') ? data.audioUrl : '/' + data.audioUrl;
+        dictadoAudioEl = new Audio(path);
+        dictadoAudioEl.play().catch(e => console.warn("No se pudo reproducir audio de dictado en TV:", e));
+    }
+
+    const bar = document.getElementById('dictado-timer-bar');
+    const countEl = document.getElementById('dictado-timer-count');
+    if (dictadoTvTimerInterval) clearInterval(dictadoTvTimerInterval);
+
+    if (bar && data.startedAt && data.durationMs) {
+        const updateTimer = () => {
+            const elapsed = Date.now() - data.startedAt;
+            const remaining = Math.max(0, data.durationMs - elapsed);
+            const percent = (remaining / data.durationMs) * 100;
+            const seconds = Math.ceil(remaining / 1000);
+            
+            bar.style.transition = 'none';
+            bar.style.width = `${percent}%`;
+            if (countEl) countEl.textContent = `${seconds}s`;
+
+            if (remaining <= 0) {
+                clearInterval(dictadoTvTimerInterval);
+            }
+        };
+
+        updateTimer();
+        dictadoTvTimerInterval = setInterval(updateTimer, 100);
+    }
+}
+
+function renderDictadoResults(data) {
+    showView('view-dictado-results');
+    const res = data.results;
+    if (!res || !res.ranking) return;
+
+    const container = document.getElementById('dictado-ranking-list');
+    if (!container) return;
+    container.innerHTML = '';
+
+    res.ranking.forEach((r, idx) => {
+        const card = document.createElement('div');
+        card.className = `result-player-card glass-panel ${idx === 0 ? 'status-correct' : ''} ${r.playerHouse ? r.playerHouse.toLowerCase() : ''}`;
+        card.style.display = 'flex';
+        card.style.alignItems = 'center';
+        card.style.justifyContent = 'space-between';
+        card.style.padding = '1.5rem';
+        card.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 2rem;">
+                <div style="font-size: 2.5rem; font-weight: bold; color: var(--color-accent);">${idx + 1}</div>
+                <div>
+                    <div style="font-size: 1.4rem; color: white; font-weight: bold; margin-bottom: 0.3rem;">${escapeHTML(r.playerName || 'Mago')}</div>
+                    <div style="font-size: 0.9rem; color: var(--color-text-dim); font-style: italic;">"${escapeHTML(r.transcription || '...')}"</div>
+                </div>
+            </div>
+            <div style="text-align: right;">
+                <div style="font-size: 1.8rem; font-weight: bold; color: ${r.isFunny ? '#d4af37' : '#10b981'};">${r.similarity}% Similitud</div>
+                <div style="font-size: 0.9rem; color: var(--color-accent); font-weight: bold;">+${r.points} Pts ${r.isFunny ? ' (¡Hilarante!)' : ''}</div>
             </div>
         `;
         container.appendChild(card);

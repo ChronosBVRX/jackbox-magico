@@ -272,5 +272,23 @@ export const GAME_CATALOG: GameInfo[] = [
     maxPlayers: 8,
     maxPerHouse: 2,
     enabled: true
+  },
+  {
+    id: 'dictado_magico',
+    name: 'Dictado Mágico',
+    shortName: 'Dictado',
+    status: 'premium',
+    mode: 'social',
+    description: 'Contrarreloj auditivo. Escucha un fragmento clasificado del mundo mágico y transcríbelo en tu celular bajo intensa presión.',
+    rules: [
+      'Escucha con atención la anécdota loca reproducida en la TV.',
+      'Transcribe exactamente lo que escuches antes de que se agote el tiempo.',
+      'Gana puntos por precisión de parentesco o por el voto del Host si tu respuesta fue hilarante.'
+    ],
+    points: { min: 0, max: 1300, description: 'Hasta 1000 puntos por precisión (Sørensen-Dice) + 300 de bono por respuesta hilarante' },
+    durationSeconds: 60,
+    maxPlayers: 8,
+    maxPerHouse: 2,
+    enabled: true
   }
 ];

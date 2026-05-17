@@ -14,6 +14,7 @@ import { CopaFinal } from './copaFinal/index';
 import { BesoBodaMuerte } from './besoBodaMuerte/index';
 import { ElImpostor } from './elImpostor/index';
 import { ElTiburon } from './tiburon/index';
+import { ElDictado } from './dictado/index';
 
 export function createGameModule(gameId: GameId): GameModule | null {
   switch (gameId) {
@@ -47,6 +48,8 @@ export function createGameModule(gameId: GameId): GameModule | null {
       return new ElImpostor();
     case 'el_tiburon':
       return new ElTiburon();
+    case 'dictado_magico':
+      return new ElDictado();
     default:
       return null;
   }

@@ -256,6 +256,8 @@ socket.on('game_player_state', (data) => {
     renderImpostorInput(data);
   } else if (currentGameId === 'el_tiburon') {
     renderTiburonInput(data);
+  } else if (currentGameId === 'dictado_magico') {
+    renderDictadoInput(data);
   } else if (currentGameId === 'atrapa_snitch') {
     showMobileView('snitch-input');
   } else if (currentGameId === 'duelo_hechizos') {
@@ -1047,5 +1049,124 @@ function renderTiburonInput(data) {
                 showMobileView('answer-sent');
             }
         };
+    }
+}
+
+function renderDictadoInput(data) {
+    if (data.phase === 'results') {
+        showMobileView('answer-sent');
+        return;
+    }
+
+    if (data.phase === 'voting_host') {
+        showMobileView('dictado-input');
+        document.getElementById('dictado-mobile-playing').style.display = 'none';
+
+        if (data.isHost) {
+            document.getElementById('dictado-mobile-voting-host').style.display = 'flex';
+            const container = document.getElementById('dictado-submissions-list');
+            container.innerHTML = '';
+
+            const subs = data.submissions || [];
+            if (subs.length === 0) {
+                container.innerHTML = '<p style="color:white; text-align:center;">No hay transcripciones para evaluar.</p>';
+            }
+
+            subs.forEach(sub => {
+                const card = document.createElement('div');
+                card.className = 'glass-panel';
+                card.style.padding = '1rem';
+                card.style.border = '1px solid var(--color-accent)';
+                card.style.borderRadius = '12px';
+                card.style.display = 'flex';
+                card.style.flexDirection = 'column';
+                card.style.gap = '0.5rem';
+
+                card.innerHTML = `
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <span style="color:var(--color-accent); font-weight:bold;">${escapeHTML(sub.playerName || 'Mago')}</span>
+                        <span style="color:#10b981; font-size:0.9rem;">Precisión: ${sub.similarity}%</span>
+                    </div>
+                    <div style="color:white; font-style:italic; font-size:1.1rem; background:rgba(0,0,0,0.4); padding:0.8rem; border-radius:8px;">
+                        "${escapeHTML(sub.transcription || '(Sin respuesta)')}"
+                    </div>
+                `;
+
+                const btnFunny = document.createElement('button');
+                btnFunny.className = 'btn-join-premium';
+                btnFunny.style.padding = '0.8rem';
+                btnFunny.style.fontSize = '1rem';
+                btnFunny.style.marginTop = '0.5rem';
+                
+                if (sub.isFunny) {
+                    btnFunny.textContent = '✅ Bono Hilarante Otorgado (+300)';
+                    btnFunny.style.background = '#d4af37';
+                    btnFunny.style.borderColor = '#b4932b';
+                    btnFunny.disabled = true;
+                } else {
+                    btnFunny.textContent = '😂 ¡Respuesta Hilarante! (+300)';
+                    btnFunny.onclick = () => {
+                        socket.emit('player_action', { type: 'award_funny', targetClientId: sub.clientId });
+                        btnFunny.textContent = '✅ Bono Hilarante Otorgado (+300)';
+                        btnFunny.style.background = '#d4af37';
+                        btnFunny.style.borderColor = '#b4932b';
+                        btnFunny.disabled = true;
+                    };
+                }
+
+                card.appendChild(btnFunny);
+                container.appendChild(card);
+            });
+
+            const btnFinish = document.getElementById('btn-dictado-finish-voting');
+            if (btnFinish) {
+                btnFinish.onclick = () => {
+                    socket.emit('host_action', { action: 'next' });
+                };
+            }
+
+        } else {
+            document.getElementById('dictado-mobile-voting-host').style.display = 'none';
+            showMobileView('answer-sent');
+            const waitText = document.querySelector('#answer-sent .status-text');
+            if (waitText) {
+                waitText.innerHTML = '<strong>El Host está evaluando</strong><br>Decidiendo qué respuestas fueron las más hilarantes...';
+            }
+        }
+        return;
+    }
+
+    if (data.phase === 'playing') {
+        if (data.alreadySubmitted) {
+            showMobileView('answer-sent');
+            const waitText = document.querySelector('#answer-sent .status-text');
+            if (waitText) {
+                waitText.innerHTML = '<strong>Transcripción Enviada</strong><br>Espera a que termine el tiempo del dictado.';
+            }
+            return;
+        }
+
+        showMobileView('dictado-input');
+        document.getElementById('dictado-mobile-playing').style.display = 'flex';
+        document.getElementById('dictado-mobile-voting-host').style.display = 'none';
+
+        const textarea = document.getElementById('dictado-textarea');
+        if (textarea) {
+            textarea.value = '';
+            textarea.focus();
+        }
+
+        const btnSubmit = document.getElementById('btn-dictado-submit');
+        if (btnSubmit) {
+            btnSubmit.onclick = () => {
+                const textVal = textarea ? textarea.value.trim() : '';
+                socket.emit('player_action', { type: 'submit_dictado', transcription: textVal });
+                showMobileView('answer-sent');
+                const waitText = document.querySelector('#answer-sent .status-text');
+                if (waitText) {
+                    waitText.innerHTML = '<strong>Transcripción Enviada</strong><br>Espera a que termine el tiempo del dictado.';
+                }
+            };
+        }
     }
 }

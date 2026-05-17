@@ -18,6 +18,7 @@
     "cierre_ganador":         "assets/audio/voice_lines/13_cierre_ganador_sombrero.mp3",
     "beso_boda_muerte":       "assets/audio/voice_lines/14_beso_boda_muerte_luna.mp3",
     "el_impostor":            "assets/audio/voice_lines/15_impostor_sombrero.mp3",
-    "el_tiburon":             "assets/audio/voice_lines/tiburon_intro.mp3"
+    "el_tiburon":             "assets/audio/voice_lines/tiburon_intro.mp3",
+    "dictado_magico":         "assets/audio/voice_lines/dictado_intro.mp3"
   }
 }

@@ -365,5 +365,27 @@ export const INSTRUCTION_CATALOG: Record<GameId, Instruction> = {
     scoring: "Autores del invento ganador: +300. Retorno de inversión para los tiburones que apostaron por el ganador.",
     voiceSlot: "instructions_el_tiburon",
     startButton: "Abrir Negocios Mágicos"
+  },
+  dictado_magico: {
+    title: "Dictado Mágico",
+    subtitle: "Contrarreloj auditivo. Pon a prueba la velocidad de tus pulgares y tu oído mágico.",
+    rules: [
+      "Escucha con atención la anécdota loca reproducida en la TV.",
+      "Transcribe exactamente lo que escuches en tu celular antes de que se agote el tiempo.",
+      "Gana puntos por precisión de parentesco o por el voto del Host si tu respuesta fue hilarante."
+    ],
+    tvInstructions: [
+      "Reproduce el audio clasificado del mundo mágico y muestra el tiempo restante.",
+      "Muestra la fase de votación del Host para las respuestas graciosas.",
+      "Revela el ranking final de precisión y puntajes."
+    ],
+    mobileInstructions: [
+      "Escribe frenéticamente lo que escuches en el cuadro de texto.",
+      "No te preocupes por mayúsculas o acentos, el Ministerio los filtrará.",
+      "Si eres el Host, premia las respuestas más hilarantes al final."
+    ],
+    scoring: "Hasta 1000 puntos por precisión de parentesco (Sørensen-Dice) + 300 puntos de bono por respuesta hilarante.",
+    voiceSlot: "dictado_intro",
+    startButton: "Iniciar Dictado"
   }
 };
