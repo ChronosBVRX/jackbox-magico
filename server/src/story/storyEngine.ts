@@ -58,16 +58,23 @@ export class StoryEngine {
       
       const nextStep = story.steps[state.currentStepIndex];
       if (nextStep.type === 'minigame_random') {
-        state.selectedMinigame = this.pickRandomMinigame(state, nextStep.pool);
+        if (state.pendingMinigame) {
+          state.selectedMinigame = state.pendingMinigame;
+          state.pendingMinigame = null;
+        } else {
+          state.selectedMinigame = this.pickRandomMinigame(state, nextStep.pool);
+        }
       } else if (nextStep.type === 'fixed_minigame') {
         state.selectedMinigame = nextStep.gameId;
       } else if (nextStep.type === 'instructions') {
         if (nextStep.instructionGameId === 'random') {
           const picked = this.pickRandomMinigame(state, (nextStep as any).pool);
           state.selectedMinigame = picked;
+          state.pendingMinigame = picked;
           nextStep.instructionGameId = picked;
         } else {
           state.selectedMinigame = nextStep.instructionGameId;
+          state.pendingMinigame = nextStep.instructionGameId;
         }
       } else if (nextStep.type === 'copa_final') {
         state.selectedMinigame = 'copa_final';

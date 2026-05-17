@@ -826,7 +826,23 @@ socket.on('room_created', (code) => {
     qrImg.width = 220;
     qrImg.height = 220;
     qrImg.src = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&margin=12&data=${encodeURIComponent(mobileUrl)}`;
+    
+    const qrFallback = document.createElement('div');
+    qrFallback.className = 'qr-fallback';
+    qrFallback.style.marginTop = '0.5rem';
+    qrFallback.style.fontSize = '1.1rem';
+    qrFallback.style.color = 'var(--color-text-dim)';
+    qrFallback.style.textAlign = 'center';
+    qrFallback.innerHTML = `Entra a: <strong style="color: white;">${window.location.origin}/mobile</strong><br>Código: <strong style="color: var(--color-accent); font-size: 1.3rem;">${code}</strong>`;
+    
+    qrImg.onerror = () => {
+      qrImg.style.display = 'none';
+      qrFallback.style.fontSize = '1.4rem';
+      qrFallback.innerHTML = `⚠️ Error cargando QR.<br>Entra a: <strong style="color: white;">${window.location.origin}/mobile</strong><br>Código: <strong style="color: var(--color-accent); font-size: 1.8rem;">${code}</strong>`;
+    };
+
     qrContainer.appendChild(qrImg);
+    qrContainer.appendChild(qrFallback);
   }
 });
 

@@ -286,7 +286,7 @@ export function setupSocketServer(httpServer: HttpServer) {
         if (gameId) {
           const module = createGameModule(gameId as any);
           if (module) {
-            const state = module.init(room.players);
+            const state = module.init(room.players, nextStep);
             if (room.storyState?.config?.timerSpeed && state.durationMs) {
               state.durationMs = Math.round(state.durationMs * room.storyState.config.timerSpeed);
             }
@@ -370,6 +370,50 @@ export function setupSocketServer(httpServer: HttpServer) {
           
           if (room?.status === 'playing' && room.storyState) {
             // Story mode: return to story engine
+            roomEngine.setRoomStatus(roomCode, 'story');
+            roomEngine.setCurrentGameId(roomCode, null);
+            
+            const nextStoryState = storyEngine.nextStep(room.storyState);
+            roomEngine.setStoryState(roomCode, nextStoryState);
+
+            updateGameClients(roomCode);
+          } else {
+            roomEngine.resetRoomToLobby(roomCode);
+            const r = roomEngine.getRoom(roomCode);
+            if (r) io.to(roomCode).emit('room_state', r);
+          }
+        } else {
+          updateGameClients(roomCode);
+        }
+      }
+    });
+
+    socket.on('host_action', (data) => {
+      const { roomCode, clientId } = socket.data;
+      if (!roomCode || !clientId) return;
+
+      const game = activeGames.get(roomCode);
+      if (game) {
+        const player = roomEngine.getPlayer(roomCode, clientId);
+        if (!player || !player.isHost) return;
+
+        const result = game.module.handleHostAction(game.state, data?.action || 'next');
+        game.state = result.state;
+        
+        if (result.pointEvents) {
+          roomEngine.applyPointEvents(roomCode, result.pointEvents);
+
+          io.to(roomCode).emit('scoreboard_state' as any, {
+            players: roomEngine.getScoreboard(roomCode),
+            houses: roomEngine.getHouseScoreboard(roomCode)
+          });
+        }
+
+        if (result.finished) {
+          activeGames.delete(roomCode);
+          const room = roomEngine.getRoom(roomCode);
+          
+          if (room?.status === 'playing' && room.storyState) {
             roomEngine.setRoomStatus(roomCode, 'story');
             roomEngine.setCurrentGameId(roomCode, null);
             

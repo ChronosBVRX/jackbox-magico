@@ -19,11 +19,12 @@ export class TriviaMagica implements GameModule {
   id = 'trivia_magica' as const;
   name = 'Trivia del Mundo Mágico';
 
-  init(players: Player[]): TriviaState {
+  init(players: Player[], options?: any): TriviaState {
+    const totalRounds = options?.questionCount || 5;
     const firstQuestion = triviaQuestions[Math.floor(Math.random() * triviaQuestions.length)];
     return {
       roundNumber: 1,
-      totalRounds: 5,
+      totalRounds,
       currentQuestion: firstQuestion,
       answeredClients: new Set(),
       roundAnswers: [],
@@ -162,7 +163,8 @@ export class TriviaMagica implements GameModule {
 
     return { 
       state,
-      events: [{ type: 'round_results', payload: state.results, target: 'all' }]
+      events: [{ type: 'round_results', payload: state.results, target: 'all' }],
+      pointEvents
     };
   }
 }

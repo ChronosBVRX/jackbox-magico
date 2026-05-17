@@ -25,7 +25,7 @@ export class DueloHechizos implements GameModule {
   id = 'duelo_hechizos' as const;
   name = 'Duelo de Hechizos';
 
-  init(players: Player[]): DueloState {
+  init(players: Player[], options?: any): DueloState {
     // Pick 2 random players (prefer different houses if possible)
     const shuffled = [...players].sort(() => Math.random() - 0.5);
     const duelists = shuffled.slice(0, 2);
@@ -118,13 +118,13 @@ export class DueloHechizos implements GameModule {
     if (!c1) {
       state.phase = 'results';
       state.results = { winner: p2.name, message: `${p1.name} no lanzó nada.` };
-      return { state };
+      return { state, pointEvents: [{ clientId: p2.clientId, points: 100, reason: '+100 Victoria por Abandono' }] };
     }
 
     if (!c2) {
       state.phase = 'results';
       state.results = { winner: p1.name, message: `${p2.name} no lanzó nada.` };
-      return { state };
+      return { state, pointEvents: [{ clientId: p1.clientId, points: 100, reason: '+100 Victoria por Abandono' }] };
     }
 
     if (c1.spell === c2.spell) {
@@ -142,7 +142,7 @@ export class DueloHechizos implements GameModule {
       spells: { [p1.clientId]: c1.spell, [p2.clientId]: c2.spell }
     };
 
-    return { state };
+    return { state, pointEvents: [{ clientId: winner.clientId, points: 150, reason: '+150 Victoria en Duelo' }] };
   }
 
   private resolveClash(state: DueloState): GameUpdateResult {
@@ -162,6 +162,8 @@ export class DueloHechizos implements GameModule {
       taps: { [p1.clientId]: t1, [p2.clientId]: t2 }
     };
 
-    return { state };
+    const pointEvents = winner ? [{ clientId: winner.clientId, points: 200, reason: '+200 Victoria en Choque de Poder' }] : [];
+
+    return { state, pointEvents };
   }
 }

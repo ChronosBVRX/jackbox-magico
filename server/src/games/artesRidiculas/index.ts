@@ -18,11 +18,12 @@ export class ArtesRidiculas implements GameModule {
   id = 'artes_ridiculas' as const;
   name = 'Defensa Contra las Artes Ridículas';
 
-  init(players: Player[]): ArtesState {
+  init(players: Player[], options?: any): ArtesState {
+    const totalRounds = options?.questionCount || 3;
     const firstThreat = THREAT_POOL.filter(t => t.difficulty === 'facil')[Math.floor(Math.random() * THREAT_POOL.filter(t => t.difficulty === 'facil').length)];
     return {
       roundNumber: 1,
-      totalRounds: 3,
+      totalRounds,
       currentThreat: firstThreat,
       answeredClients: new Map(),
       startedAt: Date.now(),
@@ -163,7 +164,8 @@ export class ArtesRidiculas implements GameModule {
 
     return { 
       state,
-      events: [{ type: 'round_results', payload: state.results, target: 'all' }]
+      events: [{ type: 'round_results', payload: state.results, target: 'all' }],
+      pointEvents
     };
   }
 }

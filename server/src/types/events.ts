@@ -75,6 +75,7 @@ export interface ClientToServerEvents {
   tv_story_next: () => void;
   answer_submit: (data: { answer: string }) => void;
   player_action: (data: any) => void;
+  host_action: (data: { action: string }) => void;
   tv_next_round: () => void;
   tv_back_to_lobby: () => void;
   tv_close_room: () => void;

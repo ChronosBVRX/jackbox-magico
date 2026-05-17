@@ -41,7 +41,7 @@ export interface GameModule {
   /**
    * Initializes the game state
    */
-  init(players: Player[]): any;
+  init(players: Player[], options?: any): any;
 
   /**
    * Data sent to the TV (public)

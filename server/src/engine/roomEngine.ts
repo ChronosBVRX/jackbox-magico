@@ -42,29 +42,44 @@ export class RoomEngine {
       return { success: false, error: 'Sala llena (máximo 8 jugadores)' };
     }
 
+    if (!playerData.name || !playerData.name.trim()) {
+      return { success: false, error: 'El nombre es obligatorio' };
+    }
+    const cleanName = playerData.name.trim().substring(0, 20);
+
+    const validHouses = ['Gryffindor', 'Slytherin', 'Ravenclaw', 'Hufflepuff'];
+    const validHouse = validHouses.includes(playerData.house) ? playerData.house : 'Gryffindor';
+
+    const validGenders = ['wizard', 'witch'];
+    const validGender = validGenders.includes(playerData.gender) ? playerData.gender : 'wizard';
+
+    const sanitizedData = { ...playerData, name: cleanName, house: validHouse, gender: validGender as any };
+
     // Regla: Máximo 2 por casa
-    const houseCount = room.players.filter(p => p.house === playerData.house).length;
+    const houseCount = room.players.filter(p => p.house === sanitizedData.house).length;
     if (houseCount >= 2) {
-      return { success: false, error: `La casa ${playerData.house} ya tiene 2 miembros` };
+      return { success: false, error: `La casa ${sanitizedData.house} ya tiene 2 miembros` };
     }
 
     // Verificar si el jugador ya existe (por clientId)
-    const existingPlayer = room.players.find(p => p.clientId === playerData.clientId);
+    const existingPlayer = room.players.find(p => p.clientId === sanitizedData.clientId);
     if (existingPlayer) {
       existingPlayer.isConnected = true;
-      existingPlayer.name = playerData.name; 
+      existingPlayer.name = sanitizedData.name;
+      existingPlayer.house = sanitizedData.house;
+      existingPlayer.gender = sanitizedData.gender;
       return { success: true };
     }
 
     // Verificar nombre único
-    if (room.players.find(p => p.name.toLowerCase() === playerData.name.toLowerCase())) {
+    if (room.players.find(p => p.name.toLowerCase() === sanitizedData.name.toLowerCase())) {
       return { success: false, error: 'Ese nombre ya está en uso' };
     }
 
     const isHost = room.players.length === 0;
 
     room.players.push({
-      ...playerData,
+      ...sanitizedData,
       points: 0,
       streak: 0,
       isConnected: true,

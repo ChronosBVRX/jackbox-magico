@@ -122,7 +122,7 @@ export class ElTiburon implements GameModule {
   }
 
   handlePlayerAction(state: TiburonState, player: Player, action: any): GameUpdateResult {
-    if (action.type === 'submit_top' && state.phase === 'drawing_top') {
+    if ((action.type === 'submit_top' || action.type === 'tiburon_submit_draw') && state.phase === 'drawing_top') {
       const myCreation = state.creations[player.clientId];
       if (myCreation) {
         myCreation.topLines = action.lines || 'data:image/png;base64,';
@@ -130,7 +130,7 @@ export class ElTiburon implements GameModule {
       return { state, events: [{ type: 'answer_ack', payload: { success: true }, target: 'players' }] };
     }
 
-    if (action.type === 'submit_bottom' && state.phase === 'drawing_bottom') {
+    if ((action.type === 'submit_bottom' || action.type === 'tiburon_submit_draw') && state.phase === 'drawing_bottom') {
       const myCreation = Object.values(state.creations).find(c => c.bottomAuthorId === player.clientId);
       if (myCreation) {
         myCreation.bottomLines = action.lines || 'data:image/png;base64,';
@@ -138,7 +138,7 @@ export class ElTiburon implements GameModule {
       return { state, events: [{ type: 'answer_ack', payload: { success: true }, target: 'players' }] };
     }
 
-    if (action.type === 'invest' && state.phase === 'pitching') {
+    if ((action.type === 'invest' || action.type === 'tiburon_invest') && state.phase === 'pitching') {
       const creationList = Object.values(state.creations);
       const currentCreation = creationList[state.currentPitchIndex];
       if (currentCreation) {

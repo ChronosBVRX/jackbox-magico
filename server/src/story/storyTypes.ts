@@ -52,6 +52,7 @@ export type StoryState = {
   usedMinigames: GameId[];
   recentMinigames: GameId[];
   selectedMinigame?: GameId | null;
+  pendingMinigame?: GameId | null;
   storyCompleted: boolean;
   config?: any;
 };
