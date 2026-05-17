@@ -7,7 +7,7 @@ export class AtrapaSnitch implements GameModule {
   name = 'Atrapa la Snitch';
 
   private readonly MAX_ATTEMPTS = 15;
-  private readonly LAG_COMPENSATION_MS = 80;
+  private readonly LAG_COMPENSATION_MS = 150;
 
   init(players: Player[]): SnitchState {
     const durationMs = 25000;
@@ -39,12 +39,17 @@ export class AtrapaSnitch implements GameModule {
       Hufflepuff: 0
     };
 
+    // Para el marcador en vivo en TV, tomamos la mejor captura de cada jugador
+    const bestByClient: { [clientId: string]: { house: string; points: number } } = {};
     state.catches.forEach(c => {
-      const h = c.house || 'Gryffindor';
-      if (houseScores[h] !== undefined) {
-        houseScores[h] += c.points;
-      } else {
-        houseScores[h] = c.points;
+      if (!bestByClient[c.clientId] || c.points > bestByClient[c.clientId].points) {
+        bestByClient[c.clientId] = { house: c.house || 'Gryffindor', points: c.points };
+      }
+    });
+
+    Object.values(bestByClient).forEach(b => {
+      if (houseScores[b.house] !== undefined) {
+        houseScores[b.house] += b.points;
       }
     });
 
@@ -125,10 +130,11 @@ export class AtrapaSnitch implements GameModule {
         
         state.catches.forEach(c => {
           if (!playerMap[c.clientId]) {
-            playerMap[c.clientId] = { name: c.playerName, house: c.house, points: 0, bestCatch: c.label };
+            playerMap[c.clientId] = { name: c.playerName, house: c.house, points: c.points, bestCatch: c.label };
+          } else if (c.points > playerMap[c.clientId].points) {
+            playerMap[c.clientId].points = c.points;
+            playerMap[c.clientId].bestCatch = c.label;
           }
-          playerMap[c.clientId].points += c.points;
-          if (c.points > 100) playerMap[c.clientId].bestCatch = c.label;
         });
 
         const ranking = Object.values(playerMap).sort((a, b) => b.points - a.points);
@@ -149,12 +155,12 @@ export class AtrapaSnitch implements GameModule {
         };
 
         const pointEvents: any[] = [];
-        state.catches.forEach(c => {
+        Object.entries(playerMap).forEach(([clientId, data]) => {
           pointEvents.push({
-            clientId: c.clientId,
-            points: c.points,
+            clientId,
+            points: data.points,
             gameId: 'atrapa_snitch',
-            label: c.label
+            label: data.bestCatch
           });
         });
 
@@ -227,10 +233,10 @@ export class AtrapaSnitch implements GameModule {
   }
 
   private calculateCatchResult(distance: number): { points: number, label: string } {
-    if (distance <= 3.8) return { points: 180, label: '¡AGARRE BUCAL! (Te tragaste la Snitch como Harry en su 1er año)' };
-    if (distance <= 6.0) return { points: 130, label: '¡MANIOBRA WRONSKI! (Casi te rompes la crisma, pero la tienes)' };
-    if (distance <= 9.8) return { points: 90, label: '¡ROZANDO LAS ALAS! (Le arrancaste una pluma dorada)' };
-    if (distance <= 14.8) return { points: 45, label: '¡AGARRE DE AXILA! (Atrapada de milagro, el árbitro duda)' };
+    if (distance <= 4.5) return { points: 180, label: '¡AGARRE BUCAL! (Te tragaste la Snitch como Harry en su 1er año)' };
+    if (distance <= 7.0) return { points: 130, label: '¡MANIOBRA WRONSKI! (Casi te rompes la crisma, pero la tienes)' };
+    if (distance <= 11.5) return { points: 90, label: '¡ROZANDO LAS ALAS! (Le arrancaste una pluma dorada)' };
+    if (distance <= 16.5) return { points: 45, label: '¡AGARRE DE AXILA! (Atrapada de milagro, el árbitro duda)' };
     return { points: 0, label: '¡BLUDGER EN LA CARA! (Atrapaste una mosca gorda en lugar de la Snitch)' };
   }
 }

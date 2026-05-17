@@ -1515,6 +1515,16 @@ function renderSnitchView(data) {
       zone.style.top = zonePos.y + '%';
     }
 
+    const elapsed = now - data.startedAt;
+    const remaining = Math.max(0, data.durationMs - elapsed);
+    const percent = (remaining / data.durationMs) * 100;
+    const seconds = Math.ceil(remaining / 1000);
+
+    const timerBar = document.getElementById('snitch-timer-bar');
+    const timerCount = document.getElementById('snitch-timer-count');
+    if (timerBar) timerBar.style.width = percent + '%';
+    if (timerCount) timerCount.textContent = seconds;
+
     snitchAnimFrame = requestAnimationFrame(animate);
   }
   animate();
