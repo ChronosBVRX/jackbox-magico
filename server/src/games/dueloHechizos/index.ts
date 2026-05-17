@@ -12,13 +12,18 @@ const RULES: Record<Spell, Spell> = {
 };
 
 interface DueloState {
+  roundNumber: number;
+  totalRounds: number;
   phase: 'selection' | 'clash' | 'results';
   duelists: Player[];
+  usedDuelistIds: string[];
+  usedHouses: string[];
   choices: Map<string, { spell: Spell, elapsedMs: number }>;
   clashTaps: Map<string, number>;
   startedAt: number;
   durationMs: number;
   results: any | null;
+  allPlayers: Player[];
 }
 
 export class DueloHechizos implements GameModule {
@@ -26,23 +31,77 @@ export class DueloHechizos implements GameModule {
   name = 'Duelo de Hechizos';
 
   init(players: Player[], options?: any): DueloState {
-    // Pick 2 random players (prefer different houses if possible)
-    const shuffled = [...players].sort(() => Math.random() - 0.5);
-    const duelists = shuffled.slice(0, 2);
+    const totalRounds = 2;
+    const usedDuelistIds: string[] = [];
+    const usedHouses: string[] = [];
+
+    const duelists = this.pickDuelists(players, usedDuelistIds, usedHouses);
+    duelists.forEach(d => {
+      usedDuelistIds.push(d.clientId);
+      if (d.house && !usedHouses.includes(d.house)) usedHouses.push(d.house);
+    });
 
     return {
+      roundNumber: 1,
+      totalRounds,
       phase: 'selection',
       duelists,
+      usedDuelistIds,
+      usedHouses,
       choices: new Map(),
       clashTaps: new Map(),
       startedAt: Date.now(),
-      durationMs: 7000,
-      results: null
+      durationMs: 12000,
+      results: null,
+      allPlayers: players
     };
+  }
+
+  private pickDuelists(players: Player[], usedIds: string[], usedHouses: string[]): Player[] {
+    const available = players.filter(p => !usedIds.includes(p.clientId));
+    if (available.length < 2) {
+      const shuffled = [...players].sort(() => Math.random() - 0.5);
+      return shuffled.slice(0, 2);
+    }
+
+    const byHouse: { [house: string]: Player[] } = {};
+    available.forEach(p => {
+      const h = p.house || 'Gryffindor';
+      if (!byHouse[h]) byHouse[h] = [];
+      byHouse[h].push(p);
+    });
+
+    const unusedHouseNames = Object.keys(byHouse).filter(h => !usedHouses.includes(h));
+    
+    let houseA: string;
+    let houseB: string;
+
+    if (unusedHouseNames.length >= 2) {
+      const shuffledHouses = [...unusedHouseNames].sort(() => Math.random() - 0.5);
+      houseA = shuffledHouses[0];
+      houseB = shuffledHouses[1];
+    } else if (Object.keys(byHouse).length >= 2) {
+      const shuffledHouses = Object.keys(byHouse).sort(() => Math.random() - 0.5);
+      houseA = shuffledHouses[0];
+      houseB = shuffledHouses[1];
+    } else {
+      const h = Object.keys(byHouse)[0];
+      houseA = h; houseB = h;
+    }
+
+    const p1List = byHouse[houseA];
+    const p1 = p1List[Math.floor(Math.random() * p1List.length)];
+    
+    const p2List = houseA === houseB ? p1List.filter(p => p.clientId !== p1.clientId) : byHouse[houseB];
+    const p2 = p2List.length > 0 ? p2List[Math.floor(Math.random() * p2List.length)] : available.find(p => p.clientId !== p1.clientId)!;
+
+    return [p1, p2];
   }
 
   getTvState(state: DueloState) {
     return {
+      roundNumber: state.roundNumber,
+      totalRounds: state.totalRounds,
       phase: state.phase,
       duelists: state.duelists.map(p => ({ name: p.name, house: p.house, clientId: p.clientId })),
       choiceCount: state.choices.size,
@@ -56,6 +115,8 @@ export class DueloHechizos implements GameModule {
   getPlayerState(state: DueloState, player: Player) {
     const isDuelist = state.duelists.some(d => d.clientId === player.clientId);
     return {
+      roundNumber: state.roundNumber,
+      totalRounds: state.totalRounds,
       phase: state.phase,
       isDuelist,
       alreadyChosen: state.choices.has(player.clientId),
@@ -74,7 +135,6 @@ export class DueloHechizos implements GameModule {
         elapsedMs: Date.now() - state.startedAt 
       });
 
-      // If both duelists chosen, we could resolve early or wait for host
       return { 
         state, 
         events: [{ type: 'answer_ack', payload: { success: true }, target: 'players' }]
@@ -96,10 +156,35 @@ export class DueloHechizos implements GameModule {
         return this.resolveSelection(state);
       } else if (state.phase === 'clash') {
         return this.resolveClash(state);
-      } else {
-        return { state, finished: true };
+      } else if (state.phase === 'results') {
+        if (state.roundNumber < state.totalRounds) {
+          return this.startNextRound(state);
+        } else {
+          return { state, finished: true };
+        }
       }
     }
+    return { state };
+  }
+
+  private startNextRound(state: DueloState): GameUpdateResult {
+    state.roundNumber++;
+    state.phase = 'selection';
+    state.choices.clear();
+    state.clashTaps.clear();
+    state.results = null;
+
+    const newDuelists = this.pickDuelists(state.allPlayers, state.usedDuelistIds, state.usedHouses);
+    state.duelists = newDuelists;
+    newDuelists.forEach(d => {
+      state.usedDuelistIds.push(d.clientId);
+      if (d.house && !state.usedHouses.includes(d.house)) {
+        state.usedHouses.push(d.house);
+      }
+    });
+    state.startedAt = Date.now();
+    state.durationMs = 12000;
+
     return { state };
   }
 

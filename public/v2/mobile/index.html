@@ -92,7 +92,17 @@
 
     <!-- Duelo Hechizos Input -->
     <div class="game-view glass-panel mobile-view" id="duelo-input" style="display: none; padding: 1rem;">
-      <h2 style="text-align: center; margin-bottom: 1rem;">Elige Hechizo</h2>
+      <h2 style="text-align: center; margin-bottom: 0.5rem;">Elige Hechizo</h2>
+      <div style="background: rgba(0,0,0,0.4); border: 1px solid var(--color-accent); padding: 0.8rem; border-radius: 12px; margin-bottom: 1.2rem; font-size: 0.85rem; line-height: 1.4; text-align: center;">
+        <div style="color: var(--color-accent); font-weight: bold; margin-bottom: 0.4rem; text-transform: uppercase;">📜 Tabla de Ventajas</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 0.4rem; text-align: left; padding: 0 0.5rem;">
+          <div>🔴 <strong>Expelliarmus</strong> &gt; Rictusempra</div>
+          <div>🔵 <strong>Protego</strong> &gt; Expelliarmus</div>
+          <div>🟡 <strong>Stupefy</strong> &gt; Protego</div>
+          <div>🟢 <strong>Esquivar</strong> &gt; Stupefy</div>
+          <div style="grid-column: span 2; text-align: center;">🟣 <strong>Rictusempra</strong> &gt; Esquivar</div>
+        </div>
+      </div>
       <div class="duelo-grid">
         <button class="btn-duelo" data-spell="Expelliarmus">Expelliarmus</button>
         <button class="btn-duelo" data-spell="Protego">Protego</button>

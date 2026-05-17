@@ -1572,22 +1572,28 @@ function renderDueloView(data) {
     const d1 = document.getElementById('duelist-1');
     const d2 = document.getElementById('duelist-2');
     const meter = document.getElementById('clash-meter');
+    const rulesTable = document.getElementById('duelo-rules-table');
+
+    const roundInfo = data.totalRounds ? ` (Duelo ${data.roundNumber}/${data.totalRounds})` : '';
 
     d1.innerHTML = `<h3>${data.duelists[0].name}</h3><p>${data.duelists[0].house}</p>`;
     d2.innerHTML = `<h3>${data.duelists[1].name}</h3><p>${data.duelists[1].house}</p>`;
 
     if (data.phase === 'selection') {
-        status.textContent = `Esperando hechizos... (${data.choiceCount}/2)`;
+        status.textContent = `Esperando hechizos... (${data.choiceCount}/2)${roundInfo}`;
         meter.style.display = 'none';
+        if (rulesTable) rulesTable.style.display = 'block';
     } else if (data.phase === 'clash') {
-        status.textContent = '¡CHOQUE DE VARITAS! ¡PRESIONA RÁPIDO!';
+        status.textContent = `¡CHOQUE DE VARITAS! ¡PRESIONA RÁPIDO!${roundInfo}`;
         meter.style.display = 'flex';
+        if (rulesTable) rulesTable.style.display = 'none';
         const total = (data.clashTaps[data.duelists[0].clientId] || 0) + (data.clashTaps[data.duelists[1].clientId] || 0) || 1;
         document.getElementById('clash-bar-1').style.width = ((data.clashTaps[data.duelists[0].clientId] || 0) / total * 100) + '%';
         document.getElementById('clash-bar-2').style.width = ((data.clashTaps[data.duelists[1].clientId] || 0) / total * 100) + '%';
     } else if (data.phase === 'results') {
-        status.innerHTML = `<span style="color:var(--color-accent)">${data.results.winner} GANA</span><br><small>${data.results.message}</small>`;
+        status.innerHTML = `<span style="color:var(--color-accent)">${data.results.winner} GANA${roundInfo}</span><br><small>${data.results.message}</small>`;
         meter.style.display = 'none';
+        if (rulesTable) rulesTable.style.display = 'none';
     }
 }
 
