@@ -96,10 +96,8 @@ const SelectionManager = {
             ...stories.map(s => ({ ...s, type: 'story' }))
         ];
         this.currentIndex = 0;
-        this.render();
-        this.updateDetails();
         this.active = true;
-        showView('view-selection');
+        this.showPreamble(this.items[0]);
     },
 
     render() {
@@ -352,11 +350,17 @@ const NavigationManager = {
             this.currentIndex = (this.currentIndex + 1) % this.elements.length;
         }
         this.highlight();
+        if (window.VoiceManagerV2) {
+            window.VoiceManagerV2.playUISound('/assets/audio/ui/ui_hover_' + (Math.floor(Math.random() * 4) + 1) + '.mp3');
+        }
     },
 
     confirm() {
         const el = this.elements[this.currentIndex];
         if (el) {
+            if (window.VoiceManagerV2) {
+                window.VoiceManagerV2.playUISound('/assets/audio/ui/ui_confirm.mp3');
+            }
             if (el.classList.contains('selection-card')) {
                 SelectionManager.select();
             } else {
@@ -610,7 +614,10 @@ function showLoadingScreen(message, progress = 0) {
 const btnShowSelection = document.getElementById('btn-show-selection');
 if (btnShowSelection) {
     btnShowSelection.onclick = () => {
-        if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
+        if (window.VoiceManagerV2) {
+            window.VoiceManagerV2.unlock();
+            window.VoiceManagerV2.playUISound('/assets/audio/ui/ui_select.mp3');
+        }
         if (window.MusicManager) window.MusicManager.play();
         SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
     };
@@ -632,7 +639,10 @@ if (btnNextRound) {
 const btnSelectAdventure = document.getElementById('btn-select-adventure');
 if (btnSelectAdventure) {
   btnSelectAdventure.addEventListener('click', () => {
-    if (window.VoiceManagerV2) window.VoiceManagerV2.unlock();
+    if (window.VoiceManagerV2) {
+        window.VoiceManagerV2.unlock();
+        window.VoiceManagerV2.playUISound('/assets/audio/ui/ui_select.mp3');
+    }
     SelectionManager.init(STORY_CATALOG_FRONT, GAME_CATALOG_FRONT);
   });
 }
@@ -667,10 +677,16 @@ safeSetClick('btn-cancel-story', () => {
 });
 
 safeSetClick('btn-preamble-back', () => {
-    showView('view-selection');
+    if (window.VoiceManagerV2) window.VoiceManagerV2.playUISound('/assets/audio/ui/ui_back.mp3');
+    if (currentRoom) {
+        showView('view-lobby');
+    } else {
+        showView('view-init');
+    }
 });
 
 safeSetClick('btn-preamble-confirm', () => {
+    if (window.VoiceManagerV2) window.VoiceManagerV2.playUISound('/assets/audio/ui/ui_transition.mp3');
     SelectionManager.confirmSelection();
 });
 

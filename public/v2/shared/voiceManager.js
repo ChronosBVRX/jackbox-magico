@@ -324,6 +324,17 @@ window.VoiceManagerV2 = (function() {
         addToQueue({ path, interrupt: options.interrupt, force: options.force });
     }
 
+    function playUISound(path) {
+        if (!audioUnlocked || !isVoiceEnabled()) return;
+        try {
+            const audio = new Audio(path);
+            audio.volume = 0.8;
+            audio.play().catch(err => console.warn("VoiceManagerV2: UI sound play error", err));
+        } catch (e) {
+            console.warn("VoiceManagerV2: UI sound init error", e);
+        }
+    }
+
     function addToQueue(item) {
         if (!audioUnlocked) {
             console.warn("VoiceManagerV2: Audio bloqueado. Esperando interacción.");
@@ -394,6 +405,7 @@ window.VoiceManagerV2 = (function() {
         interruptAndPlayInstruction,
         playWinnerVoice,
         playAudioFile,
+        playUISound,
         playVoiceSlot,
         getQueueLength: () => audioQueue.length,
         isProcessing: () => isProcessingQueue || !!currentAudio
