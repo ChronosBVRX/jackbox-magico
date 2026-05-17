@@ -43,7 +43,8 @@ export class ClasePociones implements GameModule {
       phase: state.phase,
       alreadySubmitted: !!state.answers[player.clientId],
       ingredients: state.availableIngredients.map(i => ({ id: i.id, emoji: i.emoji })),
-      mode: state.mode
+      mode: state.mode,
+      expectedCount: state.potion ? state.potion.ingredients.length : 4
     };
   }
 
@@ -85,8 +86,13 @@ export class ClasePociones implements GameModule {
       return { state, finished: true };
     }
 
-    const modes: PocionesState['mode'][] = ['normal', 'reverse', 'decoy', 'smoke', 'unstable'];
+    const modes: PocionesState['mode'][] = ['normal', 'reverse', 'unstable'];
     state.mode = modes[Math.floor(Math.random() * modes.length)];
+    if (state.mode === 'unstable') {
+      state.mixDurationMs = 10000;
+    } else {
+      state.mixDurationMs = 15000;
+    }
     
     const recipeLen = 3 + state.roundNumber;
     const recipeIngredients = this.getRandomIngredients(recipeLen);

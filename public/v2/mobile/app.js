@@ -230,15 +230,14 @@ document.getElementById('btn-clash').addEventListener('click', () => {
 
 let currentPocionSequence = [];
 
-// Pociones Submit
-document.getElementById('btn-pociones-submit').addEventListener('click', () => {
-    socket.emit('player_action', { sequence: currentPocionSequence });
-    currentPocionSequence = [];
-});
-
 document.getElementById('btn-pociones-clear').addEventListener('click', () => {
     currentPocionSequence = [];
     document.getElementById('pociones-sequence-preview').textContent = '';
+    const submitBtn = document.getElementById('btn-pociones-submit');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+    }
 });
 
 // GENERIC GAME PLAYER STATE
@@ -710,12 +709,23 @@ function renderSombreroVoting(data) {
     });
 }
 
+let currentExpectedCount = 4;
+
 function renderPocionesInput(data) {
     showMobileView('pociones-input');
+    currentPocionSequence = [];
+    document.getElementById('pociones-sequence-preview').textContent = '';
+    
+    currentExpectedCount = data.expectedCount || 4;
     const label = document.getElementById('pociones-mode-label');
-    if (data.mode === 'reverse') label.textContent = '¡PREPARA AL REVÉS!';
-    else if (data.mode === 'unstable') label.textContent = '¡PREPARA RÁPIDO!';
-    else label.textContent = 'Prepara la Poción';
+    const modeText = data.mode === 'reverse' ? '¡PREPARA AL REVÉS!' : (data.mode === 'unstable' ? '¡PREPARA RÁPIDO!' : 'Prepara la Poción');
+    label.textContent = `${modeText} (${currentExpectedCount} ing.)`;
+
+    const submitBtn = document.getElementById('btn-pociones-submit');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.style.opacity = '0.5';
+    }
 
     const grid = document.getElementById('pociones-ingredients');
     grid.innerHTML = '';
@@ -724,22 +734,31 @@ function renderPocionesInput(data) {
         btn.className = 'btn-ing';
         btn.textContent = ing.emoji;
         btn.onclick = () => {
-            currentPocionSequence.push(ing.id);
-            document.getElementById('pociones-sequence-preview').textContent += ing.emoji;
-            if (window.navigator?.vibrate) window.navigator.vibrate(30);
+            if (currentPocionSequence.length < currentExpectedCount) {
+                currentPocionSequence.push(ing.id);
+                document.getElementById('pociones-sequence-preview').textContent += ing.emoji;
+                if (window.navigator?.vibrate) window.navigator.vibrate(30);
+            }
+            if (currentPocionSequence.length >= currentExpectedCount && submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.style.opacity = '1.0';
+            }
         };
         grid.appendChild(btn);
     });
 }
 
 // Update Pociones Submit Listener
-document.getElementById('btn-pociones-submit').removeEventListener('click', null); // dummy cleanup
-document.getElementById('btn-pociones-submit').onclick = () => {
-    socket.emit('player_action', { type: 'potion_submit', selectedIngredientIds: currentPocionSequence });
-    currentPocionSequence = [];
-    document.getElementById('pociones-sequence-preview').textContent = '';
-    showMobileView('answer-sent');
-};
+const submitBtnEl = document.getElementById('btn-pociones-submit');
+if (submitBtnEl) {
+    submitBtnEl.onclick = () => {
+        if (currentPocionSequence.length < currentExpectedCount) return;
+        socket.emit('player_action', { type: 'potion_submit', selectedIngredientIds: currentPocionSequence });
+        currentPocionSequence = [];
+        document.getElementById('pociones-sequence-preview').textContent = '';
+        showMobileView('answer-sent');
+    };
+}
 
 socket.on('catch_result', (data) => {
     const feedback = document.getElementById('snitch-feedback');
