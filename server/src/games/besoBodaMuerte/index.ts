@@ -7,18 +7,18 @@ export class BesoBodaMuerte implements GameModule {
   name = 'Beso, Boda, Muerte';
 
   private readonly CHARACTERS_CATALOG: KMKCharacter[] = [
-    { id: 'snape', name: 'Severus Snape', movieTitle: 'Profesor de Pociones', description: 'El príncipe mestizo del champú ausente y el dramatismo en capa negra.', emoji: '🧪' },
-    { id: 'umbridge', name: 'Dolores Umbridge', movieTitle: 'Suma Inquisidora', description: 'La fanática del rosa, los gatitos de cerámica y los castigos con pluma de sangre.', emoji: '🐱' },
-    { id: 'voldemort', name: 'Lord Voldemort', movieTitle: 'El Señor Tenebroso', description: 'El mago tenebroso sin nariz que no entiende el concepto del amor ni del bloqueador solar.', emoji: '🐍' },
-    { id: 'bellatrix', name: 'Bellatrix Lestrange', movieTitle: 'Mortífaga de Élite', description: 'La mortífaga más desquiciada, leal y con el peinado más alborotado del mundo mágico.', emoji: '🗡️' },
-    { id: 'dobby', name: 'Dobby', movieTitle: 'Elfo Libre', description: 'El elfo libre amante de los calcetines disparejos y de salvar a Harry Potter causándole conmociones cerebrales.', emoji: '🧦' },
-    { id: 'draco', name: 'Draco Malfoy', movieTitle: 'Príncipe de Slytherin', description: 'El hurón albino dramático que menciona a su padre cada cinco minutos.', emoji: '🍏' },
-    { id: 'hagrid', name: 'Rubeus Hagrid', movieTitle: 'Guardián de las Llaves', description: 'El gigante bonachón amante de los monstruos letales y los pasteles de cumpleaños aplastados.', emoji: '🎂' },
-    { id: 'lockhart', name: 'Gilderoy Lockhart', movieTitle: 'Celebridad Mágica', description: 'El cinco veces ganador de la sonrisa más encantadora y experto en borrar memorias ajenas.', emoji: '✨' },
-    { id: 'myrtle', name: 'Myrtle la Llorona', movieTitle: 'Fantasma de Hogwarts', description: 'La habitante más dramática y sensible del baño de chicas del segundo piso.', emoji: '👻' },
-    { id: 'filch', name: 'Argus Filch', movieTitle: 'Celador de Hogwarts', description: 'El celador amargado que sueña con colgar a los estudiantes de los pulgares en las mazmorras.', emoji: '🧹' },
-    { id: 'lucius', name: 'Lucius Malfoy', movieTitle: 'Aristócrata Sangre Pura', description: 'El fabuloso cabello platinado del mal y coleccionista de bastones con veneno.', emoji: '🦚' },
-    { id: 'pettigrew', name: 'Peter Pettigrew', movieTitle: 'Colagusano', description: 'El animago rata traicionero con una mano de plata y cero lealtad.', emoji: '🐀' }
+    { id: 'snape', name: 'Severus Snape', movieTitle: 'Profesor de Pociones', description: 'El príncipe mestizo del champú ausente y el dramatismo en capa negra.', emoji: '🧪', image: '/assets/images/characters/snape.png' },
+    { id: 'umbridge', name: 'Dolores Umbridge', movieTitle: 'Suma Inquisidora', description: 'La fanática del rosa, los gatitos de cerámica y los castigos con pluma de sangre.', emoji: '🐱', image: '/assets/images/characters/umbridge.png' },
+    { id: 'voldemort', name: 'Lord Voldemort', movieTitle: 'El Señor Tenebroso', description: 'El mago tenebroso sin nariz que no entiende el concepto del amor ni del bloqueador solar.', emoji: '🐍', image: '/assets/images/characters/voldemort.png' },
+    { id: 'bellatrix', name: 'Bellatrix Lestrange', movieTitle: 'Mortífaga de Élite', description: 'La mortífaga más desquiciada, leal y con el peinado más alborotado del mundo mágico.', emoji: '🗡️', image: '/assets/images/characters/bellatrix.png' },
+    { id: 'dobby', name: 'Dobby', movieTitle: 'Elfo Libre', description: 'El elfo libre amante de los calcetines disparejos y de salvar a Harry Potter causándole conmociones cerebrales.', emoji: '🧦', image: '/assets/images/characters/dobby.png' },
+    { id: 'draco', name: 'Draco Malfoy', movieTitle: 'Príncipe de Slytherin', description: 'El hurón albino dramático que menciona a su padre cada cinco minutos.', emoji: '🍏', image: '/assets/images/characters/draco.png' },
+    { id: 'hagrid', name: 'Rubeus Hagrid', movieTitle: 'Guardián de las Llaves', description: 'El gigante bonachón amante de los monstruos letales y los pasteles de cumpleaños aplastados.', emoji: '🎂', image: '/assets/images/characters/hagrid.png' },
+    { id: 'lockhart', name: 'Gilderoy Lockhart', movieTitle: 'Celebridad Mágica', description: 'El cinco veces ganador de la sonrisa más encantadora y experto en borrar memorias ajenas.', emoji: '✨', image: '/assets/images/characters/lockhart.png' },
+    { id: 'myrtle', name: 'Myrtle la Llorona', movieTitle: 'Fantasma de Hogwarts', description: 'La habitante más dramática y sensible del baño de chicas del segundo piso.', emoji: '👻', image: '/assets/images/characters/myrtle.png' },
+    { id: 'filch', name: 'Argus Filch', movieTitle: 'Celador de Hogwarts', description: 'El celador amargado que sueña con colgar a los estudiantes de los pulgares en las mazmorras.', emoji: '🧹', image: '/assets/images/characters/filch.png' },
+    { id: 'lucius', name: 'Lucius Malfoy', movieTitle: 'Aristócrata Sangre Pura', description: 'El fabuloso cabello platinado del mal y coleccionista de bastones con veneno.', emoji: '🦚', image: '/assets/images/characters/lucius.png' },
+    { id: 'pettigrew', name: 'Peter Pettigrew', movieTitle: 'Colagusano', description: 'El animago rata traicionero con una mano de plata y cero lealtad.', emoji: '🐀', image: '/assets/images/characters/pettigrew.png' }
   ];
 
   init(players: Player[]): BesoBodaMuerteState {

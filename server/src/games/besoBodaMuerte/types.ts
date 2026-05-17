@@ -4,6 +4,7 @@ export interface KMKCharacter {
   movieTitle: string;
   description: string;
   emoji: string;
+  image: string;
 }
 
 export interface KMKPlayerPrediction {

@@ -707,11 +707,15 @@ function renderKMKInput(data) {
             const card = document.createElement('div');
             card.className = 'kmk-mobile-char-card glass-panel';
             card.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 1rem;">
-                    <span style="font-size: 2rem;">${char.emoji}</span>
+                <div style="display: flex; align-items: center; gap: 1.2rem; margin-bottom: 1.2rem;">
+                    <div style="position: relative; width: 80px; height: 80px; flex-shrink: 0; border-radius: 50%; overflow: hidden; border: 2px solid var(--color-accent);">
+                        <img src="${char.image || '/assets/images/snitch/snitch.png'}" alt="${char.name}" style="width: 100%; height: 100%; object-fit: cover;">
+                        <div style="position: absolute; bottom: 2px; right: 2px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 0.2rem; font-size: 1rem;">${char.emoji}</div>
+                    </div>
                     <div>
-                        <h3 style="margin:0; font-size: 1.2rem;">${char.name}</h3>
-                        <div style="font-size: 0.8rem; opacity:0.7;">${char.movieTitle}</div>
+                        <h3 style="margin:0 0 0.3rem 0; font-size: 1.3rem; color: white;">${char.name}</h3>
+                        <div style="font-size: 0.9rem; color: var(--color-accent); margin-bottom: 0.3rem;">${char.movieTitle}</div>
+                        <div style="font-size: 0.85rem; color: var(--color-text-dim); line-height: 1.3;">${char.description}</div>
                     </div>
                 </div>
                 <div class="kmk-btn-group" id="group-${char.id}" style="display: flex; gap: 0.5rem;">

@@ -1642,11 +1642,16 @@ function renderKMKView(data) {
         data.characters.forEach(char => {
             const card = document.createElement('div');
             card.className = 'kmk-char-card glass-panel';
+            card.style.textAlign = 'center';
+            card.style.padding = '1.5rem';
             card.innerHTML = `
-                <div class="char-emoji">${char.emoji}</div>
-                <h3>${char.name}</h3>
-                <div class="char-title">${char.movieTitle}</div>
-                <p class="char-desc">${char.description}</p>
+                <div class="char-portrait-container" style="position: relative; width: 150px; height: 150px; margin: 0 auto 1rem auto; border-radius: 50%; overflow: hidden; border: 3px solid var(--color-accent); box-shadow: 0 0 20px rgba(251,191,36,0.4);">
+                    <img src="${char.image || '/assets/images/snitch/snitch.png'}" alt="${char.name}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <div class="char-emoji-badge" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 0.3rem; font-size: 1.5rem;">${char.emoji}</div>
+                </div>
+                <h3 style="margin: 0.5rem 0; font-size: 1.6rem; color: white;">${char.name}</h3>
+                <div class="char-title" style="color: var(--color-accent); font-size: 1rem; margin-bottom: 0.8rem;">${char.movieTitle}</div>
+                <p class="char-desc" style="font-size: 0.95rem; line-height: 1.4; color: var(--color-text-dim);">${char.description}</p>
             `;
             grid.appendChild(card);
         });
@@ -1674,18 +1679,26 @@ function renderKMKResults(data) {
         res.characters.forEach(char => {
             const choice = res.targetChoices[char.id];
             const choiceMap = {
-                kiss: { label: '💋 BESO', color: '#ec4899' },
-                marry: { label: '💍 BODA', color: '#3b82f6' },
-                kill: { label: '💀 AVADA KEDAVRA', color: '#10b981' }
+                kiss: { label: '💋 BESO', color: '#ec4899', shadow: 'rgba(236,72,153,0.6)' },
+                marry: { label: '💍 BODA', color: '#3b82f6', shadow: 'rgba(59,130,246,0.6)' },
+                kill: { label: '💀 AVADA KEDAVRA', color: '#10b981', shadow: 'rgba(16,185,129,0.6)' }
             };
-            const cInfo = choiceMap[choice] || { label: choice, color: '#fff' };
+            const cInfo = choiceMap[choice] || { label: choice, color: '#fff', shadow: 'rgba(255,255,255,0.6)' };
 
             const card = document.createElement('div');
             card.className = 'kmk-res-card glass-panel';
+            card.style.textAlign = 'center';
+            card.style.padding = '2rem';
+            card.style.border = `2px solid ${cInfo.color}`;
+            card.style.boxShadow = `0 0 30px ${cInfo.shadow}`;
             card.innerHTML = `
-                <div class="char-emoji">${char.emoji}</div>
-                <h3>${char.name}</h3>
-                <div class="choice-badge" style="background: ${cInfo.color}; color: black; font-weight: 800; padding: 0.5rem 1.5rem; border-radius: 20px; margin-top: 1rem; font-size: 1.3rem;">
+                <div class="char-portrait-container" style="position: relative; width: 180px; height: 180px; margin: 0 auto 1.5rem auto; border-radius: 50%; overflow: hidden; border: 4px solid ${cInfo.color};">
+                    <img src="${char.image || '/assets/images/snitch/snitch.png'}" alt="${char.name}" style="width: 100%; height: 100%; object-fit: cover;">
+                    <div class="char-emoji-badge" style="position: absolute; bottom: 5px; right: 5px; background: rgba(0,0,0,0.8); border-radius: 50%; padding: 0.4rem; font-size: 1.8rem;">${char.emoji}</div>
+                </div>
+                <h3 style="margin: 0.5rem 0; font-size: 1.8rem; color: white;">${char.name}</h3>
+                <div class="char-title" style="color: var(--color-text-dim); font-size: 1.1rem; margin-bottom: 1.5rem;">${char.movieTitle}</div>
+                <div class="choice-badge" style="background: ${cInfo.color}; color: black; font-weight: 800; padding: 0.8rem 2rem; border-radius: 30px; font-size: 1.5rem; text-transform: uppercase; letter-spacing: 2px;">
                     ${cInfo.label}
                 </div>
             `;
