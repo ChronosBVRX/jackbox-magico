@@ -1112,6 +1112,22 @@ function renderImpostorInput(data) {
             if (spyCard) spyCard.style.display = 'block';
             if (catalogContainer) catalogContainer.style.display = 'block';
 
+            let spyGuideEl = document.getElementById('impostor-spy-guide');
+            if (!spyGuideEl) {
+                const parent = catalogContainer;
+                spyGuideEl = document.createElement('div');
+                spyGuideEl.id = 'impostor-spy-guide';
+                spyGuideEl.className = 'glass-panel';
+                spyGuideEl.style.margin = '0 0 1.5rem 0';
+                spyGuideEl.style.padding = '1rem';
+                spyGuideEl.style.textAlign = 'left';
+                spyGuideEl.style.background = 'rgba(239,68,68,0.15)';
+                spyGuideEl.style.borderLeft = '4px solid #ef4444';
+                spyGuideEl.style.borderRadius = '10px';
+                if (parent && parent.firstChild) parent.insertBefore(spyGuideEl, parent.firstChild);
+            }
+            spyGuideEl.innerHTML = `<div style="font-weight:bold; color:#ef4444; font-size:1.1.rem; margin-bottom:0.5rem;">🕵️‍♂️ GUÍA DE SUPERVIVENCIA MORTÍFAGA</div><div style="font-size:0.9rem; color:var(--color-text-dim); line-height:1.4;">No sabes dónde están. Escucha con atención las respuestas de los demás para deducir el lugar. Si te toca preguntar a ti, haz preguntas ambiguas como <i>"¿Te gusta venir aquí?"</i> o <i>"¿Con qué frecuencia visitas este lugar?"</i>.</div>`;
+
             const catalogList = document.getElementById('impostor-catalog-list');
             if (catalogList) {
                 catalogList.innerHTML = '';
