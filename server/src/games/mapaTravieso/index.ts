@@ -35,7 +35,9 @@ export class MapaTravieso implements GameModule {
       mode: state.mode,
       answerCount: Object.keys(state.answers).length,
       totalPlayers: state.players.length,
-      results: state.results
+      results: state.results,
+      startedAt: state.startedAt,
+      durationMs: state.phase === 'observe' ? state.observeDurationMs : state.answerDurationMs
     };
   }
 
@@ -70,7 +72,19 @@ export class MapaTravieso implements GameModule {
       if (state.phase === 'observe') {
         state.phase = 'answer';
         state.startedAt = Date.now();
-        return { state };
+        return { 
+          state,
+          events: [
+            {
+              type: 'voice_cue',
+              payload: {
+                cueKey: 'mapa_answer_phase',
+                text: `¡El mapa se ha cerrado! ¿Dónde estaba el objeto? ¡Respondan rápido en sus celulares!`
+              },
+              target: 'all'
+            }
+          ]
+        };
       } else if (state.phase === 'answer') {
         return this.resolveRound(state);
       } else if (state.phase === 'results') {

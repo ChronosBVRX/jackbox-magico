@@ -1327,8 +1327,11 @@ function renderHechizoResults(data) {
   });
 }
 
+let mapaAnimFrame = null;
+
 function renderMapaView(data) {
   if (data.phase === 'results') {
+    if (mapaAnimFrame) cancelAnimationFrame(mapaAnimFrame);
     renderMapaResults(data);
     return;
   }
@@ -1341,16 +1344,45 @@ function renderMapaView(data) {
     canvas.innerHTML = '';
     data.mapLayout.forEach(loc => {
       const dot = document.createElement('div');
-      dot.className = 'map-point';
+      dot.className = 'map-point glass-panel';
+      dot.style.position = 'absolute';
       dot.style.left = loc.zone.x + '%';
       dot.style.top = loc.zone.y + '%';
-      dot.innerHTML = `<span class="map-item-visual">${loc.item.emoji}</span><span class="map-label">${loc.zone.name}</span>`;
+      dot.style.transform = 'translate(-50%, -50%)';
+      dot.style.padding = '1rem 1.8rem';
+      dot.style.borderRadius = '16px';
+      dot.style.background = 'rgba(15,23,42,0.9)';
+      dot.style.border = '2px solid var(--color-accent)';
+      dot.style.boxShadow = '0 10px 25px rgba(0,0,0,0.7)';
+      dot.style.display = 'flex';
+      dot.style.flexDirection = 'column';
+      dot.style.alignItems = 'center';
+      dot.style.gap = '0.5rem';
+      dot.style.zIndex = '10';
+      dot.innerHTML = `<span class="map-item-visual" style="font-size: 3.5rem; filter: drop-shadow(0 0 10px rgba(251,191,36,0.5));">${loc.item.emoji}</span><span class="map-label" style="font-family: var(--font-title); font-size: 1.6rem; color: white; white-space: nowrap;">${loc.zone.name}</span>`;
       canvas.appendChild(dot);
     });
   } else {
     status.textContent = data.target?.question || '¿Dónde estaba?';
-    canvas.innerHTML = '<div style="width:100%; height:100%; background:rgba(0,0,0,0.2); filter:blur(10px)"></div>';
+    canvas.innerHTML = '<div style="position: absolute; inset: 0; width: 100%; height: 100%; background: rgba(15,23,42,0.85); backdrop-filter: blur(15px); display: flex; align-items: center; justify-content: center; flex-direction: column;"><div style="font-size: 6rem; margin-bottom: 1rem;">🗺️</div><h2 style="color: var(--color-accent); font-family: var(--font-title); font-size: 3rem;">¡El mapa se ha cerrado!</h2><p style="color: white; font-size: 1.8rem; margin-top: 1rem;">Responde en tu celular</p></div>';
   }
+
+  if (mapaAnimFrame) cancelAnimationFrame(mapaAnimFrame);
+  function animateMapaTimer() {
+    const now = Date.now();
+    const elapsed = now - data.startedAt;
+    const remaining = Math.max(0, data.durationMs - elapsed);
+    const percent = (remaining / data.durationMs) * 100;
+    const seconds = Math.ceil(remaining / 1000);
+
+    const timerBar = document.getElementById('mapa-timer-bar');
+    const timerCount = document.getElementById('mapa-timer-count');
+    if (timerBar) timerBar.style.width = percent + '%';
+    if (timerCount) timerCount.textContent = seconds;
+
+    mapaAnimFrame = requestAnimationFrame(animateMapaTimer);
+  }
+  animateMapaTimer();
 }
 
 function renderCalderoView(data) {
