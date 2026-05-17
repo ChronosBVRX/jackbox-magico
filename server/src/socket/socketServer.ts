@@ -25,6 +25,7 @@ export function setupSocketServer(httpServer: HttpServer) {
   });
 
   const activeGames: Map<string, { module: GameModule, state: any }> = new Map();
+  const pendingRoomClosures: Map<string, NodeJS.Timeout> = new Map();
 
   io.on('connection', (socket) => {
     socket.on('tv_create_room', () => {
@@ -67,6 +68,14 @@ export function setupSocketServer(httpServer: HttpServer) {
         socket.data.isTv = false;
         socket.join(roomCode);
         socket.join(clientId); // Join personal room for private state updates
+
+        // Si había un temporizador de cierre pendiente para esta sala, cancelarlo porque alguien se reconectó
+        if (pendingRoomClosures.has(roomCode)) {
+          clearTimeout(pendingRoomClosures.get(roomCode));
+          pendingRoomClosures.delete(roomCode);
+          io.to(roomCode).emit('error_message', '✅ Jugador reconectado. Cierre de sala cancelado.');
+        }
+
         const state = roomEngine.getRoom(roomCode);
         
         // AUTO-BOTS if debug mode and first real player
@@ -479,7 +488,29 @@ export function setupSocketServer(httpServer: HttpServer) {
       if (roomCode && clientId && !isTv) {
         roomEngine.setPlayerConnection(roomCode, clientId, false);
         const state = roomEngine.getRoom(roomCode);
-        if (state) io.to(roomCode).emit('room_state', state);
+        if (state) {
+          io.to(roomCode).emit('room_state', state);
+
+          // Verificar si quedan jugadores conectados
+          const connected = roomEngine.getConnectedPlayers(roomCode);
+          if (connected.length === 0) {
+            // Iniciar temporizador de cierre de sala (ej. 45 segundos de gracia para reconectar)
+            if (!pendingRoomClosures.has(roomCode)) {
+              io.to(roomCode).emit('error_message', '⚠️ Todos los jugadores se han desconectado. La sala se cerrará en 45 segundos si nadie se reconecta.');
+              const timer = setTimeout(() => {
+                pendingRoomClosures.delete(roomCode);
+                const currentRoom = roomEngine.getRoom(roomCode);
+                if (currentRoom && roomEngine.getConnectedPlayers(roomCode).length === 0) {
+                  io.to(roomCode).emit('error_message', '🚨 La sala se ha cerrado por inactividad (sin jugadores).');
+                  roomEngine.resetRoomToLobby(roomCode);
+                  activeGames.delete(roomCode);
+                  io.in(roomCode).socketsLeave(roomCode);
+                }
+              }, 45000);
+              pendingRoomClosures.set(roomCode, timer);
+            }
+          }
+        }
       }
     });
   });
